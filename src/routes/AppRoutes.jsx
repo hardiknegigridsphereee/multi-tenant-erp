@@ -216,7 +216,7 @@ return(
 <Route path="/teacher/assignments/:id" element={<AssignmentDetailPage />} />
 
 <Route path="/teacher/attendance" element={<AttendanceOverview />} />
-<Route path="/teacher/attendance/mark" element={<MarkAttendance />} />
+<Route path="/teacher/attendance/mark/:id?" element={<MarkAttendance />} />
 
 <Route path="/teacher/exams" element={<ExamsListPage />} />
 <Route path="/teacher/exams/create" element={<CreateExamPage />} />
@@ -240,9 +240,6 @@ path="/teacher/analytics/student/:id"
 element={<DetailedStudentAnalytics />} 
 />
         
-
-     
->>>>>>> Stashed changes
 
 
 

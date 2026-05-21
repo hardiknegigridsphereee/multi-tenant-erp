@@ -1,12 +1,79 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Button from "../../components/erp/teacher/Button";
 import Card from "../../components/erp/teacher/Card";
 
 
+import { getMyProfile, getTeacherClasses } from "../../services/api";
+
 const AttendanceOverview = () => {
   const navigate = useNavigate();
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTeacherAttendance = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) return;
+
+        // 1. Fetch current profile to get teacher ID
+        const profileData = await getMyProfile();
+        const teacherId = profileData?.profiles?.teacher?.id || profileData?.identity?.id;
+        
+        console.log("Teacher Profile: ✓ Loaded (ID: " + teacherId + ")");
+
+        if (!teacherId || !isMounted) {
+          if (isMounted) setLoading(false);
+          return;
+        }
+
+        // 2. Fetch assignments to know which sections this teacher handles
+        const assignmentsRes = await fetch(`http://localhost:8000/api/v1/academics/teacher-assignments/?teacher=${teacherId}`, {
+          headers: { "Authorization": `Bearer ${token}` }
+        });
+        const assignmentsData = await assignmentsRes.json();
+        
+        // Extract unique section IDs
+        const sectionIds = [...new Set(assignmentsData.results?.map(a => a.section) || [])].filter(Boolean);
+
+        // 3. Fetch attendance for those sections
+        // Promise.all to fetch all section attendances concurrently instead of sequentially
+        const sectionPromises = sectionIds.map(sectionId => 
+          fetch(`http://localhost:8000/api/v1/operations/attendance/?section=${sectionId}`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }).then(res => res.ok ? res.json() : { results: [] })
+        );
+
+        const responses = await Promise.all(sectionPromises);
+        
+        if (isMounted) {
+          let allAttendance = [];
+          responses.forEach(data => {
+            allAttendance = [...allAttendance, ...(data.results || [])];
+          });
+          
+          setAttendanceRecords(allAttendance);
+          console.log("Teacher's Attendance Records:", allAttendance);
+          setLoading(false);
+        }
+        
+      } catch (error) {
+        console.error("Error fetching teacher attendance:", error);
+        if (isMounted) setLoading(false);
+      }
+    };
+
+    fetchTeacherAttendance();
+
+    // Cleanup function to prevent state update on unmounted component (especially helpful with React StrictMode running double mounts)
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
   return (
     
     <MainLayout title="The Academic Architect">

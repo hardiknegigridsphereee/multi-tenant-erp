@@ -52,10 +52,21 @@ const handleLoginSubmit = async (e) => {
     console.log("Profile Data API Response:", profileData);
     
     // Extract the primary role from the roles array (which contains strings like "School Admin") 
+    // Fallback to checking the profiles object (e.g. if teacher profile exists)
     // Fallback to "Global Admin" if is_superuser is true
-    const mainRole = (profileData.roles && profileData.roles.length > 0) 
-      ? profileData.roles[0] 
-      : (profileData.is_superuser ? "Global Admin" : "");
+    let mainRole = "";
+    
+    if (profileData.roles && profileData.roles.length > 0) {
+      mainRole = profileData.roles[0];
+    } else if (profileData.profiles?.teacher?.exists) {
+      mainRole = "Teacher";
+    } else if (profileData.profiles?.student?.exists) {
+      mainRole = "Student";
+    } else if (profileData.profiles?.parent?.exists) {
+      mainRole = "Parent";
+    } else if (profileData.is_superuser) {
+      mainRole = "Global Admin";
+    }
 
     const lowerRole = mainRole.toLowerCase();
 
@@ -67,7 +78,7 @@ const handleLoginSubmit = async (e) => {
       navigate("/teacher");
     } else if(lowerRole.includes("student")){
       navigate("/student");
-    } else if(lowerRole.includes("parent")){
+    } else if(lowerRole.includes("parents")){
       navigate("/parent");
     } else {
       // Default fallback
