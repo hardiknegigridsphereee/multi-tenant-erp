@@ -31,7 +31,7 @@ const apiCall = async (endpoint, options = {}) => {
 
   try {
     const response = await fetch(url, {
-      method: "GET",
+      method: options.method || "GET",
       ...options,
       headers,
     });
@@ -90,6 +90,31 @@ const apiCall = async (endpoint, options = {}) => {
 };
 
 /**
+ * Helper to fetch all pages of a paginated API response
+ */
+export const fetchAllPages = async (initialEndpoint) => {
+  const response = await apiCall(initialEndpoint);
+  if (response && response.results && response.next) {
+    let allResults = [...response.results];
+    let nextUrl = response.next;
+
+    while (nextUrl) {
+      const urlObj = new URL(nextUrl);
+      const nextPath = urlObj.pathname + urlObj.search;
+      const nextResponse = await apiCall(nextPath);
+      if (nextResponse && nextResponse.results) {
+        allResults = [...allResults, ...nextResponse.results];
+        nextUrl = nextResponse.next;
+      } else {
+        break;
+      }
+    }
+    return { ...response, results: allResults };
+  }
+  return response;
+};
+
+/**
  * Get the logged-in user's profile
  * GET /api/v1/profiles/me/
  *
@@ -138,7 +163,7 @@ export const getSectionEnrollments = (sectionId, academicYearId) => {
     endpoint += `?${params.join("&")}`;
   }
 
-  return apiCall(endpoint);
+  return fetchAllPages(endpoint);
 };
 
 /**
@@ -176,7 +201,7 @@ export const getAttendanceRecords = (sectionId, academicYearId, date) => {
     endpoint += `?${params.join("&")}`;
   }
 
-  return apiCall(endpoint);
+  return fetchAllPages(endpoint);
 };
 
 export default {

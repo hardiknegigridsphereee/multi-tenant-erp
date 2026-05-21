@@ -47,20 +47,30 @@ export function useStaleData(
   fetcher,
   { ttl = 60_000, skip = false, deps } = {},
 ) {
-  const getInitial = () => {
-    if (cache.has(cacheKey)) return cache.get(cacheKey);
-    const stored = readFromStorage(cacheKey);
+  const getInitial = (k) => {
+    if (cache.has(k)) return cache.get(k);
+    const stored = readFromStorage(k);
     if (stored) {
-      cache.set(cacheKey, stored.data);
+      cache.set(k, stored.data);
       return stored.data;
     }
     return null;
   };
 
-  const [data, setData] = useState(getInitial);
-  const [loading, setLoading] = useState(!getInitial() && !skip);
+  const [data, setData] = useState(() => getInitial(cacheKey));
+  const [prevKey, setPrevKey] = useState(cacheKey);
+  const [loading, setLoading] = useState(() => !getInitial(cacheKey) && !skip);
   const [revalidating, setRevalidating] = useState(false);
   const [error, setError] = useState(null);
+
+  if (cacheKey !== prevKey) {
+    const initial = getInitial(cacheKey);
+    setData(initial);
+    setPrevKey(cacheKey);
+    setLoading(!initial && !skip);
+    setError(null);
+  }
+
   const fetcherRef = useRef(fetcher);
   fetcherRef.current = fetcher;
 

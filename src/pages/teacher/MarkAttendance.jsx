@@ -1,9 +1,9 @@
 import React, { useState, useEffect, useRef, useCallback } from 'react';
-import { Link, useParams } from 'react-router-dom';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
 import Select from "../../components/erp/teacher/Select";
-import { getTeacherAssignment, getSectionEnrollments, bulkRecordAttendance, getAttendanceRecords } from "../../services/api";
+import { getTeacherAssignment, getSectionEnrollments, bulkRecordAttendance, getAttendanceRecords, getMyProfile, getTeacherClasses } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
 import { RevalidatingBar, SkeletonRow } from "../../components/erp/teacher/LoadingPrimitives";
 
@@ -18,29 +18,47 @@ import { RevalidatingBar, SkeletonRow } from "../../components/erp/teacher/Loadi
  */
 const MarkAttendance = () => {
   const { id } = useParams();
+  const navigate = useNavigate();
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
   const [attendanceOverlay, setAttendanceOverlay] = useState({}); // { [studentId]: { status, remark } }
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
   const dateDebounceRef = useRef(null);
 
+  // ── Load available classes for filters ─────────────────────────────────────
+  const { data: profile } = useStaleData("profile:me", getMyProfile);
+  const teacherId = profile?.profiles?.teacher?.id || profile?.identity?.id;
+
+  const { data: assignmentsData, loading: classesLoading } = useStaleData(
+    `teacher:classes:${teacherId}`,
+    () => getTeacherClasses(teacherId),
+    { skip: !teacherId }
+  );
+  
+  const allClasses = assignmentsData?.results || [];
+
+  // Auto-select first class if no id in URL but classes are loaded
+  useEffect(() => {
+    if (!id && allClasses.length > 0) {
+      navigate(`/teacher/attendance/mark/${allClasses[0].id}`, { replace: true });
+    }
+  }, [id, allClasses, navigate]);
+
+  // ── Identify Current Class ────────────────────────────────────────────────
+  const currentClass = allClasses.find(c => String(c.id) === String(id)) || null;
+  const assignment = currentClass; // For component backwards compatibility
+  const sectionId = assignment ? (typeof assignment.section === 'object' ? assignment.section?.id : assignment.section || assignment.section_id) : null;
+  const academicYearId = assignment ? (typeof assignment.academic_year === 'object' ? assignment.academic_year?.id : assignment.academic_year || assignment.academic_year_id) : null;
+
   // ── Phase 1: cached roster ────────────────────────────────────────────────
   const {
-    data: rosterPayload,
-    loading: rosterLoading,
+    data: rosterPayloadRaw,
+    loading: rosterLoadingRaw,
     revalidating,
     error: rosterError,
   } = useStaleData(
-    `attendance:roster:${id}`,
+    `attendance:roster:section:${sectionId}`,
     async () => {
-      const assignmentData = await getTeacherAssignment(id);
-      const sectionId = typeof assignmentData.section === 'object'
-        ? assignmentData.section?.id
-        : assignmentData.section || assignmentData.section_id;
-      const academicYearId = typeof assignmentData.academic_year === 'object'
-        ? assignmentData.academic_year?.id
-        : assignmentData.academic_year || assignmentData.academic_year_id;
-
       let students = [];
       if (sectionId) {
         const enrollmentsData = await getSectionEnrollments(sectionId, academicYearId);
@@ -50,26 +68,26 @@ const MarkAttendance = () => {
           student_id: enr.student?.id || enr.student || enr.student_id,
           name: enr.student_name,
           initials: enr.student_name?.charAt(0).toUpperCase() ?? '?',
-          roll: enr.student_enrollment_no,
+          roll: enr.student_enrollment_no || `Roll ${enr.roll_number || 'N/A'}`,
         }));
       }
 
-      return { assignment: assignmentData, students, sectionId, academicYearId };
+      return { students, sectionId };
     },
-    { skip: !id }
+    { skip: !sectionId || !academicYearId }
   );
 
-  const assignment = rosterPayload?.assignment ?? null;
-  const students = rosterPayload?.students ?? [];
-  const sectionId = rosterPayload?.sectionId ?? null;
-  const academicYearId = rosterPayload?.academicYearId ?? null;
+  // Guard against stale data leakage from previous sections
+  const isCurrentRoster = rosterPayloadRaw?.sectionId === sectionId;
+  const students = isCurrentRoster ? (rosterPayloadRaw?.students ?? []) : [];
+  const rosterLoading = classesLoading || rosterLoadingRaw || (sectionId && !isCurrentRoster);
 
   // ── Phase 2: date-specific attendance (always fresh, debounced) ───────────
-  const fetchAttendanceForDate = useCallback(async (date) => {
-    if (!sectionId) return;
+  const fetchAttendanceForDate = useCallback(async (date, targetSectionId, targetAcademicYearId) => {
+    if (!targetSectionId || !targetAcademicYearId) return;
     setAttendanceLoading(true);
     try {
-      const attendanceData = await getAttendanceRecords(sectionId, academicYearId, date);
+      const attendanceData = await getAttendanceRecords(targetSectionId, targetAcademicYearId, date);
       const records = Array.isArray(attendanceData) ? attendanceData : attendanceData.results || [];
       const overlay = {};
       records.forEach(r => {
@@ -82,17 +100,18 @@ const MarkAttendance = () => {
     } finally {
       setAttendanceLoading(false);
     }
-  }, [sectionId, academicYearId]);
+  }, []);
 
   // Fetch attendance whenever date or sectionId changes — debounced 300ms
   useEffect(() => {
-    if (!sectionId) return;
+    if (!sectionId || !academicYearId) return;
+    setAttendanceOverlay({}); // Clear old attendance instantly
     clearTimeout(dateDebounceRef.current);
     dateDebounceRef.current = setTimeout(() => {
-      fetchAttendanceForDate(attendanceDate);
+      fetchAttendanceForDate(attendanceDate, sectionId, academicYearId);
     }, 300);
     return () => clearTimeout(dateDebounceRef.current);
-  }, [attendanceDate, sectionId, fetchAttendanceForDate]);
+  }, [attendanceDate, sectionId, academicYearId, fetchAttendanceForDate]);
 
   // ── Derived student list with attendance merged ───────────────────────────
   const studentsWithAttendance = students.map(s => ({
@@ -151,7 +170,7 @@ const MarkAttendance = () => {
   };
 
   // ── Error state ───────────────────────────────────────────────────────────
-  if (rosterError && !rosterPayload) {
+  if (rosterError && !rosterPayloadRaw) {
     return (
       <MainLayout title="Teacher Portal">
         <div className="p-6 bg-red-50 text-red-900 rounded-lg border border-red-200">
@@ -169,6 +188,20 @@ const MarkAttendance = () => {
   const successRate = studentsWithAttendance.length > 0
     ? Math.round((presentCount / studentsWithAttendance.length) * 100)
     : 0;
+
+  const handleRemarkClick = (student) => {
+    const newRemark = window.prompt(`Enter remark for ${student.name}:`, student.remark);
+    if (newRemark !== null) {
+      setAttendanceOverlay(prev => ({
+        ...prev,
+        [student.student_id]: {
+          ...prev[student.student_id],
+          status: prev[student.student_id]?.status ?? 'Present',
+          remark: newRemark,
+        }
+      }));
+    }
+  };
 
   const subjectName = assignment?.subject_name || 'Subject';
   const levelClean = assignment?.class_level_name?.replace('Grade ', '') || '';
@@ -256,9 +289,23 @@ const MarkAttendance = () => {
               Session Parameters
             </h4>
             <div className="space-y-5">
-              <Select label="Class Name" options={[classNameStr || 'Loading…']} />
+              <Select 
+                label="Class Name" 
+                value={id || ''}
+                onChange={(e) => navigate(`/teacher/attendance/mark/${e.target.value}`)}
+                options={allClasses.length > 0 ? allClasses.map(cls => ({
+                  value: cls.id,
+                  label: `${cls.subject_name} (${cls.class_level_name} - ${cls.section_name})`
+                })) : [{ value: id, label: classNameStr || 'Loading…' }]} 
+                disabled={isSubmitting || classesLoading}
+              />
               <div className="grid grid-cols-2 gap-4">
-                <Select label="Section" options={[assignment?.section_name || 'Section']} />
+                <Select 
+                  label="Academic Year" 
+                  value={assignment?.academic_year_name || ''} 
+                  disabled 
+                  options={[{ value: assignment?.academic_year_name, label: assignment?.academic_year_name || (classesLoading ? 'Loading...' : 'Select Class') }]} 
+                />
                 <div>
                   <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest block mb-2">Date</label>
                   <div className="relative">
@@ -365,13 +412,20 @@ const MarkAttendance = () => {
                             })}
                           </div>
                         </td>
-                        <td className="px-8 py-5 text-right flex justify-end">
+                        <td className="px-8 py-5 flex justify-end">
                           {student.remark ? (
-                            <span className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded-md font-bold uppercase tracking-tighter inline-block">
+                            <button
+                              onClick={() => handleRemarkClick(student)} 
+                              className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded-md font-bold uppercase tracking-tighter inline-block text-left max-w-[120px] truncate"
+                              title={student.remark}
+                            >
                               {student.remark}
-                            </span>
+                            </button>
                           ) : (
-                            <button className="p-2 rounded-lg text-slate-300 hover:text-primary transition-colors">
+                            <button 
+                              onClick={() => handleRemarkClick(student)}
+                              className="p-2 rounded-lg text-slate-300 hover:text-primary transition-colors"
+                            >
                               <span className="material-symbols-outlined">add_comment</span>
                             </button>
                           )}
