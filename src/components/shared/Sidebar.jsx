@@ -16,7 +16,7 @@ const navItems = [
 
 export default function Sidebar() {
   return (
-    <aside className="hidden md:flex flex-col h-screen w-72 left-0 top-0 fixed bg-surface-container-low dark:bg-slate-900 border-r border-outline-variant/30 z-50 overflow-y-auto">
+    <aside className="hidden md:flex flex-col h-screen w-72 left-0 top-0 fixed bg-surface-container-low dark:bg-white border-r border-outline-variant/30 z-50 overflow-y-auto">
       <div className="flex flex-col h-full py-8 gap-2">
         <div className="px-8 mb-8">
           <span className="text-xl font-headline font-bold text-primary">Academic Architect</span>
@@ -41,7 +41,7 @@ export default function Sidebar() {
               className={({ isActive }) =>
                 `flex items-center gap-4 py-3 px-6 transition-all duration-300 ease-in-out font-body text-sm font-semibold border-l-4 ${
                   isActive
-                    ? 'text-primary bg-white dark:bg-slate-800 rounded-r-full border-primary shadow-sm'
+                    ? 'text-primary bg-white dark:bg-gray-200 rounded-r-full border-primary shadow-sm'
                     : 'text-on-surface-variant hover:text-primary hover:bg-surface-container-lowest/50 rounded-r-full border-transparent'
                 }`
               }

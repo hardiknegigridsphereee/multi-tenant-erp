@@ -49,6 +49,7 @@ const handleLoginSubmit = async (e) => {
     }
 
     const profileData = await profileRes.json();
+    localStorage.setItem('user_data', JSON.stringify(profileData));
     console.log("Profile Data API Response:", profileData);
     
     // Extract the primary role from the roles array (which contains strings like "School Admin") 
