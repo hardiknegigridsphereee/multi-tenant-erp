@@ -1,12 +1,81 @@
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Button from "../../components/erp/teacher/Button";
 import Card from "../../components/erp/teacher/Card";
 
+import { getMyProfile, getTeacherClasses } from "../../services/api";
+import { useStaleData } from "../../hooks/useStaleData";
 
 const AttendanceOverview = () => {
   const navigate = useNavigate();
+  const [attendanceRecords, setAttendanceRecords] = useState([]);
+  const [attendanceLoading, setAttendanceLoading] = useState(true);
+
+  const { data: profileData } = useStaleData("profile:me", getMyProfile);
+  const teacherId = profileData?.profiles?.teacher?.id || profileData?.identity?.id;
+
+  const { data: assignmentsData, loading: classesLoading } = useStaleData(
+    `teacher:classes:${teacherId}`,
+    () => getTeacherClasses(teacherId),
+    { skip: !teacherId }
+  );
+
+  const classes = assignmentsData?.results || [];
+
+  useEffect(() => {
+    let isMounted = true;
+    const fetchTeacherAttendance = async () => {
+      try {
+        const token = localStorage.getItem("access_token");
+        if (!token) return;
+
+        if (!teacherId || !isMounted || classes.length === 0) {
+          if (isMounted) setAttendanceLoading(false);
+          return;
+        }
+
+        // Extract unique section IDs
+        const sectionIds = [...new Set(classes.map(a => a.section || a.section_id))].filter(Boolean);
+
+        // 3. Fetch attendance for those sections
+        const sectionPromises = sectionIds.map(sectionId => 
+          fetch(`http://localhost:8000/api/v1/operations/attendance/?section=${sectionId}&page_size=1000`, {
+            headers: { "Authorization": `Bearer ${token}` }
+          }).then(res => res.ok ? res.json() : { results: [] })
+        );
+
+        const responses = await Promise.all(sectionPromises);
+        
+        if (isMounted) {
+          let allAttendance = [];
+          responses.forEach(data => {
+            if (data.results) {
+              allAttendance = [...allAttendance, ...data.results];
+            }
+          });
+          
+          setAttendanceRecords(allAttendance);
+          setAttendanceLoading(false);
+        }
+        
+      } catch (error) {
+        console.error("Error fetching teacher attendance:", error);
+        if (isMounted) setAttendanceLoading(false);
+      }
+    };
+
+    if (classes.length > 0) {
+      fetchTeacherAttendance();
+    } else if (!classesLoading) {
+      setAttendanceLoading(false);
+    }
+
+    return () => {
+      isMounted = false;
+    };
+  }, [classes, teacherId, classesLoading]);
+
   return (
     
     <MainLayout title="The Academic Architect">
@@ -75,72 +144,47 @@ const AttendanceOverview = () => {
         <div className="lg:col-span-8">
           <div className="flex items-center justify-between mb-6">
             <h3 className="text-xl font-bold text-on-surface">Scheduled Classes Today</h3>
-            <span className="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">5 Classes Total</span>
+            <span className="text-sm font-medium text-primary bg-primary/10 px-3 py-1 rounded-full">{classes.length} Classes Total</span>
           </div>
           <div className="space-y-4">
             
-            {/* Class Row 1 */}
-            <div className="bg-surface-container-lowest rounded-xl p-5 flex flex-col sm:flex-row sm:items-center shadow-sm hover:shadow-md transition-shadow group gap-4">
-              <div className="w-14 h-14 rounded-xl bg-blue-50 flex items-center justify-center text-blue-600 shrink-0">
-                <span className="material-symbols-outlined text-3xl">calculate</span>
-              </div>
-              <div className="flex-grow">
-                <h4 className="font-bold text-on-surface text-lg">Advanced Mathematics</h4>
-                <p className="text-sm text-on-surface-variant">Grade 11-A • 09:00 AM - 10:30 AM</p>
-              </div>
-              <div className="hidden md:flex items-center space-x-8">
-                <div className="text-center">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Present</p>
-                  <p className="text-lg font-bold text-green-600">32/34</p>
-                </div>
-                <div className="text-center">
-                  <p className="text-[10px] font-bold text-slate-400 uppercase">Status</p>
-                  <span className="text-xs font-bold text-green-700 bg-green-100 px-2 py-0.5 rounded">Completed</span>
-                </div>
-              </div>
-              <button className="sm:ml-6 px-5 py-2 rounded-xl bg-surface-container-high text-primary font-bold text-sm hover:bg-primary hover:text-white transition-all whitespace-nowrap">
-                View Details
-              </button>
-            </div>
+            {classesLoading ? (
+              <div className="p-5 text-center text-slate-500 font-semibold bg-surface-container-lowest rounded-xl shadow-sm">Loading classes...</div>
+            ) : classes.length === 0 ? (
+              <div className="p-5 text-center text-slate-500 font-semibold bg-surface-container-lowest rounded-xl shadow-sm">No classes scheduled for today.</div>
+            ) : (
+              classes.map((cls, idx) => {
+                const colors = ['blue', 'purple', 'orange', 'green', 'rose'];
+                const icons = ['calculate', 'science', 'menu_book', 'computer', 'history_edu'];
+                const color = colors[idx % colors.length];
+                const icon = icons[idx % icons.length];
 
-            {/* Class Row 2 */}
-            <div className="bg-surface-container-lowest rounded-xl p-5 flex flex-col sm:flex-row sm:items-center shadow-sm hover:shadow-md transition-shadow gap-4">
-              <div className="w-14 h-14 rounded-xl bg-purple-50 flex items-center justify-center text-purple-600 shrink-0">
-                <span className="material-symbols-outlined text-3xl">science</span>
-              </div>
-              <div className="flex-grow">
-                <h4 className="font-bold text-on-surface text-lg">Quantum Physics Lab</h4>
-                <p className="text-sm text-on-surface-variant">Grade 12-C • 11:00 AM - 12:30 PM</p>
-              </div>
-              <div className="hidden md:flex items-center justify-center px-4">
-                <span className="text-xs font-bold text-amber-600 bg-amber-100 px-3 py-1 rounded-full whitespace-nowrap">In Progress</span>
-              </div>
-              <button
-onClick={() => navigate("/teacher/attendance/mark")}
-className="px-5 py-2 bg-primary text-white rounded-md font-semibold text-sm hover:opacity-90 transition"
->
+                return (
+                  <div key={cls.id} className="bg-surface-container-lowest rounded-xl p-5 flex flex-col sm:flex-row sm:items-center shadow-sm hover:shadow-md transition-shadow group gap-4">
+                    <div className={`w-14 h-14 rounded-xl bg-${color}-50 flex items-center justify-center text-${color}-600 shrink-0`}>
+                      <span className="material-symbols-outlined text-3xl">{icon}</span>
+                    </div>
+                    <div className="flex-grow">
+                      <h4 className="font-bold text-on-surface text-lg">{cls.subject_name}</h4>
+                      <p className="text-sm text-on-surface-variant">{cls.class_level_name} - {cls.section_name}</p>
+                    </div>
+                    <button
+                      onClick={() => navigate(`/teacher/attendance/mark/${cls.id}`)}
+                      className="px-5 py-2 bg-primary text-white rounded-md font-semibold text-sm hover:opacity-90 transition whitespace-nowrap sm:ml-6"
+                    >
+                      Mark Attendance
+                    </button>
+                    <button
+                      onClick={() => navigate(`/teacher/classes/${cls.id}/performance`)}
+                      className="sm:ml-2 px-5 py-2 rounded-xl bg-surface-container-high text-primary font-bold text-sm hover:bg-primary hover:text-white transition-all whitespace-nowrap"
+                    >
+                      View Details
+                    </button>
+                  </div>
+                );
+              })
+            )}
 
-Mark Attendance
-
-</button>
-            </div>
-
-            {/* Class Row 3 */}
-            <div className="bg-surface-container-lowest rounded-xl p-5 flex flex-col sm:flex-row sm:items-center shadow-sm hover:shadow-md transition-shadow gap-4">
-              <div className="w-14 h-14 rounded-xl bg-orange-50 flex items-center justify-center text-orange-600 shrink-0">
-                <span className="material-symbols-outlined text-3xl">menu_book</span>
-              </div>
-              <div className="flex-grow">
-                <h4 className="font-bold text-on-surface text-lg">Classical Literature</h4>
-                <p className="text-sm text-on-surface-variant">Grade 10-B • 02:00 PM - 03:30 PM</p>
-              </div>
-              <div className="hidden md:flex items-center justify-center px-4">
-                <span className="text-xs font-bold text-slate-400 bg-slate-100 px-3 py-1 rounded-full italic whitespace-nowrap">Upcoming</span>
-              </div>
-              <button className="sm:ml-6 px-5 py-2 rounded-xl bg-slate-100 text-slate-400 font-bold text-sm cursor-not-allowed whitespace-nowrap">
-                Mark Soon
-              </button>
-            </div>
           </div>
         </div>
 

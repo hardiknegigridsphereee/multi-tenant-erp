@@ -2,10 +2,23 @@ import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
-
+import { useStaleData } from "../../hooks/useStaleData";
+import { getMyProfile, getTeacherClasses } from "../../services/api";
 
 const Dashboard = () => {
   const navigate = useNavigate();
+
+  const { data: profile } = useStaleData("profile:me", getMyProfile);
+  const teacherId = profile?.profiles?.teacher?.id || profile?.identity?.id;
+
+  const { data: assignmentsData, loading, revalidating } = useStaleData(
+    `teacher:classes:${teacherId}`,
+    () => getTeacherClasses(teacherId),
+    { skip: !teacherId }
+  );
+
+  const classes = assignmentsData?.results || [];
+
   return (
     <MainLayout title="The Academic Architect">
       {/* TopAppBar Context */}
@@ -26,7 +39,7 @@ const Dashboard = () => {
             <span className="text-[10px] font-black uppercase tracking-widest text-primary px-2 py-1 bg-primary/5 rounded-lg">Today</span>
           </div>
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Total Classes</p>
-          <h3 className="font-display text-4xl font-black mt-1 text-slate-800">5</h3>
+          <h3 className="font-display text-4xl font-black mt-1 text-slate-800">{loading ? '-' : classes.length}</h3>
         </Card>
         <Card hoverable className="group">
           <div className="flex justify-between items-start mb-4">
@@ -74,65 +87,39 @@ const Dashboard = () => {
               <button className="text-sm font-bold text-primary hover:underline">Full Calendar</button>
             </div>
             <div className="space-y-4">
-              <Card className="p-5 flex flex-col sm:flex-row sm:items-center gap-6 group hover:bg-surface-container-low transition-colors duration-300">
-                <div className="w-16 h-16 rounded-xl bg-surface-container-high flex flex-col items-center justify-center text-on-surface-variant shrink-0">
-                  <span className="text-xs font-bold">09:00</span>
-                  <div className="w-8 h-[2px] bg-outline-variant my-1"></div>
-                  <span className="text-xs font-bold">10:00</span>
-                </div>
-                <div className="flex-1">
-                  <h5 className="font-bold text-lg">Grade 10-A Mathematics</h5>
-                  <p className="text-sm text-on-surface-variant">Room 302 • Calculus Foundations</p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-onClick={() => navigate("/teacher/classes/1/performance")}
-className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md font-semibold"
->
-
-View Class
-
-</button>
-                  <button
-onClick={() => navigate("/teacher/attendance/mark")}
-className="px-4 py-2 bg-blue-600 text-white rounded-md font-semibold"
->
-
-Mark Attendance
-
-</button>
-                </div>
-              </Card>
-
-              <Card className="p-5 flex flex-col sm:flex-row sm:items-center gap-6 group hover:bg-surface-container-low transition-colors duration-300">
-                <div className="w-16 h-16 rounded-xl bg-surface-container-high flex flex-col items-center justify-center text-on-surface-variant shrink-0">
-                  <span className="text-xs font-bold">11:30</span>
-                  <div className="w-8 h-[2px] bg-outline-variant my-1"></div>
-                  <span className="text-xs font-bold">12:30</span>
-                </div>
-                <div className="flex-1">
-                  <h5 className="font-bold text-lg">Grade 11-B Physics</h5>
-                  <p className="text-sm text-on-surface-variant">Lab 04 • Quantum Mechanics Intro</p>
-                </div>
-                <div className="flex gap-3">
-                  <button
-onClick={() => navigate("/teacher/classes/1/performance")}
-className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md font-semibold"
->
-
-View Class
-
-</button>
-                   <button
-onClick={() => navigate("/teacher/attendance/mark")}
-className="px-4 py-2 bg-blue-600 text-white rounded-md font-semibold"
->
-
-Mark Attendance
-
-</button>
-                </div>
-              </Card>
+              {loading && classes.length === 0 ? (
+                <div className="p-5 text-center text-slate-500">Loading classes...</div>
+              ) : classes.length === 0 ? (
+                <div className="p-5 text-center text-slate-500 bg-surface-container-lowest rounded-xl">No classes assigned for you today.</div>
+              ) : (
+                classes.map((cls, index) => (
+                  <Card key={cls.id} className="p-5 flex flex-col sm:flex-row sm:items-center gap-6 group hover:bg-surface-container-low transition-colors duration-300">
+                    <div className="w-16 h-16 rounded-xl bg-surface-container-high flex flex-col items-center justify-center text-on-surface-variant shrink-0">
+                      <span className="text-xs font-bold text-primary">Class</span>
+                      <div className="w-8 h-[2px] bg-primary/20 my-1"></div>
+                      <span className="text-xl font-black text-primary">{index + 1}</span>
+                    </div>
+                    <div className="flex-1">
+                      <h5 className="font-bold text-lg">{cls.subject_name} ({cls.class_level_name} - {cls.section_name})</h5>
+                      <p className="text-sm text-on-surface-variant">Academic Year: {cls.academic_year_name}</p>
+                    </div>
+                    <div className="flex gap-3">
+                      <button
+                        onClick={() => navigate(`/teacher/classes/${cls.id}/performance`)}
+                        className="px-4 py-2 bg-blue-100 text-blue-700 rounded-md font-semibold hover:bg-blue-200 transition-colors"
+                      >
+                        View Class
+                      </button>
+                      <button
+                        onClick={() => navigate(`/teacher/attendance/mark/${cls.id}`)}
+                        className="px-4 py-2 bg-blue-600 text-white rounded-md font-semibold hover:bg-blue-700 transition-colors"
+                      >
+                        Mark Attendance
+                      </button>
+                    </div>
+                  </Card>
+                ))
+              )}
             </div>
           </section>
 
