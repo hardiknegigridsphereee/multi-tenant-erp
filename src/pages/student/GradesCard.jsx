@@ -173,7 +173,7 @@ export default function GradeCard() {
                 className="bg-surface-container-low border-none rounded-md text-sm py-2 px-4 focus:ring-2 focus:ring-surface-tint"
               >
                 <option value="all">All Subjects</option>
-                {data.subjects.map((sub) => (
+                {subjects.map((sub) => (
                   <option key={sub.id} value={sub.id}>
                     {sub.name}
                   </option>

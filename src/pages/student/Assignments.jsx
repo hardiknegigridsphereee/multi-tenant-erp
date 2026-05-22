@@ -276,7 +276,7 @@ export default function Assignments() {
                   formData.append("file", file);
                   await submitAssignment(formData);
                   setSelectedAssignment(null);
-                  window.location.reload(); // Quick refresh to update state
+                  await refreshSubmissions();
                 }}
                 className="bg-primary text-white px-4 py-2 rounded-md font-bold text-sm"
               >
