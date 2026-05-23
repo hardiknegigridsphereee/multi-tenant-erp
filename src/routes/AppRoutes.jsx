@@ -65,7 +65,6 @@ import Recommendations from "../pages/student/Recommendations";
 import AiTutor from "../pages/student/AiTutor";
 import GradesCard from "../pages/student/GradesCard";
 
-
 //Teacher
 // TEACHER PAGES
 import MyClassesHub from "../pages/teacher/MyClassesHub";
@@ -97,8 +96,6 @@ import DetailedStudentAnalytics from "../pages/teacher/DetailedStudentAnalytics"
 import TeacherProfileManagement from "../pages/teacher/TeacherProfileManagement";
 import TeacherSystemSettings from "../pages/teacher/TeacherSystemSettings";
 
-
-
 //PARENT
 import ParentDashboard from "../pages/parent/ParentDashboard";
 import ChildOverview from "../pages/parent/ChildOverview";
@@ -108,77 +105,97 @@ import GradesAssessmentHub from "../pages/parent/GradesAssessmentHub";
 import NotificationsHub from "../pages/parent/NotificationsHub";
 import AllInsightsRecommendations from "../pages/parent/AllInsightsRecommendations";
 import ParentPortalSettings from "../pages/parent/ParentPortalSettings";
+import { StudentProvider } from "../context/StudentProvider";
 
-function AppRoutes(){
+function AppRoutes() {
+  return (
+    <StudentProvider>
+      <BrowserRouter>
+        <Routes>
+          {/* COMMON */}
+          <Route path="/" element={<Landing />} />
+          <Route path="/login" element={<Login />} />
 
-return(
+          {/* ================= GLOBAL ADMIN ================= */}
 
-<BrowserRouter>
+          <Route path="/global-admin" element={<GlobalDashboard />} />
 
-<Routes>
+          <Route
+            path="/global-admin/notifications"
+            element={<GlobalNotifications />}
+          />
+          <Route path="/global-admin/settings" element={<GlobalSettings />} />
 
-{/* COMMON */}
-<Route path="/" element={<Landing/>} />
-<Route path="/login" element={<Login/>} />
+          <Route path="/global-admin/schools" element={<Schools />} />
+          <Route path="/global-admin/add-school" element={<AddSchool />} />
 
+          <Route path="/global-admin/domains" element={<Domains />} />
+          <Route path="/global-admin/add-domain" element={<AddDomain />} />
 
+          <Route
+            path="/global-admin/subscriptions"
+            element={<Subscriptions />}
+          />
+          <Route path="/global-admin/create-plan" element={<CreatePlan />} />
 
-{/* ================= GLOBAL ADMIN ================= */}
+          <Route path="/global-admin/ai-config" element={<AIConfiguration />} />
+          <Route
+            path="/global-admin/payment"
+            element={<PaymentInfrastructure />}
+          />
+          <Route path="/global-admin/email" element={<EmailConfiguration />} />
+          <Route path="/global-admin/security" element={<SecurityAccess />} />
 
-<Route path="/global-admin" element={<GlobalDashboard/>} />
+          {/* ================= SCHOOL ADMIN ================= */}
 
-<Route path="/global-admin/notifications" element={<GlobalNotifications/>}/>
-<Route path="/global-admin/settings" element={<GlobalSettings/>}/>
+          <Route path="/school-admin" element={<SchoolDashboard />} />
 
-<Route path="/global-admin/schools" element={<Schools/>}/>
-<Route path="/global-admin/add-school" element={<AddSchool/>}/>
+          <Route
+            path="/school-admin/notifications"
+            element={<SchoolNotifications />}
+          />
+          <Route path="/school-admin/settings" element={<SchoolSettings />} />
 
-<Route path="/global-admin/domains" element={<Domains/>}/>
-<Route path="/global-admin/add-domain" element={<AddDomain/>}/>
+          <Route path="/school-admin/create-class" element={<CreateClass />} />
 
-<Route path="/global-admin/subscriptions" element={<Subscriptions/>}/>
-<Route path="/global-admin/create-plan" element={<CreatePlan/>}/>
+          <Route
+            path="/school-admin/academic-years"
+            element={<AcademicYears />}
+          />
+          <Route
+            path="/school-admin/academic-years/create"
+            element={<CreateAcademicYear />}
+          />
 
-<Route path="/global-admin/ai-config" element={<AIConfiguration />} />
-<Route path="/global-admin/payment" element={<PaymentInfrastructure />} />
-<Route path="/global-admin/email" element={<EmailConfiguration />} />
-<Route path="/global-admin/security" element={<SecurityAccess />} />
+          <Route path="/school-admin/roles" element={<RolesPermissions />} />
+          <Route path="/school-admin/roles/create" element={<CreateRole />} />
 
+          <Route path="/school-admin/students" element={<Students />} />
+          <Route path="/school-admin/students/add" element={<AddStudent />} />
 
+          <Route path="/school-admin/teachers" element={<Teachers />} />
+          <Route
+            path="/school-admin/teachers/create"
+            element={<AddTeacher />}
+          />
 
-{/* ================= SCHOOL ADMIN ================= */}
+          <Route path="/school-admin/parents" element={<Parents />} />
+          <Route path="/school-admin/parents/create" element={<AddParent />} />
 
-<Route path="/school-admin" element={<SchoolDashboard/>} />
+          <Route
+            path="/school-admin/mapping"
+            element={<ParentStudentMapping />}
+          />
+          <Route path="/school-admin/mapping/create" element={<AddMapping />} />
 
-<Route path="/school-admin/notifications" element={<SchoolNotifications/>}/>
-<Route path="/school-admin/settings" element={<SchoolSettings/>}/>
-
-<Route path="/school-admin/create-class" element={<CreateClass />} />
-
-<Route path="/school-admin/academic-years" element={<AcademicYears />} />
-<Route path="/school-admin/academic-years/create" element={<CreateAcademicYear />} />
-
-<Route path="/school-admin/roles" element={<RolesPermissions />} />
-<Route path="/school-admin/roles/create" element={<CreateRole />} />
-
-<Route path="/school-admin/students" element={<Students/>} />
-<Route path="/school-admin/students/add" element={<AddStudent/>} />
-
-<Route path="/school-admin/teachers" element={<Teachers/>} />
-<Route path="/school-admin/teachers/create" element={<AddTeacher/>} />
-
-<Route path="/school-admin/parents" element={<Parents/>} />
-<Route path="/school-admin/parents/create" element={<AddParent/>} />
-
-<Route path="/school-admin/mapping" element={<ParentStudentMapping/>} />
-<Route path="/school-admin/mapping/create" element={<AddMapping/>} />
-
-<Route path="/school-admin/teacher-assignment" element={<TeacherAssignment/>} />
-<Route path="/school-admin/teacher-assignment/create" element={<AssignTeacher/>} />
-
-
-
-
+          <Route
+            path="/school-admin/teacher-assignment"
+            element={<TeacherAssignment />}
+          />
+          <Route
+            path="/school-admin/teacher-assignment/create"
+            element={<AssignTeacher />}
+          />
 
 {/* ================= STUDENT ================= */}
 <Route path="/students" element={<Navigate to="/student" replace />} />
@@ -323,72 +340,95 @@ return(
 	}
 />
 
-{/* ================= TEACHER ================= */}
+          {/* ================= TEACHER ================= */}
 
-<Route path="/teacher" element={<Navigate to="/teacher/dashboard" />} />
+          <Route
+            path="/teacher"
+            element={<Navigate to="/teacher/dashboard" />}
+          />
 
-<Route path="/teacher/dashboard" element={<Dashboard />} />
+          <Route path="/teacher/dashboard" element={<Dashboard />} />
 
-<Route path="/teacher/classes" element={<MyClassesHub />} />
-<Route path="/teacher/classes/:id/performance" element={<ClassPerformanceManagement />} />
+          <Route path="/teacher/classes" element={<MyClassesHub />} />
+          <Route
+            path="/teacher/classes/:id/performance"
+            element={<ClassPerformanceManagement />}
+          />
 
-<Route path="/teacher/assignments" element={<AssignmentListPage />} />
-<Route path="/teacher/assignments/create" element={<CreateAssignmentPage />} />
-<Route path="/teacher/assignments/:id" element={<AssignmentDetailPage />} />
+          <Route path="/teacher/assignments" element={<AssignmentListPage />} />
+          <Route
+            path="/teacher/assignments/create"
+            element={<CreateAssignmentPage />}
+          />
+          <Route
+            path="/teacher/assignments/:id"
+            element={<AssignmentDetailPage />}
+          />
 
 <Route path="/teacher/attendance" element={<AttendanceOverview />} />
 <Route path="/teacher/attendance/mark/:id?" element={<MarkAttendance />} />
 
-<Route path="/teacher/exams" element={<ExamsListPage />} />
-<Route path="/teacher/exams/create" element={<CreateExamPage />} />
+          <Route path="/teacher/exams" element={<ExamsListPage />} />
+          <Route path="/teacher/exams/create" element={<CreateExamPage />} />
 
-<Route path="/teacher/grades" element={<GradesAssessmentOverview />} />
-<Route path="/teacher/grades/enter" element={<EnterStudentGrades />} />
+          <Route
+            path="/teacher/grades"
+            element={<GradesAssessmentOverview />}
+          />
+          <Route
+            path="/teacher/grades/enter"
+            element={<EnterStudentGrades />}
+          />
 
-<Route path="/teacher/ai-tools" element={<ContentAIToolsDashboard />} />
-<Route path="/teacher/ai-tools/lesson-plan" element={<AIToolWorkspaceLessonPlan />} />
+          <Route
+            path="/teacher/ai-tools"
+            element={<ContentAIToolsDashboard />}
+          />
+          <Route
+            path="/teacher/ai-tools/lesson-plan"
+            element={<AIToolWorkspaceLessonPlan />}
+          />
 
-<Route path="/teacher/analytics" element={<StudentAnalyticsOverview />} />
-<Route path="/teacher/analytics/student/:id" element={<DetailedStudentAnalytics />} />
+          <Route
+            path="/teacher/analytics"
+            element={<StudentAnalyticsOverview />}
+          />
+          <Route
+            path="/teacher/analytics/student/:id"
+            element={<DetailedStudentAnalytics />}
+          />
 
-<Route path="/teacher/profile" element={<TeacherProfileManagement />} />
-<Route path="/teacher/settings" element={<TeacherSystemSettings />} />
-
-<Route path="/teacher/notifications" element={<TeacherNotificationsHub />} />
-
-<Route 
-path="/teacher/analytics/student/:id" 
-element={<DetailedStudentAnalytics />} 
-/>
-        
-
-
-
-{/* ================= PARENT ================= */}
-<Route path="/parent" element={<ParentDashboard />} />
-
-<Route path="/parent/child-overview" element={<ChildOverview />} />
-
-<Route path="/parent/attendance" element={<AttendanceTracker />} />
-
-<Route path="/parent/assignments" element={<AssignmentsOverview />} />
-
-<Route path="/parent/grades" element={<GradesAssessmentHub />} />
-
-<Route path="/parent/ai-insights" element={<AllInsightsRecommendations />} />
-
-<Route path="/parent/notifications" element={<NotificationsHub />} />
-
-<Route path="/parent/settings" element={<ParentPortalSettings />} />
+          <Route
+            path="/teacher/profile"
+            element={<TeacherProfileManagement />}
+          />
+          <Route path="/teacher/settings" element={<TeacherSystemSettings />} />
 
 
 
-</Routes>
+          {/* ================= PARENT ================= */}
+          <Route path="/parent" element={<ParentDashboard />} />
 
-</BrowserRouter>
+          <Route path="/parent/child-overview" element={<ChildOverview />} />
 
-);
+          <Route path="/parent/attendance" element={<AttendanceTracker />} />
 
+          <Route path="/parent/assignments" element={<AssignmentsOverview />} />
+
+          <Route path="/parent/grades" element={<GradesAssessmentHub />} />
+
+          <Route
+            path="/parent/ai-insights"
+            element={<AllInsightsRecommendations />}
+          />
+
+          <Route path="/parent/notifications" element={<NotificationsHub />} />
+
+          <Route path="/parent/settings" element={<ParentPortalSettings />} />
+        </Routes>
+      </BrowserRouter>
+    </StudentProvider>
+  );
 }
 
 export default AppRoutes;
