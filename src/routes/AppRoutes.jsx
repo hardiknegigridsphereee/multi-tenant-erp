@@ -1,6 +1,5 @@
 import React from 'react';
 import { BrowserRouter, Routes, Route , Navigate } from "react-router-dom";
-import { StudentProvider } from "../context/StudentProvider";
 
 /* COMMON */
 import Landing from "../pages/Landing";
@@ -105,7 +104,7 @@ import GradesAssessmentHub from "../pages/parent/GradesAssessmentHub";
 import NotificationsHub from "../pages/parent/NotificationsHub";
 import AllInsightsRecommendations from "../pages/parent/AllInsightsRecommendations";
 import ParentPortalSettings from "../pages/parent/ParentPortalSettings";
-import { StudentProvider } from "../context/StudentProvider";
+import { StudentProvider } from '../context/StudentProvider';
 
 function AppRoutes() {
   return (
