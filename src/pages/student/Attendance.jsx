@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from "react";
+import React, { useState, useMemo } from "react";
 import MainLayout from "../../layouts/MainLayout";
 import { useStudent } from "../../context/StudentProvider";
 import {
@@ -9,37 +9,62 @@ import {
 } from "../../utils/calculations";
 
 export default function Attendance() {
-  const {attendanceRecords: records, academic, loading} = useStudent();
+  const { attendanceRecords: records, academic, loading } = useStudent();
 
-  const getDaysInMonth = (year, month) =>
-    new Date(year, month + 1, 0).getDate();
   const [currentDate, setCurrentDate] = useState(new Date());
-
   const [selectedYear, setSelectedYear] = useState("");
-  const [selectedSubject, setSelectedSubject] = useState("");
+  const [selectedSubject, setSelectedSubject] = useState(""); // Subject filtering requires backend updates
 
+  // --- FILTERING LOGIC ---
+  const filteredRecords = useMemo(() => {
+    if (!records) return [];
+    return records.filter((record) => {
+      const matchYear =
+        selectedYear === "" || record.academic_year === selectedYear;
+      // const matchSubject = ... (Subject filtering disabled as backend tracks daily, not per-subject)
+      return matchYear;
+    });
+  }, [records, selectedYear]);
+
+  // --- CALENDAR DATA MAPPING ---
   const attendanceMap = useMemo(() => {
-    if(!records || !Array.isArray(records)) return {};
-    return records.reduce((acc, record) => {
-      const dateKey = new Date(record.date).toISOString().split('T')[0];
+    if (!filteredRecords || !Array.isArray(filteredRecords)) return {};
+    return filteredRecords.reduce((acc, record) => {
+      // Extract YYYY-MM-DD without timezone shifts
+      const dateKey = record.date;
       acc[dateKey] = record;
       return acc;
-    }, {})
-  }, [records]);
+    }, {});
+  }, [filteredRecords]);
 
-  if (loading) return <MainLayout title="Attendance">Loading...</MainLayout>
+  if (loading) return <MainLayout title="Attendance">Loading...</MainLayout>;
 
+  // --- CALENDAR NAVIGATION LOGIC ---
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
+
+  const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
+  const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
+
+  // Calendar Grid Alignment Math
+  const getDaysInMonth = (y, m) => new Date(y, m + 1, 0).getDate();
   const daysCount = getDaysInMonth(year, month);
   const days = Array.from({ length: daysCount }, (_, i) => i + 1);
-  const monthWord = getMonthName(month);
 
+  // Calculate empty spaces before the 1st of the month
+  const firstDayOfMonth = new Date(year, month, 1).getDay();
+  const emptyDays = Array.from({ length: firstDayOfMonth }, (_, i) => i);
+
+  const monthWord = getMonthName(month);
   const academicYears = academic?.years || [];
   const subjects = academic?.subs || [];
 
-  const attendance = calculateAttendance(records);
-  const trends = records && records.length > 0 ? calculateMonthlyTrends(records) : [0, 0, 0, 0, 0, 0];
+  // --- DYNAMIC STATS ---
+  const attendance = calculateAttendance(filteredRecords);
+  const trends =
+    filteredRecords.length > 0
+      ? calculateMonthlyTrends(filteredRecords)
+      : [0, 0, 0, 0, 0, 0];
   const monthLabels = getPastSixMonths();
 
   return (
@@ -123,7 +148,7 @@ export default function Attendance() {
             </p>
           </div>
 
-          <div className="flex flex-col h-64">
+          <div className="flex flex-col h-64 bg-surface-container-lowest p-2 rounded-xl shadow-sm border border-outline-variant/10">
             {/* CHART AREA - Fixed height container */}
             <div className="flex-1 flex items-end gap-2 pb-2">
               {trends.map((percentage, index) => (
@@ -165,12 +190,18 @@ export default function Attendance() {
                 </p>
               </div>
               <div className="flex gap-2">
-                <button className="p-2 hover:bg-surface-container rounded-lg transition-colors">
+                <button
+                  onClick={handlePrevMonth}
+                  className="p-2 hover:bg-surface-container rounded-lg transition-colors"
+                >
                   <span className="material-symbols-outlined">
                     chevron_left
                   </span>
                 </button>
-                <button className="p-2 hover:bg-surface-container rounded-lg transition-colors">
+                <button
+                  onClick={handleNextMonth}
+                  className="p-2 hover:bg-surface-container rounded-lg transition-colors"
+                >
                   <span className="material-symbols-outlined">
                     chevron_right
                   </span>
@@ -180,6 +211,7 @@ export default function Attendance() {
             <div>
               {/* Attendance Calendar */}
               <div className="grid grid-cols-7 gap-2">
+                {/* Header Row */}
                 {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map(
                   (day) => (
                     <div
@@ -191,12 +223,19 @@ export default function Attendance() {
                   ),
                 )}
 
+                {/* Empty padding days for alignment */}
+                {emptyDays.map((blank) => (
+                  <div key={`blank-${blank}`} className="w-12 h-12" />
+                ))}
+
+                {/* Actual Month Days */}
                 {days.map((day) => {
+                  // Format YYYY-MM-DD
                   const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                   const record = attendanceMap?.[dateKey];
 
                   const baseClass =
-                    "h-12 w-12 rounded-lg flex items-center justify-center text-sm font-semibold border";
+                    "h-12 w-12 rounded-lg flex items-center justify-center text-sm font-semibold border transition-all";
                   const statusClasses = {
                     Present: "bg-green-100 text-green-700 border-green-200",
                     Absent: "bg-red-100 text-red-700 border-red-200",
