@@ -5,7 +5,7 @@ import { calculateAttendance, calculateGPA } from "../../utils/calculations";
 import { useStudent } from "../../context/StudentProvider";
 
 export default function Dashboard() {
-  const {profile: student, dashboard: studentData, loading} = useStudent();
+  const {profile: student, dashboard: studentData, enrollment: enroll, loading} = useStudent();
 
   if(loading || !studentData || !student){
     return <MainLayout> <div>Loading your academic data...</div></MainLayout>
@@ -25,7 +25,7 @@ export default function Dashboard() {
               Welcome back, {student?.first_name}!
             </h2>
             <p className="text-primary-fixed opacity-90 text-lg">
-              You are currently leading Grade 11-B with exceptional progress.
+              You are currently leading {enroll && enroll.class_level_name} with exceptional progress.
               Here&apos;s what&apos;s happening in your academic journey today.
             </p>
           </div>
@@ -42,7 +42,7 @@ export default function Dashboard() {
         </section>
 
         <section className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <div className="bg-surface-container-lowest p-6 rounded-lg custom-shadow flex flex-col justify-between group transition-all hover:scale-[1.02]">
+          <div className="bg-surface-container-lowest p-6 rounded-xl custom-shadow flex flex-col justify-between group transition-all hover:scale-[1.02] border">
             <div className="flex justify-between items-start">
               <span className="p-3 rounded-md bg-blue-50 text-blue-700">
                 <span
@@ -67,7 +67,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-surface-container-lowest p-6 rounded-lg custom-shadow flex flex-col justify-between group transition-all hover:scale-[1.02]">
+          <div className="bg-surface-container-lowest p-6 rounded-xl custom-shadow flex flex-col justify-between group transition-all hover:scale-[1.02] border">
             <div className="flex justify-between items-start">
               <span className="p-3 rounded-md bg-secondary-fixed text-secondary">
                 <span className="material-symbols-outlined" data-icon="grade">
@@ -89,7 +89,7 @@ export default function Dashboard() {
             </div>
           </div>
 
-          <div className="bg-surface-container-lowest p-6 rounded-lg custom-shadow flex flex-col justify-between group transition-all hover:scale-[1.02]">
+          <div className="bg-surface-container-lowest p-6 rounded-xl custom-shadow flex flex-col justify-between group transition-all hover:scale-[1.02] border">
             <div className="flex justify-between items-start">
               <span className="p-3 rounded-md bg-green-50 text-green-700">
                 <span
