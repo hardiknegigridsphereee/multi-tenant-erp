@@ -1,4 +1,4 @@
-import React, { useState, useCallback } from 'react';
+import React from 'react';
 import { useNavigate } from "react-router-dom";
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Button from "../../components/erp/teacher/Button";
@@ -150,51 +150,6 @@ const MyClassesHub = () => {
           </div>
         )}
 
-        {/* AI Insight Card — always shown when we have data */}
-        {!loading && classes.length > 0 && (
-          <Card className="md:col-span-2 lg:col-span-1" hoverable>
-            <div className="flex justify-between items-start mb-6">
-              <div className="bg-blue-600/5 p-3 rounded-xl">
-                <span className="material-symbols-outlined text-blue-600 text-3xl">calculate</span>
-              </div>
-              <div className="bg-tertiary/10 px-3 py-1 rounded-full text-[10px] font-bold text-tertiary tracking-widest uppercase flex items-center gap-1">
-                <span className="material-symbols-outlined text-[12px]" style={{ fontVariationSettings: "'FILL' 1" }}>auto_awesome</span>
-                High Priority
-              </div>
-            </div>
-            <div className="mb-8">
-              <h2 className="font-display text-xl font-bold text-on-surface mb-1">Calculus AP</h2>
-              <p className="text-on-surface-variant text-sm font-medium">Advanced Placement Mathematics</p>
-            </div>
-            <div className="grid grid-cols-2 gap-4 mb-8">
-              <div className="bg-surface-container-low p-4 rounded-md">
-                <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Students</p>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm text-primary">groups</span>
-                  <span className="text-lg font-bold font-display">22</span>
-                </div>
-              </div>
-              <div className="bg-surface-container-low p-4 rounded-md">
-                <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Avg. Performance</p>
-                <div className="flex items-center gap-2">
-                  <span className="material-symbols-outlined text-sm text-red-600">trending_down</span>
-                  <span className="text-lg font-bold font-display text-red-600">68%</span>
-                </div>
-              </div>
-            </div>
-            <div className="mb-6 p-3 bg-amber-50 text-amber-900 rounded-md flex items-center gap-3">
-              <span className="material-symbols-outlined text-tertiary">psychology</span>
-              <p className="text-xs font-medium">AI predicts a 12% drop in engagement for the next module.</p>
-            </div>
-            <button
-              onClick={() => navigate("/teacher/analytics")}
-              className="mt-auto flex items-center justify-center gap-2 w-full py-3 bg-gradient-to-br from-primary to-primary-container text-white font-bold rounded-md hover:opacity-90 transition-all duration-200 shadow-md"
-            >
-              Review AI Insights
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </button>
-          </Card>
-        )}
       </div>
 
       {/* Empty State / Callout */}

@@ -260,3 +260,140 @@ export const getExams = () => fetchAllPages("/api/v1/operations/exams/");
  * GET /api/v1/operations/exams/<id>/
  */
 export const getExam = (id) => apiCall(`/api/v1/operations/exams/${id}/`);
+
+/**
+ * Generic AI API caller
+ */
+const callAiApi = async (endpoint, payload) => {
+  const AI_API_BASE_URL =
+    process.env.REACT_APP_AI_API_URL || "http://127.0.0.1:8001";
+  const url = `${AI_API_BASE_URL}${endpoint}`;
+
+  const token = localStorage.getItem("access_token");
+
+  const headers = {
+    "Content-Type": "application/json",
+  };
+  if (token) headers["Authorization"] = `Bearer ${token}`;
+
+  try {
+    const res = await fetch(url, {
+      method: "POST",
+      headers,
+      body: JSON.stringify(payload),
+    });
+
+    const contentType = res.headers.get("content-type") || "";
+    if (!contentType.includes("application/json")) {
+      const text = await res.text();
+      throw new Error(
+        `AI service returned non-JSON response: ${text.substring(0, 300)}`,
+      );
+    }
+
+    if (!res.ok) {
+      if (res.status === 401) {
+        localStorage.removeItem("access_token");
+        localStorage.removeItem("refresh_token");
+        window.location.href = "/login";
+        throw new Error("Session expired. Please log in again.");
+      }
+      const errData = await res.json().catch(() => null);
+
+      let errorMessage =
+        res.statusText || `Request failed with status ${res.status}`;
+
+      if (errData) {
+        if (Array.isArray(errData)) {
+          errorMessage = errData
+            .map((i) => (typeof i === "string" ? i : JSON.stringify(i)))
+            .join("; ");
+        } else if (typeof errData === "object") {
+          if (errData.detail) {
+            errorMessage = errData.detail;
+          } else {
+            const parts = [];
+            for (const [k, v] of Object.entries(errData)) {
+              if (Array.isArray(v)) parts.push(`${k}: ${v.join(", ")}`);
+              else parts.push(`${k}: ${String(v)}`);
+            }
+            if (parts.length > 0) errorMessage = parts.join(" | ");
+          }
+        } else if (typeof errData === "string") {
+          errorMessage = errData;
+        }
+      }
+
+      const e = new Error(errorMessage);
+      e.details = errData;
+
+      try {
+        const isMissingBodyFields =
+          Array.isArray(errData?.detail) &&
+          errData.detail.some((it) => it?.type === "missing");
+        if (res.status === 422 && isMissingBodyFields) {
+          console.warn(
+            `[AI API] Received 422 missing-body-fields for ${endpoint}. Retrying with query params.`,
+          );
+          const qs = new URLSearchParams();
+          for (const [k, v] of Object.entries(payload || {})) {
+            if (v !== undefined && v !== null) qs.append(k, String(v));
+          }
+          const altUrl = `${AI_API_BASE_URL}${endpoint}?${qs.toString()}`;
+          const altRes = await fetch(altUrl, { method: "POST", headers });
+          const altContentType = altRes.headers.get("content-type") || "";
+          if (!altRes.ok) {
+            const altErr = await altRes.json().catch(() => null);
+            const altMsg =
+              altErr?.detail || altErr?.message || altRes.statusText;
+            const altE = new Error(`Retry with query params failed: ${altMsg}`);
+            altE.details = altErr;
+            throw altE;
+          }
+          if (!altContentType.includes("application/json")) {
+            const text = await altRes.text();
+            throw new Error(
+              `AI service retry returned non-JSON response: ${text.substring(0, 300)}`,
+            );
+          }
+          const altData = await altRes.json();
+          return altData;
+        }
+      } catch (retryErr) {
+        console.error("[AI API] Retry attempt failed", retryErr);
+      }
+
+      throw e;
+    }
+
+    const data = await res.json();
+    return data;
+  } catch (err) {
+    if (err && err.details) {
+      console.error(`[AI API ERROR] ${endpoint}`, err.message, err.details);
+    } else {
+      console.error(`[AI API ERROR] ${endpoint}`, err);
+    }
+    throw err;
+  }
+};
+
+/**
+ * Generate a lesson plan using AI endpoint
+ * POST /api/v1/generate_lesson_plan/
+ */
+export const generateLessonPlan = (payload) =>
+  callAiApi("/api/v1/generate_lesson_plan", payload);
+
+export const generateWorksheet = (payload) =>
+  callAiApi("/api/v1/generate_worksheet", payload);
+export const generateQuiz = (payload) =>
+  callAiApi("/api/v1/generate_quiz", payload);
+export const generateQuestionPaper = (payload) =>
+  callAiApi("/api/v1/generate_question_paper", payload);
+export const generateStudyNotes = (payload) =>
+  callAiApi("/api/v1/generate_study_notes", payload);
+export const generatePresentationOutline = (payload) =>
+  callAiApi("/api/v1/generate_presentation_outline", payload);
+export const generateRubric = (payload) =>
+  callAiApi("/api/v1/generate_rubric", payload);
