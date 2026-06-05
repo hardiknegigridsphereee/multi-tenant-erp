@@ -1,12 +1,20 @@
 import React from 'react';
-import { Link, useLocation } from 'react-router-dom';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStaleData } from "../../../hooks/useStaleData";
 import { getMyProfile } from "../../../services/api";
 import { navItems, secondaryNavItems } from "./navigation";
 
+const handleLogout = (navigate) => {
+  localStorage.removeItem('access_token');
+  localStorage.removeItem('refresh_token');
+  localStorage.removeItem('user_data');
+  navigate('/');
+};
+
 
 const Sidebar = () => {
   const location = useLocation();
+  const navigate = useNavigate();
   const { data: profile } = useStaleData("profile:me", getMyProfile);
 
   const identity = profile?.identity;
@@ -64,6 +72,13 @@ const Sidebar = () => {
               </Link>
             );
           })}
+          <button
+            onClick={() => handleLogout(navigate)}
+            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-500 hover:text-red-600 hover:bg-red-50 w-full text-left mt-1"
+          >
+            <span className="material-symbols-outlined">logout</span>
+            <span className="font-body text-sm font-semibold tracking-wide">Log Out</span>
+          </button>
         </div>
       </nav>
     </aside>

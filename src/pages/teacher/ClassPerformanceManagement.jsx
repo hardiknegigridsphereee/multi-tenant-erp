@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Link, useParams } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
@@ -8,6 +8,8 @@ import { RevalidatingBar, SkeletonRow } from "../../components/erp/teacher/Loadi
 
 const ClassPerformanceManagement = () => {
   const { id } = useParams();
+  const [showAllStudents, setShowAllStudents] = useState(false);
+  const [activeTab, setActiveTab] = useState('Students');
 
   const {
     data: payload,
@@ -80,6 +82,38 @@ const ClassPerformanceManagement = () => {
   const students = payload?.students ?? [];
   const attendanceMap = payload?.attendanceMap ?? {};
   const gradesMap = payload?.gradesMap ?? {};
+
+  // Analytics Calculations
+  let totalAttendanceRecords = 0;
+  let totalPresent = 0;
+  
+  // Only calculate based on the students actually in this class
+  students.forEach(student => {
+    const sId = student.student?.id || student.student || student.student_id;
+    const att = attendanceMap[sId];
+    if (att) {
+      totalAttendanceRecords += att.total;
+      totalPresent += att.present;
+    }
+  });
+
+  const avgAttendance = totalAttendanceRecords > 0 
+    ? ((totalPresent / totalAttendanceRecords) * 100).toFixed(1) 
+    : 0;
+
+  let totalMarks = 0;
+
+  students.forEach(student => {
+    const sId = student.student?.id || student.student || student.student_id;
+    const grade = gradesMap[sId];
+    if (grade) {
+      totalMarks += parseFloat(grade.marks_obtained || 0);
+    }
+  });
+
+  const avgPerformance = students.length > 0
+    ? (totalMarks / students.length).toFixed(1)
+    : 0;
 
   if (error && !payload) {
     return (
@@ -197,7 +231,7 @@ const ClassPerformanceManagement = () => {
               </div>
             </Card>
 
-            <div className="bg-orange-50 rounded-lg p-6 relative overflow-hidden border border-amber-900/10">
+            {/* <div className="bg-orange-50 rounded-lg p-6 relative overflow-hidden border border-amber-900/10">
               <div className="flex gap-4 items-start relative z-10">
                 <div className="w-10 h-10 rounded-full bg-white flex items-center justify-center text-[#924700] shrink-0 shadow-sm">
                   <span className="material-symbols-outlined">psychology</span>
@@ -212,7 +246,7 @@ const ClassPerformanceManagement = () => {
                   </button>
                 </div>
               </div>
-            </div>
+            </div> */}
           </div>
         </section>
 
@@ -227,24 +261,24 @@ const ClassPerformanceManagement = () => {
             },
             {
               label: 'Avg Performance',
-              value: '84.5%',
+              value: loading && !payload ? '—' : `${avgPerformance}%`,
               sub: '+2.1',
               subColor: 'text-green-600',
               subIcon: 'trending_up',
             },
             {
               label: 'Attendance Rate',
-              value: '96.2%',
+              value: loading && !payload ? '—' : `${avgAttendance}%`,
               bar: true,
-              barWidth: '96%',
+              barWidth: `${avgAttendance}%`,
             },
-            {
-              label: 'Submissions',
-              value: '28/32',
-              sub: '4 Pending',
-              subColor: 'text-red-600',
-              subBg: 'bg-red-50',
-            },
+            // {
+            //   label: 'Submissions',
+            //   value: '28/32',
+            //   sub: '4 Pending',
+            //   subColor: 'text-red-600',
+            //   subBg: 'bg-red-50',
+            // },
           ].map((stat, i) => (
             <Card key={i} className="p-6 border border-outline-variant/5 shadow-sm">
               <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{stat.label}</p>
@@ -274,11 +308,12 @@ const ClassPerformanceManagement = () => {
         {/* Main Tabs + Table */}
         <section className="space-y-6">
           <div className="flex items-center gap-8 border-b border-outline-variant/20 overflow-x-auto pb-1">
-            {['Students', 'Assignments', 'Attendance', 'Grades'].map((tab, i) => (
+            {['Students', 'Attendance', 'Grades'].map((tab) => (
               <button
                 key={tab}
+                onClick={() => setActiveTab(tab)}
                 className={`pb-3 px-2 font-display font-bold transition-all whitespace-nowrap outline-none ${
-                  i === 0
+                  activeTab === tab
                     ? 'text-primary border-b-2 border-primary'
                     : 'text-slate-400 hover:text-slate-600'
                 }`}
@@ -297,15 +332,30 @@ const ClassPerformanceManagement = () => {
                   <span className="material-symbols-outlined text-sm">filter_list</span> Filter
                 </button>
               </div>
-
-              <div className="overflow-x-auto">
+              <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead>
+                  <thead className="sticky top-0 z-10 bg-white outline outline-1 outline-surface-container-low/50">
                     <tr className="bg-surface-container-low/50">
-                      {['Student', 'Roll No.', 'Attendance', 'Grade', ''].map((h) => (
+                      {activeTab === 'Students' && ['Student', 'Roll No.', 'Status', ''].map((h) => (
                         <th
                           key={h}
                           className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest ${h === 'Roll No.' ? 'hidden sm:table-cell' : ''}`}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                      {activeTab === 'Attendance' && ['Student', 'Present', 'Total Classes', 'Attendance Rate', 'Status', ''].map((h) => (
+                        <th
+                          key={h}
+                          className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest ${h === 'Present' || h === 'Total Classes' ? 'hidden sm:table-cell' : ''}`}
+                        >
+                          {h}
+                        </th>
+                      ))}
+                      {activeTab === 'Grades' && ['Student', 'Grade', 'Class Average', 'Comparison', 'Actions'].map((h) => (
+                        <th
+                          key={h}
+                          className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest ${h === 'Class Average' ? 'hidden sm:table-cell' : ''}`}
                         >
                           {h}
                         </th>
@@ -314,8 +364,8 @@ const ClassPerformanceManagement = () => {
                   </thead>
                   <tbody className="divide-y divide-surface-container-low/50">
                     {loading && !payload
-                      ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={5} />)
-                      : students.map((student) => {
+                      ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={activeTab === 'Attendance' ? 6 : activeTab === 'Grades' ? 5 : 4} />)
+                      : (showAllStudents ? students : students.slice(0, 5)).map((student) => {
                           const sId = student.student?.id || student.student || student.student_id;
                           const att = attendanceMap[sId];
                           const attPercentage = att && att.total > 0
@@ -333,34 +383,127 @@ const ClassPerformanceManagement = () => {
                                   <span className="font-semibold text-slate-700">{student.student_name}</span>
                                 </div>
                               </td>
-                              <td className="px-6 py-4 font-mono text-sm text-slate-500 hidden sm:table-cell">
-                                {student.student_enrollment_no || `Roll ${student.roll_number}`}
-                              </td>
-                              <td className="px-6 py-4">
-                                <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                  <span className="text-sm font-semibold text-slate-700">
-                                    {attPercentage !== null ? `${attPercentage}%` : 'N/A'}
-                                  </span>
-                                  {attPercentage !== null && (
-                                    <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden shrink-0 hidden sm:block">
-                                      <div
-                                        className={`h-full ${attPercentage >= 85 ? 'bg-green-500' : attPercentage >= 60 ? 'bg-orange-500' : 'bg-red-500'}`}
-                                        style={{ width: `${attPercentage}%` }}
-                                      />
+                              {activeTab === 'Students' && (
+                                <>
+                                  <td className="px-6 py-4 font-mono text-sm text-slate-500 hidden sm:table-cell">
+                                    {student.student_enrollment_no || `Roll ${student.roll_number}`}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                      Enrolled
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <button className="material-symbols-outlined text-slate-300 hover:text-primary transition-colors outline-none cursor-pointer">
+                                      more_vert
+                                    </button>
+                                  </td>
+                                </>
+                              )}
+                              {activeTab === 'Attendance' && (
+                                <>
+                                  <td className="px-6 py-4 text-sm text-slate-700 hidden sm:table-cell">
+                                    {att ? `${att.present} Days` : '0 Days'}
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-slate-700 hidden sm:table-cell">
+                                    {att ? `${att.total} Days` : '0 Days'}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    <div className="flex flex-col sm:flex-row sm:items-center gap-2">
+                                      <span className="text-sm font-semibold text-slate-700">
+                                        {attPercentage !== null ? `${attPercentage}%` : 'N/A'}
+                                      </span>
+                                      {attPercentage !== null && (
+                                        <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden shrink-0 hidden sm:block">
+                                          <div
+                                            className={`h-full ${attPercentage >= 85 ? 'bg-green-500' : attPercentage >= 60 ? 'bg-orange-500' : 'bg-red-500'}`}
+                                            style={{ width: `${attPercentage}%` }}
+                                          />
+                                        </div>
+                                      )}
                                     </div>
-                                  )}
-                                </div>
-                              </td>
-                              <td className="px-6 py-4">
-                                <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${grade ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-slate-50 text-slate-700 border border-slate-200'}`}>
-                                  {grade ? `${parseFloat(grade.marks_obtained).toFixed(1)} / ${parseFloat(grade.max_marks).toFixed(1)}` : 'N/A'}
-                                </span>
-                              </td>
-                              <td className="px-6 py-4 text-right">
-                                <button className="material-symbols-outlined text-slate-300 hover:text-primary transition-colors outline-none cursor-pointer">
-                                  more_vert
-                                </button>
-                              </td>
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {attPercentage !== null ? (
+                                      <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
+                                        attPercentage >= 85 ? 'bg-green-100 text-green-700' :
+                                        attPercentage >= 60 ? 'bg-orange-100 text-orange-700' :
+                                        'bg-red-100 text-red-700'
+                                      }`}>
+                                        {attPercentage >= 85 ? 'Good' : attPercentage >= 60 ? 'Warning' : 'Critical'}
+                                      </span>
+                                    ) : (
+                                      <span className="text-xs text-slate-400">N/A</span>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4 text-right">
+                                    <Link
+                                      to={`/teacher/attendance/mark/${id}`}
+                                      className="text-primary hover:underline text-xs font-bold uppercase tracking-wider transition-colors outline-none"
+                                    >
+                                      Update
+                                    </Link>
+                                  </td>
+                                </>
+                              )}
+                              {activeTab === 'Grades' && (
+                                <>
+                                  <td className="px-6 py-4">
+                                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${grade ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-slate-50 text-slate-700 border border-slate-200'}`}>
+                                      {grade ? `${parseFloat(grade.marks_obtained).toFixed(1)} / ${parseFloat(grade.max_marks).toFixed(1)}` : 'N/A'}
+                                    </span>
+                                  </td>
+                                  <td className="px-6 py-4 text-sm text-slate-700 hidden sm:table-cell">
+                                    {avgPerformance ? `${avgPerformance} / 100` : 'N/A'}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {grade ? (
+                                      (() => {
+                                        const score = parseFloat(grade.marks_obtained);
+                                        const avg = parseFloat(avgPerformance);
+                                        if (score > avg) {
+                                          return (
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                              Above Average
+                                            </span>
+                                          );
+                                        } else if (score < avg) {
+                                          return (
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                                              Below Average
+                                            </span>
+                                          );
+                                        } else {
+                                          return (
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                                              Average
+                                            </span>
+                                          );
+                                        }
+                                      })()
+                                    ) : (
+                                      <span className="text-xs text-slate-400">—</span>
+                                    )}
+                                  </td>
+                                  <td className="px-6 py-4">
+                                    {grade ? (
+                                      <Link
+                                        to={`/teacher/grades/enter?exam_id=${grade.exam || grade.exam_id}`}
+                                        className="text-primary hover:underline text-xs font-bold uppercase tracking-wider transition-colors outline-none"
+                                      >
+                                        Update
+                                      </Link>
+                                    ) : (
+                                      <Link
+                                        to="/teacher/grades"
+                                        className="text-primary hover:underline text-xs font-bold uppercase tracking-wider transition-colors outline-none"
+                                      >
+                                        Update
+                                      </Link>
+                                    )}
+                                  </td>
+                                </>
+                              )}
                             </tr>
                           );
                         })}
@@ -368,11 +511,16 @@ const ClassPerformanceManagement = () => {
                 </table>
               </div>
 
-              <div className="p-4 bg-slate-50/50 text-center border-t border-slate-100">
-                <button className="text-xs font-bold text-primary uppercase tracking-widest hover:underline transition-all outline-none">
-                  View All {totalStudents} Students
-                </button>
-              </div>
+              {totalStudents > 5 && (
+                <div className="p-4 bg-slate-50/50 text-center border-t border-slate-100">
+                  <button 
+                    onClick={() => setShowAllStudents(!showAllStudents)}
+                    className="text-xs font-bold text-primary uppercase tracking-widest hover:underline transition-all outline-none"
+                  >
+                    {showAllStudents ? 'Show Less' : `View All ${totalStudents} Students`}
+                  </button>
+                </div>
+              )}
             </Card>
 
             {/* Side Panels */}
