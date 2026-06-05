@@ -1,5 +1,5 @@
 import React from 'react';
-import { NavLink } from 'react-router-dom';
+import { NavLink, useNavigate } from 'react-router-dom';
 import { useStudent } from '../../context/StudentProvider';
 
 const navItems = [
@@ -18,9 +18,17 @@ const navItems = [
 export default function Sidebar() {
 
   const {profile: student, enrollment: enroll, loading} = useStudent();
+  const navigate = useNavigate();
 
   const {first_name = '', last_name = '', enrollment_number = ''} = student || {};
   const {class_level_name = '', section_name = ''} = enroll || {};
+
+  const handleLogout = () => {
+    localStorage.removeItem('access_token');
+    localStorage.removeItem('refresh_token');
+    localStorage.removeItem('user_data');
+    navigate('/');
+  };
 
   return (
     <aside className="hidden md:flex flex-col h-screen w-72 left-0 top-0 fixed bg-surface-container-low dark:bg-white border-r border-outline-variant/30 z-50 overflow-y-auto">
@@ -64,6 +72,12 @@ export default function Sidebar() {
              <NavLink to="/student/settings" className="flex items-center gap-4 py-3 px-6 text-on-surface-variant hover:text-primary transition-all font-body text-sm font-semibold border-l-4 border-transparent">
                 <span className="material-symbols-outlined">settings</span> Settings
              </NavLink>
+             <button
+               onClick={handleLogout}
+               className="flex items-center gap-4 py-3 px-6 text-red-500 hover:text-red-600 hover:bg-red-50 transition-all font-body text-sm font-semibold border-l-4 border-transparent w-full text-left rounded-r-full"
+             >
+               <span className="material-symbols-outlined">logout</span> Log Out
+             </button>
           </div>
 
         </nav>

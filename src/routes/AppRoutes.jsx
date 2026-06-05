@@ -112,12 +112,44 @@ import AllInsightsRecommendations from "../pages/parent/AllInsightsRecommendatio
 import ParentPortalSettings from "../pages/parent/ParentPortalSettings";
 import { StudentProvider } from '../context/StudentProvider';
 
+/* Redirect logged-in users to their dashboard when visiting "/" */
+function RootRedirect() {
+  const token = localStorage.getItem('access_token');
+  if (!token) return <Landing />;
+
+  try {
+    const userData = JSON.parse(localStorage.getItem('user_data') || '{}');
+    let mainRole = '';
+    if (userData.roles && userData.roles.length > 0) {
+      mainRole = userData.roles[0];
+    } else if (userData.profiles?.teacher?.exists) {
+      mainRole = 'Teacher';
+    } else if (userData.profiles?.student?.exists) {
+      mainRole = 'Student';
+    } else if (userData.profiles?.parent?.exists) {
+      mainRole = 'Parent';
+    } else if (userData.is_superuser) {
+      mainRole = 'Global Admin';
+    }
+    const lowerRole = mainRole.toLowerCase();
+    if (lowerRole.includes('global')) return <Navigate to="/global-admin" replace />;
+    if (lowerRole.includes('school')) return <Navigate to="/school-admin" replace />;
+    if (lowerRole.includes('teacher')) return <Navigate to="/teacher/dashboard" replace />;
+    if (lowerRole.includes('student')) return <Navigate to="/student" replace />;
+    if (lowerRole.includes('parent')) return <Navigate to="/parent" replace />;
+    // Fallback — something is in localStorage but role is unknown
+    return <Navigate to="/student" replace />;
+  } catch {
+    return <Landing />;
+  }
+}
+
 function AppRoutes() {
   return (
       <BrowserRouter>
         <Routes>
           {/* COMMON */}
-          <Route path="/" element={<Landing />} />
+          <Route path="/" element={<RootRedirect />} />
           <Route path="/login" element={<Login />} />
 
           {/* ================= GLOBAL ADMIN ================= */}
