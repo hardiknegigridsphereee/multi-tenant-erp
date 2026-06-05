@@ -1,16 +1,13 @@
-import React, { useEffect, useState } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React from 'react';
+import { useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
-import Button from "../../components/erp/teacher/Button";
 import Card from "../../components/erp/teacher/Card";
 
-import { getMyProfile, getTeacherClasses } from "../../services/api";
+import { getMyProfile, getTeacherClasses, getAttendanceRecords } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
 
 const AttendanceOverview = () => {
   const navigate = useNavigate();
-  const [attendanceRecords, setAttendanceRecords] = useState([]);
-  const [attendanceLoading, setAttendanceLoading] = useState(true);
 
   const { data: profileData } = useStaleData("profile:me", getMyProfile);
   const teacherId = profileData?.profiles?.teacher?.id || profileData?.identity?.id;
@@ -23,58 +20,101 @@ const AttendanceOverview = () => {
 
   const classes = assignmentsData?.results || [];
 
-  useEffect(() => {
-    let isMounted = true;
-    const fetchTeacherAttendance = async () => {
-      try {
-        const token = localStorage.getItem("access_token");
-        if (!token) return;
+  const { data: attendancePayload, loading: attendanceLoading } = useStaleData(
+    `teacher:attendance-records:${teacherId}`,
+    async () => {
+      if (!teacherId || classes.length === 0) return [];
+      
+      const sectionIds = [...new Set(classes.map(a => a.section || a.section_id))].filter(Boolean);
+      const sectionPromises = sectionIds.map(sectionId => getAttendanceRecords(sectionId));
+      const responses = await Promise.all(sectionPromises);
+      
+      let allAttendance = [];
+      responses.forEach(data => {
+        const records = Array.isArray(data) ? data : data.results || [];
+        allAttendance = [...allAttendance, ...records];
+      });
+      return allAttendance;
+    },
+    { skip: !teacherId || classesLoading || classes.length === 0, deps: classes }
+  );
 
-        if (!teacherId || !isMounted || classes.length === 0) {
-          if (isMounted) setAttendanceLoading(false);
-          return;
-        }
+  const attendanceRecords = attendancePayload || [];
 
-        // Extract unique section IDs
-        const sectionIds = [...new Set(classes.map(a => a.section || a.section_id))].filter(Boolean);
+  const today = new Date();
+  const formattedDate = today.toLocaleDateString('en-US', {
+    weekday: 'long',
+    month: 'short',
+    day: 'numeric'
+  });
+  const academicYearName = classes[0]?.academic_year_name || "Current Session";
 
-        // 3. Fetch attendance for those sections
-        const sectionPromises = sectionIds.map(sectionId => 
-          fetch(`http://localhost:8000/api/v1/operations/attendance/?section=${sectionId}&page_size=1000`, {
-            headers: { "Authorization": `Bearer ${token}` }
-          }).then(res => res.ok ? res.json() : { results: [] })
-        );
+  // Calculations
+  const totalAttendanceRecords = attendanceRecords.length;
+  const totalPresent = attendanceRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+  const avgAttendance = totalAttendanceRecords > 0
+    ? ((totalPresent / totalAttendanceRecords) * 100).toFixed(1)
+    : 0;
 
-        const responses = await Promise.all(sectionPromises);
-        
-        if (isMounted) {
-          let allAttendance = [];
-          responses.forEach(data => {
-            if (data.results) {
-              allAttendance = [...allAttendance, ...data.results];
-            }
-          });
-          
-          setAttendanceRecords(allAttendance);
-          setAttendanceLoading(false);
-        }
-        
-      } catch (error) {
-        console.error("Error fetching teacher attendance:", error);
-        if (isMounted) setAttendanceLoading(false);
-      }
-    };
+  // Weekly average calculation (last 7 days)
+  const oneWeekAgo = new Date();
+  oneWeekAgo.setDate(oneWeekAgo.getDate() - 7);
+  const weeklyRecords = attendanceRecords.filter(r => new Date(r.date) >= oneWeekAgo);
+  const totalWeekly = weeklyRecords.length;
+  const presentWeekly = weeklyRecords.filter(r => r.status === 'Present' || r.status === 'Late').length;
+  const weeklyAvg = totalWeekly > 0 
+    ? ((presentWeekly / totalWeekly) * 100).toFixed(1) 
+    : avgAttendance; // Fallback to overall average if no records in last 7 days
 
-    if (classes.length > 0) {
-      fetchTeacherAttendance();
-    } else if (!classesLoading) {
-      setAttendanceLoading(false);
+  // Absent students count on the most recent attendance run
+  const dates = attendanceRecords.map(r => r.date).filter(Boolean);
+  const latestDate = dates.length > 0 ? dates.sort().reverse()[0] : null;
+  const latestRecords = latestDate ? attendanceRecords.filter(r => r.date === latestDate) : [];
+  const absentLatest = latestRecords.filter(r => r.status === 'Absent').length;
+
+  // Distribution calculations
+  const presentCount = attendanceRecords.filter(r => r.status === 'Present').length;
+  const lateCount = attendanceRecords.filter(r => r.status === 'Late').length;
+  const leaveCount = attendanceRecords.filter(r => r.status === 'Excused' || r.status === 'Leave').length;
+
+  const presentPct = totalAttendanceRecords > 0 ? Math.round((presentCount / totalAttendanceRecords) * 100) : 0;
+  const latePct = totalAttendanceRecords > 0 ? Math.round((lateCount / totalAttendanceRecords) * 100) : 0;
+  const leavePct = totalAttendanceRecords > 0 ? Math.round((leaveCount / totalAttendanceRecords) * 100) : 0;
+
+  // Group attendance records by date and calculate percentage for each date for trend
+  const recordsByDate = {};
+  attendanceRecords.forEach(r => {
+    if (!r.date) return;
+    if (!recordsByDate[r.date]) {
+      recordsByDate[r.date] = { present: 0, total: 0 };
     }
+    recordsByDate[r.date].total += 1;
+    if (r.status === 'Present' || r.status === 'Late') {
+      recordsByDate[r.date].present += 1;
+    }
+  });
 
-    return () => {
-      isMounted = false;
+  const sortedDates = Object.keys(recordsByDate).sort();
+  const trendDates = sortedDates.slice(-5);
+  const trendData = trendDates.map(date => {
+    const { present, total } = recordsByDate[date];
+    return {
+      date,
+      pct: total > 0 ? Math.round((present / total) * 100) : 0
     };
-  }, [classes, teacherId, classesLoading]);
+  });
+
+  const svgHeight = 40;
+  const svgWidth = 100;
+  let pathD = "";
+  if (trendData.length > 0) {
+    const points = trendData.map((d, index) => {
+      const x = (index / (trendData.length - 1)) * svgWidth;
+      const y = svgHeight - 5 - (d.pct / 100) * (svgHeight - 10);
+      return `${x},${y}`;
+    });
+    pathD = `M ${points.join(' L ')}`;
+  }
 
   return (
     
@@ -84,8 +124,9 @@ const AttendanceOverview = () => {
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-extrabold text-on-surface font-display tracking-tight">Attendance Overview</h2>
-          <p className="text-on-surface-variant font-medium mt-1">Academic Session: 2023-24 • Monday, Oct 23</p>
+          <p className="text-on-surface-variant font-medium mt-1">Academic Session: {academicYearName} • {formattedDate}</p>
         </div>
+        {/* Commented out bulk marking and export report
         <div className="flex space-x-3">
           <button className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-primary font-semibold bg-surface-container-high hover:bg-surface-container-highest transition-colors text-sm">
             <span className="material-symbols-outlined text-[20px]">file_download</span>
@@ -96,6 +137,7 @@ const AttendanceOverview = () => {
             <span>Bulk Marking</span>
           </button>
         </div>
+        */}
       </div>
 
       {/* Bento Stats Grid */}
@@ -103,12 +145,14 @@ const AttendanceOverview = () => {
         <Card className="flex flex-col justify-between relative overflow-hidden group shadow-ambient" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.04)'}}>
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
-            <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Today's Presence</p>
-            <h3 className="text-4xl font-extrabold text-primary">94.2%</h3>
+            <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Average Attendance</p>
+            <h3 className="text-4xl font-extrabold text-primary">
+              {attendanceLoading ? '—' : `${avgAttendance}%`}
+            </h3>
           </div>
           <div className="mt-4 flex items-center text-xs font-bold text-green-600 relative z-10">
             <span className="material-symbols-outlined text-[16px] mr-1">trending_up</span>
-            <span>2.1% from yesterday</span>
+            <span>{attendanceLoading ? '—' : `${totalAttendanceRecords} total records`}</span>
           </div>
         </Card>
 
@@ -116,11 +160,13 @@ const AttendanceOverview = () => {
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
             <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Weekly Avg</p>
-            <h3 className="text-4xl font-extrabold text-[#6b38d4]">88.5%</h3>
+            <h3 className="text-4xl font-extrabold text-[#6b38d4]">
+              {attendanceLoading ? '—' : `${weeklyAvg}%`}
+            </h3>
           </div>
           <div className="mt-4 flex items-center text-xs font-bold text-slate-500 relative z-10">
             <span className="material-symbols-outlined text-[16px] mr-1">history</span>
-            <span>Steady state maintain</span>
+            <span>{attendanceLoading ? '—' : `${weeklyRecords.length} records in last 7 days`}</span>
           </div>
         </Card>
 
@@ -128,11 +174,13 @@ const AttendanceOverview = () => {
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
             <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Absent Students</p>
-            <h3 className="text-4xl font-extrabold text-red-600">12</h3>
+            <h3 className="text-4xl font-extrabold text-red-600">
+              {attendanceLoading ? '—' : absentLatest}
+            </h3>
           </div>
           <div className="mt-4 flex items-center text-xs font-bold text-red-600 relative z-10">
             <span className="material-symbols-outlined text-[16px] mr-1">warning</span>
-            <span>3 students flagged for low attendance</span>
+            <span>{attendanceLoading ? '—' : latestDate ? `On latest run (${latestDate})` : 'No records yet'}</span>
           </div>
         </Card>
       </div>
@@ -190,7 +238,7 @@ const AttendanceOverview = () => {
 
         {/* Side Insight Section (4 cols) */}
         <div className="lg:col-span-4 space-y-6">
-          {/* AI Intelligence Insight */}
+          {/* AI Intelligence Insight - Commented out
           <div className="bg-orange-50 p-6 rounded-xl relative overflow-hidden border border-amber-900/10">
             <div className="absolute top-0 right-0 p-4">
               <span className="material-symbols-outlined text-amber-900/20 text-4xl">psychology</span>
@@ -206,6 +254,7 @@ const AttendanceOverview = () => {
               Review Intervention Plan
             </button>
           </div>
+          */}
 
           {/* Attendance Distribution */}
           <Card className="shadow-sm">
@@ -214,37 +263,73 @@ const AttendanceOverview = () => {
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1">
                   <span className="text-on-surface-variant">Physical Presence</span>
-                  <span className="text-primary">88%</span>
+                  <span className="text-primary">{presentPct}%</span>
                 </div>
                 <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: '88%' }}></div>
+                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${presentPct}%` }}></div>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1">
                   <span className="text-on-surface-variant">Late Arrivals</span>
-                  <span className="text-amber-600">6%</span>
+                  <span className="text-amber-600">{latePct}%</span>
                 </div>
                 <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: '6%' }}></div>
+                  <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${latePct}%` }}></div>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1">
                   <span className="text-on-surface-variant">Authorized Leaves</span>
-                  <span className="text-[#6b38d4]">4%</span>
+                  <span className="text-[#6b38d4]">{leavePct}%</span>
                 </div>
                 <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-[#6b38d4] rounded-full transition-all" style={{ width: '4%' }}></div>
+                  <div className="h-full bg-[#6b38d4] rounded-full transition-all" style={{ width: `${leavePct}%` }}></div>
                 </div>
               </div>
             </div>
+
+            {/* Attendance Trends Line Chart */}
+            {trendData.length > 0 && (
+              <div className="mt-8 pt-6 border-t border-outline-variant/10">
+                <h5 className="text-xs font-bold text-on-surface-variant mb-4 uppercase tracking-wider">Attendance Trends</h5>
+                <div className="w-full h-[80px] relative">
+                  <svg viewBox="0 0 100 40" className="w-full h-full" preserveAspectRatio="none">
+                    <path
+                      d={pathD}
+                      fill="none"
+                      stroke="url(#trendGradient)"
+                      strokeWidth="2.5"
+                      strokeLinecap="round"
+                    />
+                    <defs>
+                      <linearGradient id="trendGradient" x1="0%" x2="100%" y1="0%" y2="0%">
+                        <stop offset="0%" stopColor="#2563eb" />
+                        <stop offset="100%" stopColor="#7c3aed" />
+                      </linearGradient>
+                    </defs>
+                  </svg>
+                </div>
+                <div className="flex justify-between text-[9px] font-bold text-slate-400 mt-2 px-1">
+                  {trendData.map((d, idx) => {
+                    const dateObj = new Date(d.date);
+                    const label = dateObj.toLocaleDateString('en-US', { month: 'short', day: 'numeric' });
+                    return (
+                      <div key={idx} className="text-center">
+                        <div>{label}</div>
+                        <div className="text-primary font-black mt-0.5">{d.pct}%</div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
           </Card>
 
           {/* Quick Contact */}
           <div className="bg-primary/5 p-6 rounded-xl border border-primary/10">
             <h4 className="font-bold text-on-surface text-sm mb-3">Notify Guardians</h4>
-            <p className="text-xs text-on-surface-variant mb-4">Send automatic alerts for the 12 absent students today.</p>
+            <p className="text-xs text-on-surface-variant mb-4">Send automatic alerts for the absent students today.</p>
             <button className="w-full py-2.5 bg-white text-primary border border-primary rounded-xl font-bold text-xs hover:bg-primary hover:text-white transition-all">
               Send Notifications
             </button>

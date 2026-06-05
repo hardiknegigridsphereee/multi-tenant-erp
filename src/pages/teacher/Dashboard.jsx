@@ -158,6 +158,7 @@ const Dashboard = () => {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Total Classes</p>
           <h3 className="font-display text-4xl font-black mt-1 text-slate-800">{loading ? '-' : classes.length}</h3>
         </Card>
+        {/*
         <Card hoverable className="group">
           <div className="flex justify-between items-start mb-4">
             <div className="p-3 bg-purple-50 rounded-xl text-purple-600 transition-transform duration-500 group-hover:-rotate-12 group-hover:scale-110">
@@ -167,6 +168,7 @@ const Dashboard = () => {
           <p className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em]">Pending Assignments</p>
           <h3 className="font-display text-4xl font-black mt-1 text-slate-800">12</h3>
         </Card>
+        */}
         <Card hoverable className="group">
           <div className="flex justify-between items-start mb-4">
             <div className="p-3 bg-amber-50 rounded-xl text-amber-600 transition-transform duration-500 group-hover:rotate-12 group-hover:scale-110">
@@ -252,9 +254,10 @@ const Dashboard = () => {
     Quick Actions
   </h4>
 
-  <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
+    <div className="grid grid-cols-2 md:grid-cols-4 gap-5">
 
     {/* Create Assignment */}
+    {/*
     <Card
       hoverable
       className="cursor-pointer flex flex-col items-center justify-center text-center gap-3 py-8 group"
@@ -270,6 +273,7 @@ const Dashboard = () => {
         CREATE ASSIGNMENT
       </p>
     </Card>
+    */}
 
 
     {/* Mark Attendance */}
@@ -332,7 +336,8 @@ const Dashboard = () => {
         {/* Side Sidebar */}
         <div className="col-span-12 lg:col-span-4 space-y-8">
           
-          {/* AI Alert Panel */}
+          {/*
+          AI Alert Panel (commented out)
           <div className="bg-gradient-to-br from-primary to-primary-container p-1 rounded-lg shadow-xl overflow-hidden">
             <div className="bg-white/95 backdrop-blur-md p-6 rounded-[calc(0.5rem-4px)]">
               <div className="flex items-center gap-3 mb-4">
@@ -351,9 +356,11 @@ className="w-full bg-blue-100 text-blue-700 py-2 rounded-md font-semibold"
 
 View Students
 
+
 </button>
             </div>
           </div>
+          */}
 
           {/* Recent Activity Feed */}
           <section className="bg-surface-container-low rounded-lg p-6">
