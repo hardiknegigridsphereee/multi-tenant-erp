@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import { generateLessonPlan } from '../../services/api';
+import ToolActionButtons from '../../components/erp/global/ToolActionButtons';
 const MATHEMATICS_CHAPTERS = {
   '9': [
     '1 - NUMBER SYSTEMS',
@@ -397,25 +398,16 @@ const AIToolWorkspaceLessonPlan = () => {
                 </div>
               </div>
 
-              {/* Action Bar */}
-              <div className="p-6 bg-surface-container-lowest border-t border-outline-variant/10 grid grid-cols-2 md:grid-cols-4 gap-3">
-                <button className="flex items-center justify-center gap-2 py-3 px-4 bg-primary text-white rounded-md font-bold text-sm shadow-sm hover:opacity-90 transition-opacity border-none cursor-pointer outline-none w-full font-display">
-                  <span className="material-symbols-outlined text-lg block" style={{fontVariationSettings: "'FILL' 1"}}>save</span>
-                  Save Plan
-                </button>
-                <button className="flex items-center justify-center gap-2 py-3 px-4 bg-surface-container-high hover:bg-surface-container-highest text-primary rounded-md font-bold text-sm transition-colors border-none cursor-pointer outline-none w-full font-display">
-                  <span className="material-symbols-outlined text-lg block">download</span>
-                  Export PDF
-                </button>
-                <button className="flex items-center justify-center gap-2 py-3 px-4 bg-surface-container-high hover:bg-surface-container-highest text-primary rounded-md font-bold text-sm transition-colors border-none cursor-pointer outline-none w-full font-display">
-                  <span className="material-symbols-outlined text-lg block">share</span>
-                  Share
-                </button>
-                <button className="flex items-center justify-center gap-2 py-3 px-4 bg-[#6b38d4] hover:bg-[#8455ef] text-white rounded-md font-bold text-sm transition-colors shadow-sm border-none cursor-pointer outline-none w-full font-display">
-                  <span className="material-symbols-outlined text-lg block">assignment_add</span>
-                  Assign
-                </button>
-              </div>
+              {/* NEW ACTION BAR COMPONENT */}
+              {result && (
+                <div className="px-6 pb-6 bg-surface-container-lowest">
+                  <ToolActionButtons 
+                    contentData={result} 
+                    toolName="Lesson Plan" 
+                    exportType="PDF" 
+                  />
+                </div>
+              )}
 
             </div>
           </div>
