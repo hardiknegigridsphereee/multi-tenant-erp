@@ -2,7 +2,6 @@ import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { Link, useParams, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
-import Select from "../../components/erp/teacher/Select";
 import { getTeacherAssignment, getSectionEnrollments, bulkRecordAttendance, getAttendanceRecords, getMyProfile, getTeacherClasses } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
 import { RevalidatingBar, SkeletonRow } from "../../components/erp/teacher/LoadingPrimitives";
@@ -23,6 +22,8 @@ const MarkAttendance = () => {
   const [attendanceOverlay, setAttendanceOverlay] = useState({}); // { [studentId]: { status, remark } }
   const [attendanceLoading, setAttendanceLoading] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [error, setError] = useState(null);
+  const [successMsg, setSuccessMsg] = useState(null);
   const dateDebounceRef = useRef(null);
 
   // ── Load available classes for filters ─────────────────────────────────────
@@ -69,9 +70,12 @@ const MarkAttendance = () => {
           name: enr.student_name,
           initials: enr.student_name?.charAt(0).toUpperCase() ?? '?',
           roll: enr.student_enrollment_no || `Roll ${enr.roll_number || 'N/A'}`,
+          email: enr.email,
+          enrollment_number: enr.student_enrollment_no,
+          first_name: enr.first_name,
+          last_name: enr.last_name
         }));
       }
-
       return { students, sectionId };
     },
     { skip: !sectionId || !academicYearId }
@@ -95,8 +99,10 @@ const MarkAttendance = () => {
         overlay[sId] = { status: r.status, remark: r.remarks || '' };
       });
       setAttendanceOverlay(overlay);
+      setError(null);
     } catch (err) {
       console.warn('[ATTENDANCE] Could not fetch records for date:', date, err.message);
+      setError("Failed to load attendance records for this date.");
     } finally {
       setAttendanceLoading(false);
     }
@@ -116,8 +122,8 @@ const MarkAttendance = () => {
   // ── Derived student list with attendance merged ───────────────────────────
   const studentsWithAttendance = students.map(s => ({
     ...s,
-    status: attendanceOverlay[s.student_id]?.status ?? 'Present',
-    remark: attendanceOverlay[s.student_id]?.remark ?? '',
+    status: attendanceOverlay[s.student_id]?.status || 'Present',
+    remark: attendanceOverlay[s.student_id]?.remark || '',
   }));
 
   const updateStatus = (studentEnrollmentId, newStatus) => {
@@ -129,7 +135,20 @@ const MarkAttendance = () => {
       [student.student_id]: {
         ...prev[student.student_id],
         status: newStatus,
-        remark: prev[student.student_id]?.remark ?? '',
+        remark: prev[student.student_id]?.remark || '',
+      }
+    }));
+  };
+
+  const updateRemark = (studentId, newRemark) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    setAttendanceOverlay(prev => ({
+      ...prev,
+      [student.student_id]: {
+        ...prev[student.student_id],
+        status: prev[student.student_id]?.status || 'Present',
+        remark: newRemark,
       }
     }));
   };
@@ -137,15 +156,36 @@ const MarkAttendance = () => {
   const markAllPresent = () => {
     const overlay = {};
     students.forEach(s => {
-      overlay[s.student_id] = { status: 'Present', remark: attendanceOverlay[s.student_id]?.remark ?? '' };
+      overlay[s.student_id] = { status: 'Present', remark: attendanceOverlay[s.student_id]?.remark || '' };
     });
     setAttendanceOverlay(overlay);
   };
 
+  const handleRemarkClick = (student) => {
+    const newRemark = window.prompt(`Enter remark for ${student.name}:`, student.remark);
+    if (newRemark !== null) {
+      setAttendanceOverlay(prev => ({
+        ...prev,
+        [student.student_id]: {
+          ...prev[student.student_id],
+          status: prev[student.student_id]?.status || 'Present',
+          remark: newRemark,
+        }
+      }));
+    }
+  };
+
   const handleSubmitAttendance = async () => {
-    if (!assignment || students.length === 0) return;
+    if (!assignment || students.length === 0) {
+      setError("No class selected or roster is empty.");
+      return;
+    }
+    
     try {
       setIsSubmitting(true);
+      setError(null);
+      setSuccessMsg(null);
+      
       const classLevelId = assignment.class_level_id || assignment.class_level;
 
       const payload = {
@@ -161,9 +201,13 @@ const MarkAttendance = () => {
       };
 
       await bulkRecordAttendance(payload);
-      alert("Attendance submitted successfully!");
+      setSuccessMsg("Attendance submitted successfully!");
+      
+      setTimeout(() => {
+        navigate("/teacher/attendance");
+      }, 2000);
     } catch (err) {
-      alert('Failed to submit attendance: ' + err.message);
+      setError('Failed to submit attendance: ' + err.message);
     } finally {
       setIsSubmitting(false);
     }
@@ -189,20 +233,6 @@ const MarkAttendance = () => {
     ? Math.round((presentCount / studentsWithAttendance.length) * 100)
     : 0;
 
-  const handleRemarkClick = (student) => {
-    const newRemark = window.prompt(`Enter remark for ${student.name}:`, student.remark);
-    if (newRemark !== null) {
-      setAttendanceOverlay(prev => ({
-        ...prev,
-        [student.student_id]: {
-          ...prev[student.student_id],
-          status: prev[student.student_id]?.status ?? 'Present',
-          remark: newRemark,
-        }
-      }));
-    }
-  };
-
   const subjectName = assignment?.subject_name || 'Subject';
   const levelClean = assignment?.class_level_name?.replace('Grade ', '') || '';
   const classNameStr = `${subjectName} ${levelClean}-${assignment?.section_name || ''}`;
@@ -216,7 +246,7 @@ const MarkAttendance = () => {
         className="flex items-center gap-2 text-primary font-semibold text-sm mb-4 hover:-translate-x-1 transition-transform w-max"
       >
         <span className="material-symbols-outlined">arrow_back</span>
-        Back to Attendance
+        Back to Attendance Hub
       </Link>
 
       {/* Header */}
@@ -245,6 +275,27 @@ const MarkAttendance = () => {
         </div>
       </div>
 
+      {/* Error/Success Messages */}
+      {error && (
+        <div className="mb-8 p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex gap-3 shadow-sm">
+          <span className="material-symbols-outlined">error</span>
+          <div>
+            <p className="font-bold text-sm">Action Required</p>
+            <p className="text-sm mt-1">{error}</p>
+          </div>
+        </div>
+      )}
+
+      {successMsg && (
+        <div className="mb-8 p-4 bg-green-50 text-green-800 rounded-md border border-green-200 flex gap-3 shadow-sm">
+          <span className="material-symbols-outlined">check_circle</span>
+          <div>
+            <p className="font-bold text-sm">Success!</p>
+            <p className="text-sm mt-1">{successMsg}</p>
+          </div>
+        </div>
+      )}
+
       {/* Dashboard Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
 
@@ -254,68 +305,81 @@ const MarkAttendance = () => {
           <div className="bg-gradient-to-br from-primary to-[#004395] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-blue-900/10">
             <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
             <div className="relative z-10">
-              <h3 className="text-white/80 font-semibold mb-6">Attendance Summary</h3>
+              <h3 className="text-blue-100 font-semibold mb-6 flex items-center gap-2">
+                <span className="material-symbols-outlined">analytics</span>
+                Live Overview
+              </h3>
               <div className="flex justify-between items-end mb-8">
                 <div>
                   <p className="text-5xl font-extrabold font-display">{studentsWithAttendance.length}</p>
                   <p className="text-sm text-white/70 mt-1">Total Students</p>
                 </div>
                 <div className="text-right">
-                  <p className="text-2xl font-bold font-display">{successRate}%</p>
-                  <p className="text-sm text-white/70 mt-1">Success Rate</p>
+                  <p className="text-2xl font-bold">{successRate}%</p>
+                  <p className="text-sm text-blue-200 mt-1">Presence</p>
                 </div>
               </div>
               <div className="grid grid-cols-3 gap-4 pt-6 border-t border-white/10">
                 <div>
                   <p className="text-xl font-bold">{presentCount}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-white/60">Present</p>
+                  <p className="text-[10px] uppercase tracking-wider text-blue-200">Present</p>
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-red-200">{absentCount}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-white/60">Absent</p>
+                  <p className="text-xl font-bold text-red-300">{absentCount}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-red-200/70">Absent</p>
                 </div>
                 <div>
-                  <p className="text-xl font-bold text-orange-200">{lateCount}</p>
-                  <p className="text-[10px] uppercase tracking-wider text-white/60">Late</p>
+                  <p className="text-xl font-bold text-orange-300">{lateCount}</p>
+                  <p className="text-[10px] uppercase tracking-wider text-orange-200/70">Late</p>
                 </div>
               </div>
             </div>
           </div>
 
           {/* Filter Card */}
-          <Card className="rounded-3xl p-8">
-            <h4 className="text-blue-900 font-bold mb-6 flex items-center">
-              <span className="material-symbols-outlined mr-2 text-primary">filter_list</span>
-              Session Parameters
+          <Card className="rounded-2xl p-8 border border-gray-100">
+            <h4 className="text-slate-800 font-bold mb-6 flex items-center">
+              <span className="material-symbols-outlined mr-2 text-primary">database</span>
+              Model Context (Required)
             </h4>
             <div className="space-y-5">
-              <Select 
-                label="Class Name" 
-                value={id || ''}
-                onChange={(e) => navigate(`/teacher/attendance/mark/${e.target.value}`)}
-                options={allClasses.length > 0 ? allClasses.map(cls => ({
-                  value: cls.id,
-                  label: `${cls.subject_name} (${cls.class_level_name} - ${cls.section_name})`
-                })) : [{ value: id, label: classNameStr || 'Loading…' }]} 
-                disabled={isSubmitting || classesLoading}
-              />
-              <div className="grid grid-cols-2 gap-4">
-                <Select 
-                  label="Academic Year" 
-                  value={assignment?.academic_year_name || ''} 
-                  disabled 
-                  options={[{ value: assignment?.academic_year_name, label: assignment?.academic_year_name || (classesLoading ? 'Loading...' : 'Select Class') }]} 
-                />
-                <div>
-                  <label className="text-xs font-bold text-on-surface-variant uppercase tracking-widest block mb-2">Date</label>
-                  <div className="relative">
-                    <input
-                      value={attendanceDate}
-                      onChange={(e) => setAttendanceDate(e.target.value)}
-                      className="w-full bg-surface-container-low border-none rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
-                      type="date"
-                    />
-                  </div>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Class Name</label>
+                <select 
+                  value={id || ''}
+                  onChange={(e) => navigate(`/teacher/attendance/mark/${e.target.value}`)}
+                  className="w-full bg-surface-container-low border-transparent rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  disabled={isSubmitting || classesLoading}
+                >
+                  {allClasses.length > 0 ? allClasses.map(cls => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.subject_name} ({cls.class_level_name} - {cls.section_name})
+                    </option>
+                  )) : (
+                    <option value={id}>{classNameStr || 'Loading…'}</option>
+                  )}
+                </select>
+              </div>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Date of Record</label>
+                <div className="relative">
+                  <input
+                    value={attendanceDate}
+                    onChange={(e) => setAttendanceDate(e.target.value)}
+                    className="w-full bg-surface-container-low border-transparent rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                    type="date"
+                  />
+                </div>
+              </div>
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Academic Year</label>
+                <div className="relative">
+                  <input
+                    value={assignment?.academic_year_name || ''}
+                    disabled
+                    className="w-full bg-surface-container-low border-transparent rounded-xl px-4 py-3 text-sm font-medium opacity-70 cursor-not-allowed"
+                    placeholder="Select class first"
+                  />
                 </div>
               </div>
             </div>
@@ -330,7 +394,7 @@ const MarkAttendance = () => {
               <div className="relative z-10">
                 <h5 className="text-amber-900 font-bold text-sm">Attendance Insight</h5>
                 <p className="text-amber-800 text-xs mt-1 leading-relaxed">
-                  Marcus and Sophia have been late for the last 3 sessions. Consider checking in with them.
+                  Students with recurring absences may benefit from a personalized check-in. Consider reaching out to their guardians.
                 </p>
               </div>
             </div>
@@ -339,12 +403,11 @@ const MarkAttendance = () => {
 
         {/* Right: Student Roster */}
         <div className="col-span-1 lg:col-span-8">
-          <div className="bg-surface-container-lowest rounded-3xl shadow-[0px_12px_32px_rgba(11,28,48,0.04)] overflow-hidden border border-outline-variant/10">
+          <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
             {/* Table Header */}
-            <div className="px-8 py-6 bg-surface-container-low flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4">
+            <div className="px-8 py-6 bg-surface-container-low flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-gray-100">
               <div className="flex items-center gap-3">
                 <h3 className="font-display font-bold text-blue-900">Student Roster</h3>
-                {/* Subtle date-loading indicator — just dims the header dot */}
                 {attendanceLoading && (
                   <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" title="Refreshing attendance…" />
                 )}
@@ -363,10 +426,10 @@ const MarkAttendance = () => {
             <div className="overflow-x-auto">
               <table className="w-full min-w-[600px]">
                 <thead>
-                  <tr className="text-left text-on-surface-variant border-b border-surface-container">
-                    <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-widest">Student</th>
-                    <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest">Roll No.</th>
-                    <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-center">Attendance Action</th>
+                  <tr className="text-left text-gray-500 border-b border-gray-100 bg-white">
+                    <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-widest">Student Identity</th>
+                    <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest">Enrollment No.</th>
+                    <th className="px-4 py-4 text-[11px] font-bold uppercase tracking-widest text-center">Record Status</th>
                     <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-widest text-right">Remarks</th>
                   </tr>
                 </thead>
@@ -377,7 +440,6 @@ const MarkAttendance = () => {
                       <tr
                         key={student.id}
                         className="hover:bg-surface-container-low transition-colors group"
-                        // Fade slightly when attendance is being refreshed for the date
                         style={{ opacity: attendanceLoading ? 0.6 : 1, transition: 'opacity 0.2s' }}
                       >
                         <td className="px-8 py-5">
@@ -387,9 +449,10 @@ const MarkAttendance = () => {
                             </div>
                             <div>
                               <p className="text-sm font-bold text-on-surface">{student.name}</p>
+                              <p className="text-xs text-gray-500">{student.email}</p>
                             </div>
                           </div>
-                        </td>
+                         </td>
                         <td className="px-4 py-5 text-sm font-medium text-on-surface-variant">{student.roll}</td>
                         <td className="px-4 py-5">
                           <div className="flex items-center justify-center space-x-2">

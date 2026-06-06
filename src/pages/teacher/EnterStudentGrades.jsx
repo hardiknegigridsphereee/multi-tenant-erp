@@ -113,6 +113,21 @@ const EnterStudentGrades = () => {
     }));
   };
 
+  const calculateGrade = (marks, maxMarks = 100) => {
+    if (!marks || marks === '') return '--';
+    const percentage = (parseFloat(marks) / parseFloat(maxMarks)) * 100;
+    if (percentage >= 90) return 'A+';
+    if (percentage >= 80) return 'A';
+    if (percentage >= 70) return 'B';
+    if (percentage >= 60) return 'C';
+    if (percentage >= 50) return 'D';
+    return 'F';
+  };
+
+  const getGradeFromMarks = (marks) => {
+    return calculateGrade(marks, currentExam?.max_marks || 100);
+  };
+
   const gradedCount = students.filter(s => {
     const studentId = s.student || s.id;
     const g = gradesMap[studentId];
@@ -130,7 +145,7 @@ const EnterStudentGrades = () => {
       const records = Object.entries(gradesMap).map(([studentId, data]) => ({
         student_id: studentId,
         marks_obtained: data.marks_obtained || "0",
-        max_marks: "100.00",
+        max_marks: currentExam?.max_marks || "100.00",
         remarks: data.remarks || ""
       }));
       
@@ -154,6 +169,12 @@ const EnterStudentGrades = () => {
   };
 
   const isLoadingData = classesLoading || studentsLoading || gradesLoading;
+
+  const getInitials = (firstName, lastName) => {
+    if (firstName && lastName) return `${firstName[0]}${lastName[0]}`.toUpperCase();
+    if (firstName) return firstName.substring(0, 2).toUpperCase();
+    return "ST";
+  };
 
   return (
     <MainLayout title="Enter Grades">
@@ -202,6 +223,17 @@ const EnterStudentGrades = () => {
           </div>
         </div>
 
+        {/* Alerts */}
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex gap-3 shadow-sm">
+            <span className="material-symbols-outlined">error</span>
+            <div>
+              <p className="font-bold text-sm">Action Required</p>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
+          </div>
+        )}
+
         {/* Bento Layout Content */}
         <div className="grid grid-cols-12 gap-8">
           {/* Main Grading Table */}
@@ -217,10 +249,6 @@ const EnterStudentGrades = () => {
                   <p className="text-xl font-bold text-primary text-center">{gradedCount}/{students.length}</p>
                 </div>
               </div>
-              <button className="flex items-center gap-2 px-4 py-2 bg-amber-100 text-[#924700] font-bold rounded-md text-sm hover:bg-amber-200 transition-all group outline-none border-none cursor-pointer">
-                <span className="material-symbols-outlined text-lg group-hover:rotate-12 duration-300">auto_awesome</span>
-                Auto-Generate Remarks
-              </button>
             </div>
 
             <Card className="p-0 overflow-hidden shadow-sm border border-outline-variant/10">
@@ -229,18 +257,20 @@ const EnterStudentGrades = () => {
                   <thead>
                     <tr className="bg-surface-container-low/50 text-left border-b border-surface-container">
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Student</th>
-                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider text-center">Marks (100)</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Enrollment No.</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider text-center">Marks ({currentExam?.max_marks || 100})</th>
+                      <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Grade</th>
                       <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-wider">Remarks</th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-surface-container/50">
                     {isLoadingData ? (
                       <tr>
-                        <td colSpan="3" className="text-center py-6 text-slate-500 text-sm">Loading data...</td>
+                        <td colSpan="5" className="text-center py-6 text-slate-500 text-sm">Loading data...</td>
                       </tr>
                     ) : students.length === 0 ? (
                       <tr>
-                        <td colSpan="3" className="text-center py-6 text-slate-500 text-sm">No students found.</td>
+                        <td colSpan="5" className="text-center py-6 text-slate-500 text-sm">No students found.</td>
                       </tr>
                     ) : students.map((enrollment) => {
                       const studentId = enrollment.student || enrollment.id;
@@ -248,23 +278,24 @@ const EnterStudentGrades = () => {
                       const hasMarks = !!sGrades.marks_obtained;
                       
                       const displayName = enrollment.student_name || `${enrollment.first_name || ''} ${enrollment.last_name || ''}`.trim() || 'Unknown';
-                      const initial1 = displayName ? displayName.charAt(0).toUpperCase() : '?';
+                      const enrollmentNo = enrollment.student_enrollment_no || enrollment.enrollment_number || 'N/A';
                       
                       return (
                         <tr key={studentId} className={`hover:bg-blue-50/30 transition-colors ${hasMarks ? 'bg-blue-50/10' : ''}`}>
                           <td className="px-6 py-5">
                             <div className="flex items-center gap-3">
                               <div className="w-10 h-10 rounded-full bg-slate-200 flex items-center justify-center font-bold text-slate-500">
-                                {initial1}
+                                {getInitials(enrollment.first_name, enrollment.last_name)}
                               </div>
                               <div>
                                 <p className="font-bold text-on-surface text-sm">
                                   {displayName}
                                 </p>
-                                <p className="text-xs text-slate-400">{enrollment.student_enrollment_no || enrollment.email || 'No ID'}</p>
+                                <p className="text-xs text-slate-400">{enrollment.email || 'No email'}</p>
                               </div>
                             </div>
                           </td>
+                          <td className="px-6 py-5 text-sm font-medium text-slate-500 font-mono">{enrollmentNo}</td>
                           <td className="px-6 py-5">
                             <div className="flex items-center justify-center">
                               <input 
@@ -272,22 +303,25 @@ const EnterStudentGrades = () => {
                                 placeholder="--" 
                                 type="number"
                                 min="0"
-                                max="100"
+                                max={currentExam?.max_marks || 100}
                                 value={sGrades.marks_obtained}
                                 onChange={(e) => handleGradeChange(studentId, 'marks_obtained', e.target.value)}
                               />
                             </div>
                           </td>
                           <td className="px-6 py-5">
-                            <div className="flex items-center gap-2">
-                              <input 
-                                className="min-w-[120px] flex-1 text-xs border-none bg-surface-container-low p-2 rounded placeholder:text-slate-400 focus:ring-0 outline-none" 
-                                placeholder="Add remark..." 
-                                type="text"
-                                value={sGrades.remarks}
-                                onChange={(e) => handleGradeChange(studentId, 'remarks', e.target.value)}
-                              />
-                            </div>
+                            <span className={`inline-block text-center py-1.5 px-3 font-bold text-sm rounded ${hasMarks ? 'bg-white text-primary shadow-sm ring-1 ring-primary/20' : 'text-slate-400'}`}>
+                              {hasMarks ? getGradeFromMarks(sGrades.marks_obtained) : '--'}
+                            </span>
+                          </td>
+                          <td className="px-6 py-5">
+                            <input 
+                              className="min-w-[120px] w-full text-xs py-2 px-3 border-none bg-surface-container-low rounded focus:bg-white focus:ring-2 focus:ring-primary/20 placeholder:text-slate-400 italic outline-none transition-all" 
+                              placeholder="Add optional remark..." 
+                              type="text"
+                              value={sGrades.remarks}
+                              onChange={(e) => handleGradeChange(studentId, 'remarks', e.target.value)}
+                            />
                           </td>
                         </tr>
                       );
@@ -305,25 +339,33 @@ const EnterStudentGrades = () => {
               <h4 className="text-[10px] font-black text-slate-400 uppercase tracking-widest">Grading Schema</h4>
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-on-surface">90 - 100</span>
+                  <span className="text-sm font-bold text-on-surface">90% - 100%</span>
                   <span className="px-2 py-0.5 bg-green-100 text-green-700 text-[10px] font-black rounded">A+</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-on-surface">80 - 89</span>
+                  <span className="text-sm font-bold text-on-surface">80% - 89%</span>
                   <span className="px-2 py-0.5 bg-blue-100 text-blue-700 text-[10px] font-black rounded">A</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-on-surface">70 - 79</span>
+                  <span className="text-sm font-bold text-on-surface">70% - 79%</span>
                   <span className="px-2 py-0.5 bg-purple-100 text-purple-700 text-[10px] font-black rounded">B</span>
                 </div>
                 <div className="flex items-center justify-between">
-                  <span className="text-sm font-bold text-on-surface">60 - 69</span>
+                  <span className="text-sm font-bold text-on-surface">60% - 69%</span>
                   <span className="px-2 py-0.5 bg-orange-100 text-orange-700 text-[10px] font-black rounded">C</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-on-surface">50% - 59%</span>
+                  <span className="px-2 py-0.5 bg-yellow-100 text-yellow-700 text-[10px] font-black rounded">D</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-on-surface">Below 50%</span>
+                  <span className="px-2 py-0.5 bg-red-100 text-red-700 text-[10px] font-black rounded">F</span>
                 </div>
               </div>
             </div>
             
-             <div className="bg-red-50 p-6 rounded-xl border border-red-100 relative overflow-hidden shadow-sm">
+            <div className="bg-red-50 p-6 rounded-xl border border-red-100 relative overflow-hidden shadow-sm">
               <div className="relative z-10">
                 <div className="flex items-center gap-2 text-red-600 mb-2">
                   <span className="material-symbols-outlined text-lg">timer</span>

@@ -6,15 +6,16 @@ import { getExams, getMyProfile, getTeacherClasses, getSectionEnrollments } from
 import { useStaleData } from "../../hooks/useStaleData";
 
 const GradesAssessmentOverview = () => {
-  const { data: payload, loading } = useStaleData('teacher:exams', async () => {
+  const { data: payload, loading: examsLoading } = useStaleData('teacher:exams', async () => {
     const response = await getExams();
     const exams = Array.isArray(response) ? response : response.results || [];
     return { exams };
   });
 
   const rawExams = payload?.exams || [];
-  
   const [totalStudents, setTotalStudents] = useState(0);
+  const [assessmentsData, setAssessmentsData] = useState([]);
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     const fetchStudentsCount = async () => {
@@ -37,30 +38,65 @@ const GradesAssessmentOverview = () => {
         setTotalStudents(total);
       } catch (err) {
         console.error("Failed to fetch student count:", err);
+        setError("Failed to load student statistics");
       }
     };
     fetchStudentsCount();
   }, []);
   
   // Transform API data to match the UI requirements
-  const assessmentsData = rawExams.map((exam, index) => {
-    // Generate some dynamic props from exam data or fallback to defaults
-    const isCompleted = Math.random() > 0.5; // Simulate status since API may not have it
-    const status = isCompleted ? 'Completed' : 'Pending';
-    const statusColor = isCompleted ? 'green' : 'blue';
-    const color = index % 3 === 0 ? 'primary' : index % 3 === 1 ? 'purple' : 'amber';
-    
-    return {
-      id: exam.id,
-      name: exam.name || `Exam ${index + 1}`,
-      date: new Date(exam.start_date || Date.now()).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }),
-      score: isCompleted ? Math.floor(Math.random() * 30 + 70) : null,
-      status: status,
-      icon: 'calculate',
-      color: color,
-      statusColor: statusColor
-    };
-  });
+  useEffect(() => {
+    if (rawExams.length > 0) {
+      const transformedData = rawExams.map((exam, index) => {
+        // Generate some dynamic props from exam data or fallback to defaults
+        const isCompleted = exam.status === 'completed' || Math.random() > 0.5; // Simulate status since API may not have it
+        const status = isCompleted ? 'Completed' : 'Pending';
+        const statusColor = isCompleted ? 'green' : 'amber';
+        const color = index % 3 === 0 ? 'primary' : index % 3 === 1 ? 'purple' : 'amber';
+        
+        // Calculate average score if available
+        let avgScore = null;
+        if (exam.average_score) {
+          avgScore = Math.round(exam.average_score);
+        } else if (isCompleted) {
+          avgScore = Math.floor(Math.random() * 30 + 70); // Demo data
+        }
+        
+        return {
+          id: exam.id,
+          name: exam.name || `Exam ${index + 1}`,
+          subject: exam.subject_name || exam.subject?.name || 'General Subject',
+          date: exam.start_date ? new Date(exam.start_date).toLocaleDateString('en-US', { year: 'numeric', month: 'short', day: 'numeric' }) : 'Date TBD',
+          score: avgScore,
+          status: status,
+          icon: getSubjectIcon(exam.subject_name || exam.subject?.name),
+          color: color,
+          statusColor: statusColor
+        };
+      });
+      setAssessmentsData(transformedData);
+    }
+  }, [rawExams]);
+
+  const getSubjectIcon = (subjectName) => {
+    const name = (subjectName || "").toLowerCase();
+    if (name.includes("math") || name.includes("calc")) return "functions";
+    if (name.includes("phys") || name.includes("sci")) return "biotech";
+    if (name.includes("hist")) return "history_edu";
+    if (name.includes("lit")) return "menu_book";
+    return "calculate";
+  };
+
+  const getSubjectColor = (subjectName) => {
+    const name = (subjectName || "").toLowerCase();
+    if (name.includes("math")) return "primary";
+    if (name.includes("phys") || name.includes("sci")) return "purple";
+    if (name.includes("hist") || name.includes("lit")) return "amber";
+    return "primary";
+  };
+
+  const completedCount = assessmentsData.filter(a => a.status === 'Completed').length;
+  const pendingCount = assessmentsData.filter(a => a.status !== 'Completed').length;
 
   return (
     <MainLayout title="Grades & Assessment">
@@ -77,16 +113,25 @@ const GradesAssessmentOverview = () => {
             <h1 className="text-4xl font-extrabold text-on-surface tracking-tight leading-tight font-display">Grades & Assessment</h1>
           </div>
           <div className="flex flex-wrap gap-3">
-            <button className="px-5 py-2.5 rounded-md bg-surface-container-high text-primary font-semibold text-sm hover:bg-surface-container-highest transition-all flex items-center gap-2 outline-none border-none cursor-pointer shadow-sm">
-              <span className="material-symbols-outlined text-lg">upload_file</span>
-              Export Report
-            </button>
-            <button className="px-5 py-2.5 rounded-md bg-gradient-to-br from-primary to-primary-container text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2 active:scale-95 outline-none border-none cursor-pointer">
-              <span className="material-symbols-outlined text-lg">publish</span>
-              Publish Results
-            </button>
+            <Link 
+              to="/teacher/grades/enter"
+              className="px-5 py-2.5 rounded-md bg-gradient-to-br from-primary to-primary-container text-white font-semibold text-sm shadow-md hover:shadow-lg transition-all flex items-center gap-2 active:scale-95 outline-none border-none cursor-pointer"
+            >
+              <span className="material-symbols-outlined text-lg">edit_document</span>
+              Enter New Grades
+            </Link>
           </div>
         </div>
+
+        {error && (
+          <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex gap-3 shadow-sm">
+            <span className="material-symbols-outlined">error</span>
+            <div>
+              <p className="font-bold text-sm">Error</p>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
+          </div>
+        )}
 
         {/* Bento Layout: Insights & Filters */}
         <div className="grid grid-cols-12 gap-6">
@@ -98,8 +143,8 @@ const GradesAssessmentOverview = () => {
                 <span className="material-symbols-outlined text-sm" style={{fontVariationSettings: "'FILL' 1"}}>auto_awesome</span>
                 AI Performance Insight
               </div>
-              <h2 className="text-2xl font-bold font-display leading-snug max-w-md">Average class performance is 12% higher than last semester in Geometry.</h2>
-              <p className="text-white/70 text-sm max-w-sm">The implementation of spatial visualization modules has shown significant correlation with higher test scores in Grade 10-A.</p>
+              <h2 className="text-2xl font-bold font-display leading-snug max-w-md">Average class performance is trending upwards.</h2>
+              <p className="text-white/70 text-sm max-w-sm">The implementation of specific visualization modules has shown significant correlation with higher test scores in recent weeks.</p>
               <button className="text-sm font-bold flex items-center gap-2 hover:gap-3 transition-all outline-none border-none cursor-pointer bg-transparent text-white">
                 View Detailed Analysis
                 <span className="material-symbols-outlined text-lg block">arrow_forward</span>
@@ -121,34 +166,17 @@ const GradesAssessmentOverview = () => {
               </h3>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Academic Year</label>
-                  <select className="w-full bg-surface-container-low border-none rounded-sm text-xs py-2.5 font-medium focus:ring-primary/20 cursor-pointer outline-none pl-2">
-                    <option>2023-2024</option>
-                    <option>2022-2023</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Class</label>
-                  <select className="w-full bg-surface-container-low border-none rounded-sm text-xs py-2.5 font-medium focus:ring-primary/20 cursor-pointer outline-none pl-2">
-                    <option>Grade 10-A</option>
-                    <option>Grade 10-B</option>
-                    <option>Grade 11-C</option>
-                  </select>
-                </div>
-                <div className="space-y-1.5">
                   <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Subject</label>
                   <select className="w-full bg-surface-container-low border-none rounded-sm text-xs py-2.5 font-medium focus:ring-primary/20 cursor-pointer outline-none pl-2">
-                    <option>Mathematics</option>
-                    <option>Physics</option>
-                    <option>Art History</option>
+                    <option>All Subjects</option>
                   </select>
                 </div>
                 <div className="space-y-1.5">
-                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Exam Type</label>
+                  <label className="text-[10px] font-bold text-slate-400 uppercase tracking-wider block">Status</label>
                   <select className="w-full bg-surface-container-low border-none rounded-sm text-xs py-2.5 font-medium focus:ring-primary/20 cursor-pointer outline-none pl-2">
-                    <option>Midterm</option>
-                    <option>Final</option>
-                    <option>Quiz</option>
+                    <option>All</option>
+                    <option>Completed</option>
+                    <option>Pending</option>
                   </select>
                 </div>
               </div>
@@ -170,19 +198,20 @@ const GradesAssessmentOverview = () => {
               </button>
             </div>
           </div>
+          
           <div className="overflow-x-auto">
             <table className="w-full text-left border-collapse min-w-[700px]">
               <thead>
                 <tr className="bg-surface-container-low/50">
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Exam Name</th>
-                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Date</th>
+                  <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Subject</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Avg. Class Score</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest">Grading Status</th>
                   <th className="px-6 py-4 text-[10px] font-black text-slate-500 uppercase tracking-widest text-right">Action</th>
-                </tr>
+                 </tr>
               </thead>
               <tbody className="divide-y divide-surface-container-low">
-                {loading && !payload ? (
+                {examsLoading && rawExams.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="px-6 py-5 text-center text-slate-500">Loading assessments...</td>
                   </tr>
@@ -192,6 +221,7 @@ const GradesAssessmentOverview = () => {
                   </tr>
                 ) : assessmentsData.map(assessment => {
                   let badgeColors, dotColor, action;
+                  
                   if (assessment.statusColor === 'green') {
                     badgeColors = 'bg-green-100 text-green-700';
                     dotColor = 'bg-green-500';
@@ -203,29 +233,30 @@ const GradesAssessmentOverview = () => {
                         Review
                       </Link>
                     );
-                  } else if (assessment.statusColor === 'blue') {
-
-badgeColors = 'bg-blue-100 text-blue-700';
-
-dotColor = 'bg-blue-500';
-
-action = (
-<Link
-  to={`/teacher/grades/enter?exam_id=${assessment.id}`}
-  className="bg-primary text-white px-4 py-1.5 rounded-md font-bold text-xs shadow-sm active:scale-95 transition-all text-center"
->
-  Enter Grades
-</Link>
-);
-
-}else if (assessment.statusColor === 'amber') {
-                    badgeColors = 'bg-amber-100 text-amber-700'; dotColor = 'bg-amber-500'; action = <button className="text-primary font-bold text-xs hover:underline underline-offset-4 decoration-2 outline-none border-none cursor-pointer bg-transparent">Schedule</button>;
+                  } else {
+                    badgeColors = 'bg-amber-100 text-amber-700';
+                    dotColor = 'bg-amber-500';
+                    action = (
+                      <Link
+                        to={`/teacher/grades/enter?exam_id=${assessment.id}`}
+                        className="bg-primary text-white px-4 py-1.5 rounded-md font-bold text-xs shadow-sm active:scale-95 transition-all text-center inline-block"
+                      >
+                        Enter Grades
+                      </Link>
+                    );
                   }
                   
                   let iconBg, iconColor;
-                  if (assessment.color === 'primary') { iconBg = 'bg-primary/10'; iconColor = 'text-primary'; }
-                  else if (assessment.color === 'purple') { iconBg = 'bg-[#6b38d4]/10'; iconColor = 'text-[#6b38d4]'; }
-                  else if (assessment.color === 'amber') { iconBg = 'bg-[#b75b00]/10'; iconColor = 'text-[#b75b00]'; }
+                  if (assessment.color === 'primary') { 
+                    iconBg = 'bg-primary/10'; 
+                    iconColor = 'text-primary'; 
+                  } else if (assessment.color === 'purple') { 
+                    iconBg = 'bg-[#6b38d4]/10'; 
+                    iconColor = 'text-[#6b38d4]'; 
+                  } else { 
+                    iconBg = 'bg-[#b75b00]/10'; 
+                    iconColor = 'text-[#b75b00]'; 
+                  }
 
                   return (
                     <tr key={assessment.id} className="hover:bg-blue-50/30 transition-colors group">
@@ -237,7 +268,9 @@ action = (
                           <span className="text-sm font-bold text-on-surface">{assessment.name}</span>
                         </div>
                       </td>
-                      <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">{assessment.date}</td>
+                      <td className="px-6 py-5 text-sm text-on-surface-variant font-medium">
+                        {assessment.subject}
+                      </td>
                       <td className="px-6 py-5">
                         {assessment.score !== null ? (
                           <div className="flex items-center gap-2">
@@ -260,19 +293,18 @@ action = (
                         {action}
                       </td>
                     </tr>
-                  )
+                  );
                 })}
               </tbody>
             </table>
           </div>
           <div className="px-6 py-4 bg-surface-container-lowest flex flex-col sm:flex-row justify-between items-center gap-4 text-xs font-medium text-slate-500 border-t border-surface-container">
-            <p>Showing 1-{assessmentsData.length} of {assessmentsData.length} assessments</p>
+            <p>Showing {assessmentsData.length} of {assessmentsData.length} assessments</p>
             <div className="flex gap-2">
               <button className="w-8 h-8 rounded flex items-center justify-center border border-slate-200 hover:bg-surface-container transition-all outline-none cursor-pointer bg-transparent">
                 <span className="material-symbols-outlined text-base block">chevron_left</span>
               </button>
               <button className="w-8 h-8 rounded flex items-center justify-center bg-primary text-white border-none outline-none cursor-pointer">1</button>
-              <button className="w-8 h-8 rounded flex items-center justify-center border border-slate-200 hover:bg-surface-container transition-all outline-none cursor-pointer bg-transparent">2</button>
               <button className="w-8 h-8 rounded flex items-center justify-center border border-slate-200 hover:bg-surface-container transition-all outline-none cursor-pointer bg-transparent">
                 <span className="material-symbols-outlined text-base block">chevron_right</span>
               </button>
@@ -302,9 +334,7 @@ action = (
               </div>
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-on-surface">
-                {assessmentsData.filter(a => a.status === 'Completed').length}
-              </p>
+              <p className="text-2xl font-bold font-display text-on-surface">{completedCount}</p>
               <p className="text-[10px] text-slate-500 font-bold mt-1">Graded so far</p>
             </div>
           </Card>
@@ -316,16 +346,13 @@ action = (
               </div>
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-on-surface">
-                {assessmentsData.filter(a => a.status !== 'Completed').length}
-              </p>
+              <p className="text-2xl font-bold font-display text-on-surface">{pendingCount}</p>
               <p className="text-[10px] text-primary font-bold mt-1">Need your attention</p>
             </div>
           </Card>
         </div>
 
       </div>
-
     </MainLayout>
   );
 };

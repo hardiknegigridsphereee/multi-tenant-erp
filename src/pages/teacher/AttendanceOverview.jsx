@@ -2,7 +2,6 @@ import React from 'react';
 import { useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
-
 import { getMyProfile, getTeacherClasses, getAttendanceRecords } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
 
@@ -117,10 +116,8 @@ const AttendanceOverview = () => {
   }
 
   return (
-    
     <MainLayout title="The Academic Architect">
       {/* Header Section */}
-      
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
         <div>
           <h2 className="text-3xl font-extrabold text-on-surface font-display tracking-tight">Attendance Overview</h2>
@@ -128,13 +125,16 @@ const AttendanceOverview = () => {
         </div>
         {/* Commented out bulk marking and export report
         <div className="flex space-x-3">
-          <button className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-primary font-semibold bg-surface-container-high hover:bg-surface-container-highest transition-colors text-sm">
+          <button className="flex items-center justify-center space-x-2 px-5 py-2.5 rounded-xl text-[#0058be] font-semibold bg-[#eff4ff] hover:bg-[#d8e2ff] transition-colors text-sm">
             <span className="material-symbols-outlined text-[20px]">file_download</span>
             <span>Export Report</span>
           </button>
-          <button className="flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl text-white font-semibold bg-gradient-to-br from-primary to-primary-container shadow-md active:scale-95 duration-150 transition-all text-sm">
-            <span className="material-symbols-outlined text-[20px]">add</span>
-            <span>Bulk Marking</span>
+          <button 
+            onClick={() => navigate("/teacher/attendance/mark")}
+            className="flex items-center justify-center space-x-2 px-6 py-2.5 rounded-xl text-white font-semibold bg-gradient-to-r from-[#0058be] to-[#2170e4] shadow-md active:scale-95 duration-150 transition-all text-sm"
+          >
+            <span className="material-symbols-outlined text-[20px]">fact_check</span>
+            <span>Mark Attendance</span>
           </button>
         </div>
         */}
@@ -142,8 +142,8 @@ const AttendanceOverview = () => {
 
       {/* Bento Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-ambient" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.04)'}}>
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-primary/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-sm border border-gray-100">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#0058be]/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
             <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Average Attendance</p>
             <h3 className="text-4xl font-extrabold text-primary">
@@ -156,8 +156,8 @@ const AttendanceOverview = () => {
           </div>
         </Card>
 
-        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-ambient" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.04)'}}>
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-purple-500/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-sm border border-gray-100">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#6b38d4]/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
             <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Weekly Avg</p>
             <h3 className="text-4xl font-extrabold text-[#6b38d4]">
@@ -170,7 +170,7 @@ const AttendanceOverview = () => {
           </div>
         </Card>
 
-        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-ambient" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.04)'}}>
+        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-sm border border-gray-100">
           <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
             <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Absent Students</p>
@@ -257,8 +257,8 @@ const AttendanceOverview = () => {
           */}
 
           {/* Attendance Distribution */}
-          <Card className="shadow-sm">
-            <h4 className="font-bold text-on-surface mb-6">Presence Distribution</h4>
+          <Card className="shadow-sm border border-gray-100">
+            <h4 className="font-bold text-slate-800 mb-6">Presence Distribution</h4>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1">
