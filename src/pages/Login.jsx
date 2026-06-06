@@ -1,5 +1,6 @@
 import React, { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
+import { clearCacheAndInitProfile } from "../hooks/useStaleData";
 
 export default function Login() {
   const navigate = useNavigate();
@@ -7,36 +8,47 @@ export default function Login() {
   // State for the real API login
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
-  const [error, setError] = useState(null);
+  const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
   // Prototype demo login routing
   const handleRoleLogin = (role) => {
-    if (role === "Global Admin") navigate("/global-admin");
-    else if (role === "School Admin") navigate("/school-admin");
-    else if (role === "Teacher") navigate("/teacher");
-    else if (role === "Student") navigate("/student");
-    else if (role === "Parent") navigate("/parent");
+    // Clear any existing stale cache on demo role switch
+    clearCacheAndInitProfile(null);
+
+    if (role === "Global Admin") {
+      navigate("/global-admin");
+    } else if (role === "School Admin") {
+      navigate("/school-admin");
+    } else if (role === "Teacher") {
+      navigate("/teacher/dashboard");
+    } else if (role === "Student") {
+      navigate("/student");
+    } else if (role === "Parent") {
+      navigate("/parent");
+    }
   };
 
   // Real backend API login
-  const handleRealLogin = async (e) => {
-    e.preventDefault(); // Prevent page reload
-    setError(null);
+  const handleLoginSubmit = async (e) => {
+    e.preventDefault();
+    setError("");
+    
+    if (!email || !password) {
+      setError("Please enter both email and password");
+      return;
+    }
+
     setLoading(true);
 
     try {
       // Use the base URL from the .env file (supports Vite and Create React App)
-      const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL;
+      const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL || "http://localhost:8000";
       
-      if (!baseUrl) {
-        throw new Error("Base URL is not defined in the environment variables. Please check your .env file.");
-      }
-
-      console.log("1. Attempting login to:", `${baseUrl}v1/auth/login/`);
+      console.log("Attempting login to:", `${baseUrl}/api/v1/auth/login/`);
       
       // --- STEP 1: GET THE TOKENS ---
-      const loginResponse = await fetch(`${baseUrl}v1/auth/login/`, {
+      const loginRes = await fetch(`${baseUrl}/api/v1/auth/login/`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
@@ -47,13 +59,13 @@ export default function Login() {
 
       let loginData;
       try {
-        loginData = await loginResponse.json();
+        loginData = await loginRes.json();
       } catch (jsonErr) {
         throw new Error("Received non-JSON response from server during login.");
       }
 
-      if (!loginResponse.ok) {
-        throw new Error(loginData.detail || `Login failed: ${loginResponse.status}`);
+      if (!loginRes.ok) {
+        throw new Error(loginData.detail || "Invalid credentials");
       }
 
       if (!loginData.access) {
@@ -61,61 +73,80 @@ export default function Login() {
       }
 
       // Save the tokens securely in local storage
-      localStorage.setItem("accessToken", loginData.access);
-      localStorage.setItem("refreshToken", loginData.refresh);
+      localStorage.setItem("access_token", loginData.access);
+      localStorage.setItem("refresh_token", loginData.refresh);
       console.log("Tokens saved successfully!");
 
       // --- STEP 2: FETCH USER PROFILE DETAILS ---
-      console.log("2. Fetching user profile from:", `${baseUrl}v1/profiles/me/`);
+      console.log("Fetching user profile from:", `${baseUrl}/api/v1/profiles/me/`);
       
-      const meResponse = await fetch(`${baseUrl}v1/profiles/me/`, {
+      const profileRes = await fetch(`${baseUrl}/api/v1/profiles/me/`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
           "Accept": "application/json",
-          "Authorization": `Bearer ${loginData.access}` // Attach the JWT here
+          "Authorization": `Bearer ${loginData.access}`
         }
       });
 
-      let userData;
+      let profileData;
       try {
-        userData = await meResponse.json();
+        profileData = await profileRes.json();
       } catch (jsonErr) {
         throw new Error("Received non-JSON response from server while fetching profile.");
       }
 
-      if (!meResponse.ok) {
+      if (!profileRes.ok) {
         throw new Error("Successfully logged in, but failed to fetch user profile details.");
       }
 
-      console.log("User Profile Data:", userData);
-
-      // Optional: Save user details in local storage or context so other components can use it
-      localStorage.setItem("userProfile", JSON.stringify(userData));
-
+      console.log("Profile Data API Response:", profileData);
+      
+      // Save user details in local storage
+      localStorage.setItem('user_data', JSON.stringify(profileData));
+      
+      // Clear SWR cache and initialize with the new profile data
+      clearCacheAndInitProfile(profileData);
+      
       // --- STEP 3: NAVIGATE BASED ON USER TYPE ---
-      const { is_superuser, roles, profiles, identity } = userData;
-
-      if (is_superuser) {
-        navigate("/global-admin");
-      } else if (roles && (roles.includes("School Admin") || roles.includes("Admin"))) {
-        // Adjust the string match here based on how you name your roles in Django
-        navigate("/school-admin");
-      } else if (profiles?.teacher?.exists) {
-        navigate("/teacher");
-      } else if (profiles?.student?.exists) {
-        navigate("/student");
-      } else if (profiles?.parent?.exists) {
-        navigate("/parent");
-      } else {
-        console.warn("No matching role/profile found in /profiles/me/ response:", userData);
-        alert(`Welcome ${identity?.first_name || 'User'}! Your specific role was not recognized to auto-redirect.`);
+      // Extract the primary role from the roles array (which contains strings like "School Admin") 
+      // Fallback to checking the profiles object (e.g. if teacher profile exists)
+      // Fallback to "Global Admin" if is_superuser is true
+      let mainRole = "";
+      
+      if (profileData.roles && profileData.roles.length > 0) {
+        mainRole = profileData.roles[0];
+      } else if (profileData.profiles?.teacher?.exists) {
+        mainRole = "Teacher";
+      } else if (profileData.profiles?.student?.exists) {
+        mainRole = "Student";
+      } else if (profileData.profiles?.parent?.exists) {
+        mainRole = "Parent";
+      } else if (profileData.is_superuser) {
+        mainRole = "Global Admin";
       }
 
+      const lowerRole = mainRole.toLowerCase();
+
+      if (lowerRole.includes("global")) {
+        navigate("/global-admin");
+      } else if (lowerRole.includes("school")) {
+        navigate("/school-admin");
+      } else if (lowerRole.includes("teacher")) {
+        navigate("/teacher/dashboard");
+      } else if (lowerRole.includes("student")) {
+        navigate("/student");
+      } else if (lowerRole.includes("parent")) {
+        navigate("/parent");
+      } else {
+        console.warn("No matching role/profile found:", profileData);
+        // Default fallback
+        navigate("/student");
+      }
     } catch (err) {
       console.error("Login Error Caught:", err);
       if (err.message === "Failed to fetch") {
-        setError("Network Error: Cannot connect to the server. Is CORS configured in Django?");
+        setError("Network Error: Cannot connect to the server. Please check if the backend is running and CORS is configured.");
       } else {
         setError(err.message);
       }
@@ -181,9 +212,9 @@ export default function Login() {
               </p>
 
               {/* REAL API FORM */}
-              <form onSubmit={handleRealLogin} className="space-y-5">
+              <form onSubmit={handleLoginSubmit} className="space-y-5">
                 {error && (
-                  <div className="p-3 bg-red-50 text-red-600 text-sm rounded-md border border-red-200">
+                  <div className="bg-red-100 text-red-700 p-3 rounded-md text-sm mb-4">
                     {error}
                   </div>
                 )}
@@ -229,7 +260,7 @@ export default function Login() {
                   disabled={loading}
                   className={`w-full py-4 primary-gradient text-white font-bold rounded-md shadow-lg transition-opacity ${loading ? "opacity-70 cursor-not-allowed" : "hover:opacity-90"}`}
                 >
-                  {loading ? "Authenticating..." : "Login"}
+                  {loading ? "Logging in..." : "Login"}
                 </button>
               </form>
 

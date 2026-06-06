@@ -1,297 +1,309 @@
-import React, { useState, useEffect } from 'react';
-import { Link, useNavigate } from 'react-router-dom';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
+import { Link, useParams, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
+import { getTeacherAssignment, getSectionEnrollments, bulkRecordAttendance, getAttendanceRecords, getMyProfile, getTeacherClasses } from "../../services/api";
+import { useStaleData } from "../../hooks/useStaleData";
+import { RevalidatingBar, SkeletonRow } from "../../components/erp/teacher/LoadingPrimitives";
 
-export default function MarkAttendance() {
+/**
+ * MarkAttendance
+ *
+ * Two-phase loading strategy:
+ *  Phase 1 (cached / SWR): assignment + student roster — stable, rarely changes
+ *  Phase 2 (always fresh):  attendance records for selected date — must be fresh
+ *
+ * Changing the date ONLY re-fetches attendance, never the roster.
+ */
+const MarkAttendance = () => {
+  const { id } = useParams();
   const navigate = useNavigate();
-
-  // Core Data States
-  const [students, setStudents] = useState([]);
-  const [academicYears, setAcademicYears] = useState([]);
-  const [classLevels, setClassLevels] = useState([]);
-  const [sections, setSections] = useState([]);
-
-  // Payload Parameters required by the Django Attendance Model
-  const [selectedYear, setSelectedYear] = useState("");
-  const [selectedClass, setSelectedClass] = useState("");
-  const [selectedSection, setSelectedSection] = useState("");
   const [attendanceDate, setAttendanceDate] = useState(new Date().toISOString().split('T')[0]);
-
-  // UI States
-  const [loading, setLoading] = useState(true);
-  const [fetchingStudents, setFetchingStudents] = useState(false);
-  const [submitting, setSubmitting] = useState(false);
+  const [attendanceOverlay, setAttendanceOverlay] = useState({}); // { [studentId]: { status, remark } }
+  const [attendanceLoading, setAttendanceLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [error, setError] = useState(null);
   const [successMsg, setSuccessMsg] = useState(null);
+  const dateDebounceRef = useRef(null);
 
-  // 1. Initial Load: Fetch Context Dropdowns (Years, Classes, Sections)
+  // ── Load available classes for filters ─────────────────────────────────────
+  const { data: profile } = useStaleData("profile:me", getMyProfile);
+  const teacherId = profile?.profiles?.teacher?.id || profile?.identity?.id;
+
+  const { data: assignmentsData, loading: classesLoading } = useStaleData(
+    `teacher:classes:${teacherId}`,
+    () => getTeacherClasses(teacherId),
+    { skip: !teacherId }
+  );
+  
+  const allClasses = assignmentsData?.results || [];
+
+  // Auto-select first class if no id in URL but classes are loaded
   useEffect(() => {
-    const fetchDropdowns = async () => {
-      setLoading(true);
-      try {
-        const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL;
-        const token = localStorage.getItem("accessToken");
-        const headers = { "Authorization": `Bearer ${token}`, "Accept": "application/json" };
+    if (!id && allClasses.length > 0) {
+      navigate(`/teacher/attendance/mark/${allClasses[0].id}`, { replace: true });
+    }
+  }, [id, allClasses, navigate]);
 
-        const [yearsRes, classesRes, sectionsRes] = await Promise.all([
-          fetch(`${baseUrl}v1/academics/academic-years/`, { headers }),
-          fetch(`${baseUrl}v1/academics/class-levels/`, { headers }),
-          fetch(`${baseUrl}v1/academics/sections/`, { headers })
-        ]);
+  // ── Identify Current Class ────────────────────────────────────────────────
+  const currentClass = allClasses.find(c => String(c.id) === String(id)) || null;
+  const assignment = currentClass; // For component backwards compatibility
+  const sectionId = assignment ? (typeof assignment.section === 'object' ? assignment.section?.id : assignment.section || assignment.section_id) : null;
+  const academicYearId = assignment ? (typeof assignment.academic_year === 'object' ? assignment.academic_year?.id : assignment.academic_year || assignment.academic_year_id) : null;
 
-        if (yearsRes.ok) {
-          const data = await yearsRes.json();
-          setAcademicYears(data.results || data);
-        }
-        if (classesRes.ok) {
-          const data = await classesRes.json();
-          setClassLevels(data.results || data);
-        }
-        if (sectionsRes.ok) {
-          const data = await sectionsRes.json();
-          setSections(data.results || data);
-        }
-      } catch (err) {
-        console.error("Fetch Dropdowns Error:", err);
-        setError("Failed to load context variables. Please check your connection.");
-      } finally {
-        setLoading(false);
+  // ── Phase 1: cached roster ────────────────────────────────────────────────
+  const {
+    data: rosterPayloadRaw,
+    loading: rosterLoadingRaw,
+    revalidating,
+    error: rosterError,
+  } = useStaleData(
+    `attendance:roster:section:${sectionId}`,
+    async () => {
+      let students = [];
+      if (sectionId) {
+        const enrollmentsData = await getSectionEnrollments(sectionId, academicYearId);
+        const arr = Array.isArray(enrollmentsData) ? enrollmentsData : enrollmentsData.results || [];
+        students = arr.map(enr => ({
+          id: enr.id,
+          student_id: enr.student?.id || enr.student || enr.student_id,
+          name: enr.student_name,
+          initials: enr.student_name?.charAt(0).toUpperCase() ?? '?',
+          roll: enr.student_enrollment_no || `Roll ${enr.roll_number || 'N/A'}`,
+          email: enr.email,
+          enrollment_number: enr.student_enrollment_no,
+          first_name: enr.first_name,
+          last_name: enr.last_name
+        }));
       }
-    };
+      return { students, sectionId };
+    },
+    { skip: !sectionId || !academicYearId }
+  );
 
-    fetchDropdowns();
+  // Guard against stale data leakage from previous sections
+  const isCurrentRoster = rosterPayloadRaw?.sectionId === sectionId;
+  const students = isCurrentRoster ? (rosterPayloadRaw?.students ?? []) : [];
+  const rosterLoading = classesLoading || rosterLoadingRaw || (sectionId && !isCurrentRoster);
+
+  // ── Phase 2: date-specific attendance (always fresh, debounced) ───────────
+  const fetchAttendanceForDate = useCallback(async (date, targetSectionId, targetAcademicYearId) => {
+    if (!targetSectionId || !targetAcademicYearId) return;
+    setAttendanceLoading(true);
+    try {
+      const attendanceData = await getAttendanceRecords(targetSectionId, targetAcademicYearId, date);
+      const records = Array.isArray(attendanceData) ? attendanceData : attendanceData.results || [];
+      const overlay = {};
+      records.forEach(r => {
+        const sId = r.student_id || r.student;
+        overlay[sId] = { status: r.status, remark: r.remarks || '' };
+      });
+      setAttendanceOverlay(overlay);
+      setError(null);
+    } catch (err) {
+      console.warn('[ATTENDANCE] Could not fetch records for date:', date, err.message);
+      setError("Failed to load attendance records for this date.");
+    } finally {
+      setAttendanceLoading(false);
+    }
   }, []);
 
-  // 2. Fetch Students specifically based on selected Class & Section
+  // Fetch attendance whenever date or sectionId changes — debounced 300ms
   useEffect(() => {
-    // Only attempt to fetch if both class and section are selected
-    if (!selectedClass || !selectedSection) {
-      setStudents([]);
-      return; 
-    }
+    if (!sectionId || !academicYearId) return;
+    setAttendanceOverlay({}); // Clear old attendance instantly
+    clearTimeout(dateDebounceRef.current);
+    dateDebounceRef.current = setTimeout(() => {
+      fetchAttendanceForDate(attendanceDate, sectionId, academicYearId);
+    }, 300);
+    return () => clearTimeout(dateDebounceRef.current);
+  }, [attendanceDate, sectionId, academicYearId, fetchAttendanceForDate]);
 
-    const fetchClassRoster = async () => {
-      setFetchingStudents(true);
-      setError(null);
-      setSuccessMsg(null);
-      
-      try {
-        const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL;
-        const token = localStorage.getItem("accessToken");
-        const headers = { "Authorization": `Bearer ${token}`, "Accept": "application/json" };
+  // ── Derived student list with attendance merged ───────────────────────────
+  const studentsWithAttendance = students.map(s => ({
+    ...s,
+    status: attendanceOverlay[s.student_id]?.status || 'Present',
+    remark: attendanceOverlay[s.student_id]?.remark || '',
+  }));
 
-        // We filter the GET request. Your Django ViewSet needs `django-filter` to support this logic seamlessly!
-        // E.g. /api/v1/profiles/students/?class_level=uuid&section=uuid
-        const queryParams = new URLSearchParams({
-           class_level: selectedClass,
-           section: selectedSection
-        }).toString();
-
-        const response = await fetch(`${baseUrl}v1/profiles/students/?${queryParams}`, { headers });
-        
-        if (!response.ok) throw new Error("Failed to load student roster for this class.");
-
-        const data = await response.json();
-        const studentList = data.results || data;
-        
-        // Inject local state ('P'/'A'/'L' and 'remark')
-        const rosterWithStatus = studentList.map(s => ({
-          ...s,
-          status: 'P', // Default to Present
-          remark: ''
-        }));
-        
-        setStudents(rosterWithStatus);
-
-      } catch (err) {
-        console.error("Fetch Roster Error:", err);
-        setError(err.message);
-        setStudents([]);
-      } finally {
-        setFetchingStudents(false);
+  const updateStatus = (studentEnrollmentId, newStatus) => {
+    // Find the student_id from enrollment id
+    const student = students.find(s => s.id === studentEnrollmentId);
+    if (!student) return;
+    setAttendanceOverlay(prev => ({
+      ...prev,
+      [student.student_id]: {
+        ...prev[student.student_id],
+        status: newStatus,
+        remark: prev[student.student_id]?.remark || '',
       }
-    };
-
-    fetchClassRoster();
-  }, [selectedClass, selectedSection]); // Re-run whenever these selections change
-
-  const updateStatus = (id, newStatus) => {
-    setStudents(students.map(s => s.id === id ? { ...s, status: newStatus } : s));
+    }));
   };
 
-  const updateRemark = (id, newRemark) => {
-    setStudents(students.map(s => s.id === id ? { ...s, remark: newRemark } : s));
+  const updateRemark = (studentId, newRemark) => {
+    const student = students.find(s => s.id === studentId);
+    if (!student) return;
+    setAttendanceOverlay(prev => ({
+      ...prev,
+      [student.student_id]: {
+        ...prev[student.student_id],
+        status: prev[student.student_id]?.status || 'Present',
+        remark: newRemark,
+      }
+    }));
   };
 
   const markAllPresent = () => {
-    setStudents(students.map(s => ({ ...s, status: 'P' })));
+    const overlay = {};
+    students.forEach(s => {
+      overlay[s.student_id] = { status: 'Present', remark: attendanceOverlay[s.student_id]?.remark || '' };
+    });
+    setAttendanceOverlay(overlay);
   };
 
-  // Submit all records to Django using the bulk API
+  const handleRemarkClick = (student) => {
+    const newRemark = window.prompt(`Enter remark for ${student.name}:`, student.remark);
+    if (newRemark !== null) {
+      setAttendanceOverlay(prev => ({
+        ...prev,
+        [student.student_id]: {
+          ...prev[student.student_id],
+          status: prev[student.student_id]?.status || 'Present',
+          remark: newRemark,
+        }
+      }));
+    }
+  };
+
   const handleSubmitAttendance = async () => {
-    if (!selectedYear || !selectedClass || !selectedSection || !attendanceDate) {
-      setError("Please ensure Academic Year, Class Level, Section, and Date are selected before submitting.");
-      window.scrollTo(0, 0);
+    if (!assignment || students.length === 0) {
+      setError("No class selected or roster is empty.");
       return;
     }
-
-    if (students.length === 0) {
-      setError("Cannot submit an empty roster.");
-      return;
-    }
-
-    setSubmitting(true);
-    setError(null);
-    setSuccessMsg(null);
-
+    
     try {
-      const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL;
-      const token = localStorage.getItem("accessToken");
+      setIsSubmitting(true);
+      setError(null);
+      setSuccessMsg(null);
+      
+      const classLevelId = assignment.class_level_id || assignment.class_level;
 
-      const statusMap = { P: "Present", A: "Absent", L: "Late" };
-
-      // Format payload for the efficient `bulk-record` endpoint
       const payload = {
         date: attendanceDate,
-        academic_year_id: selectedYear,
-        class_level_id: selectedClass,
-        section_id: selectedSection,
-        records: students.map(student => ({
-          student_id: student.id,
-          status: statusMap[student.status],
-          remarks: student.remark || ""
+        academic_year_id: academicYearId,
+        class_level_id: classLevelId,
+        section_id: sectionId,
+        records: studentsWithAttendance.map(s => ({
+          student_id: s.student_id,
+          status: s.status,
+          remarks: s.remark,
         }))
       };
 
-      const response = await fetch(`${baseUrl}v1/operations/attendance/bulk-record/`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${token}`
-        },
-        body: JSON.stringify(payload)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-         let errorMsg = "Failed to sync records.";
-         if (typeof data === "object") {
-            errorMsg = Object.entries(data)
-              .map(([field, msgs]) => `${field}: ${Array.isArray(msgs) ? msgs.join(" ") : msgs}`)
-              .join(" | ");
-         }
-         throw new Error(errorMsg);
-      }
-
-      setSuccessMsg("Attendance successfully synced with the database!");
-      window.scrollTo(0, 0);
+      await bulkRecordAttendance(payload);
+      setSuccessMsg("Attendance submitted successfully!");
       
       setTimeout(() => {
         navigate("/teacher/attendance");
       }, 2000);
-
     } catch (err) {
-      console.error(err);
-      setError(err.message);
-      window.scrollTo(0, 0);
+      setError('Failed to submit attendance: ' + err.message);
     } finally {
-      setSubmitting(false);
+      setIsSubmitting(false);
     }
   };
 
-  const presentCount = students.filter(s => s.status === 'P').length;
-  const absentCount = students.filter(s => s.status === 'A').length;
-  const lateCount = students.filter(s => s.status === 'L').length;
-  const successRate = students.length > 0 ? Math.round((presentCount / students.length) * 100) : 0;
-
-  const getInitials = (first, last) => {
-    if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
-    if (first) return first.substring(0, 2).toUpperCase();
-    return "ST";
-  };
-
-  if (loading) {
-     return (
-        <MainLayout title="Teacher Portal">
-           <div className="flex items-center justify-center min-h-[60vh]">
-              <div className="flex flex-col items-center gap-3 text-[#0058be]">
-                 <span className="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
-                 <p className="font-semibold tracking-wide">Loading Infrastructure...</p>
-              </div>
-           </div>
-        </MainLayout>
-     );
+  // ── Error state ───────────────────────────────────────────────────────────
+  if (rosterError && !rosterPayloadRaw) {
+    return (
+      <MainLayout title="Teacher Portal">
+        <div className="p-6 bg-red-50 text-red-900 rounded-lg border border-red-200">
+          <p className="font-semibold">Error loading class data:</p>
+          <p className="text-sm">{rosterError.message}</p>
+        </div>
+      </MainLayout>
+    );
   }
+
+  // ── Counts ────────────────────────────────────────────────────────────────
+  const presentCount = studentsWithAttendance.filter(s => s.status === 'Present').length;
+  const absentCount = studentsWithAttendance.filter(s => s.status === 'Absent').length;
+  const lateCount = studentsWithAttendance.filter(s => s.status === 'Late').length;
+  const successRate = studentsWithAttendance.length > 0
+    ? Math.round((presentCount / studentsWithAttendance.length) * 100)
+    : 0;
+
+  const subjectName = assignment?.subject_name || 'Subject';
+  const levelClean = assignment?.class_level_name?.replace('Grade ', '') || '';
+  const classNameStr = `${subjectName} ${levelClean}-${assignment?.section_name || ''}`;
 
   return (
     <MainLayout title="Teacher Portal">
+      <RevalidatingBar show={revalidating || attendanceLoading} />
+
       <Link
         to="/teacher/attendance"
-        className="flex items-center gap-2 text-[#0058be] font-semibold text-sm mb-4 hover:-translate-x-1 transition-transform w-max"
+        className="flex items-center gap-2 text-primary font-semibold text-sm mb-4 hover:-translate-x-1 transition-transform w-max"
       >
         <span className="material-symbols-outlined">arrow_back</span>
         Back to Attendance Hub
       </Link>
-      
-      {/* Header Section */}
+
+      {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between mb-8 gap-4">
         <div>
-          <h2 className="text-3xl font-extrabold text-slate-800 tracking-tight">Mark Attendance</h2>
-          <p className="text-gray-500 font-medium">Record daily or period-specific presence.</p>
+          <h2 className="text-3xl font-extrabold font-display text-blue-900 tracking-tight">Mark Attendance</h2>
+          <p className="text-on-surface-variant font-medium">
+            {rosterLoading ? 'Loading class...' : classNameStr}
+          </p>
         </div>
         <div className="flex items-center space-x-3">
-          <button 
-            onClick={markAllPresent} 
-            className="px-5 py-2.5 rounded-xl bg-white border border-gray-200 text-[#0058be] font-bold text-sm transition-all hover:bg-[#eff4ff] active:scale-95"
+          <button
+            onClick={markAllPresent}
+            disabled={rosterLoading}
+            className="px-5 py-2.5 rounded-xl bg-surface-container-high text-primary font-bold text-sm transition-all hover:bg-surface-container-highest active:scale-95 disabled:opacity-40"
           >
             Mark All Present
           </button>
-          <button 
+          <button
             onClick={handleSubmitAttendance}
-            disabled={submitting || students.length === 0}
-            className="flex items-center gap-2 px-6 py-2.5 rounded-xl bg-gradient-to-r from-[#0058be] to-[#2170e4] text-white font-bold text-sm shadow-lg hover:shadow-xl transition-all active:scale-95 disabled:opacity-70 disabled:scale-100"
+            disabled={isSubmitting || rosterLoading}
+            className="px-6 py-2.5 rounded-xl bg-gradient-to-br from-primary to-primary-container text-white font-bold text-sm shadow-lg shadow-blue-500/20 hover:shadow-xl hover:shadow-blue-500/30 transition-all active:scale-95 disabled:opacity-50"
           >
-            {submitting ? (
-              <span className="material-symbols-outlined animate-spin text-[18px]">progress_activity</span>
-            ) : (
-              <span className="material-symbols-outlined text-[18px]">cloud_sync</span>
-            )}
-            {submitting ? "Syncing..." : "Submit Roster"}
+            {isSubmitting ? 'Submitting…' : 'Submit Attendance'}
           </button>
         </div>
       </div>
 
+      {/* Error/Success Messages */}
       {error && (
         <div className="mb-8 p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex gap-3 shadow-sm">
-           <span className="material-symbols-outlined">error</span>
-           <div>
-             <p className="font-bold text-sm">Action Required</p>
-             <p className="text-sm mt-1">{error}</p>
-           </div>
+          <span className="material-symbols-outlined">error</span>
+          <div>
+            <p className="font-bold text-sm">Action Required</p>
+            <p className="text-sm mt-1">{error}</p>
+          </div>
         </div>
       )}
 
       {successMsg && (
         <div className="mb-8 p-4 bg-green-50 text-green-800 rounded-md border border-green-200 flex gap-3 shadow-sm">
-           <span className="material-symbols-outlined">check_circle</span>
-           <div>
-             <p className="font-bold text-sm">Success!</p>
-             <p className="text-sm mt-1">{successMsg}</p>
-           </div>
+          <span className="material-symbols-outlined">check_circle</span>
+          <div>
+            <p className="font-bold text-sm">Success!</p>
+            <p className="text-sm mt-1">{successMsg}</p>
+          </div>
         </div>
       )}
 
       {/* Dashboard Layout */}
       <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 mb-16">
-        
-        {/* Left: Filters and Summary */}
+
+        {/* Left: Summary + Filters */}
         <div className="col-span-1 lg:col-span-4 space-y-8">
-          
           {/* Summary Card */}
-          <div className="bg-gradient-to-br from-[#0058be] to-[#00387b] rounded-2xl p-8 text-white relative overflow-hidden shadow-lg">
-            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl"></div>
+          <div className="bg-gradient-to-br from-primary to-[#004395] rounded-3xl p-8 text-white relative overflow-hidden shadow-xl shadow-blue-900/10">
+            <div className="absolute top-0 right-0 w-32 h-32 bg-white/10 rounded-full -mr-16 -mt-16 blur-2xl" />
             <div className="relative z-10">
               <h3 className="text-blue-100 font-semibold mb-6 flex items-center gap-2">
                 <span className="material-symbols-outlined">analytics</span>
@@ -299,8 +311,8 @@ export default function MarkAttendance() {
               </h3>
               <div className="flex justify-between items-end mb-8">
                 <div>
-                  <p className="text-5xl font-extrabold">{students.length}</p>
-                  <p className="text-sm text-blue-200 mt-1">Total Roster</p>
+                  <p className="text-5xl font-extrabold font-display">{studentsWithAttendance.length}</p>
+                  <p className="text-sm text-white/70 mt-1">Total Students</p>
                 </div>
                 <div className="text-right">
                   <p className="text-2xl font-bold">{successRate}%</p>
@@ -327,88 +339,85 @@ export default function MarkAttendance() {
           {/* Filter Card */}
           <Card className="rounded-2xl p-8 border border-gray-100">
             <h4 className="text-slate-800 font-bold mb-6 flex items-center">
-              <span className="material-symbols-outlined mr-2 text-[#0058be]">database</span>
+              <span className="material-symbols-outlined mr-2 text-primary">database</span>
               Model Context (Required)
             </h4>
             <div className="space-y-5">
-              
+              <div className="flex flex-col gap-1.5 w-full">
+                <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Class Name</label>
+                <select 
+                  value={id || ''}
+                  onChange={(e) => navigate(`/teacher/attendance/mark/${e.target.value}`)}
+                  className="w-full bg-surface-container-low border-transparent rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                  disabled={isSubmitting || classesLoading}
+                >
+                  {allClasses.length > 0 ? allClasses.map(cls => (
+                    <option key={cls.id} value={cls.id}>
+                      {cls.subject_name} ({cls.class_level_name} - {cls.section_name})
+                    </option>
+                  )) : (
+                    <option value={id}>{classNameStr || 'Loading…'}</option>
+                  )}
+                </select>
+              </div>
               <div className="flex flex-col gap-1.5 w-full">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Date of Record</label>
                 <div className="relative">
-                  <input 
-                    className="w-full bg-[#f8f9ff] border border-transparent rounded-md px-4 py-3 text-sm font-medium focus:border-[#0058be]/30 outline-none text-slate-700" 
-                    type="date" 
+                  <input
                     value={attendanceDate}
                     onChange={(e) => setAttendanceDate(e.target.value)}
+                    className="w-full bg-surface-container-low border-transparent rounded-xl px-4 py-3 text-sm font-medium focus:ring-2 focus:ring-primary/20 transition-all outline-none"
+                    type="date"
                   />
                 </div>
               </div>
-
               <div className="flex flex-col gap-1.5 w-full">
                 <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Academic Year</label>
                 <div className="relative">
-                  <select 
-                    value={selectedYear}
-                    onChange={e => setSelectedYear(e.target.value)}
-                    className="w-full bg-[#f8f9ff] border border-transparent rounded-md py-3 px-4 text-sm outline-none appearance-none font-medium text-slate-700 focus:border-[#0058be]/30"
-                  >
-                    <option value="">Select Year ID...</option>
-                    {academicYears.map(y => <option key={y.id} value={y.id}>{y.name}</option>)}
-                  </select>
-                  <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-4">
-                <div className="flex flex-col gap-1.5 w-full">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Class Level</label>
-                  <div className="relative">
-                    <select 
-                      value={selectedClass}
-                      onChange={e => setSelectedClass(e.target.value)}
-                      className="w-full bg-[#f8f9ff] border border-transparent rounded-md py-3 px-4 text-sm outline-none appearance-none font-medium text-slate-700 focus:border-[#0058be]/30"
-                    >
-                      <option value="">Select...</option>
-                      {classLevels.map(c => <option key={c.id} value={c.id}>{c.name}</option>)}
-                    </select>
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
-                  </div>
-                </div>
-
-                <div className="flex flex-col gap-1.5 w-full">
-                  <label className="text-xs font-bold text-gray-500 uppercase tracking-wider">Section</label>
-                  <div className="relative">
-                    <select 
-                      value={selectedSection}
-                      onChange={e => setSelectedSection(e.target.value)}
-                      className="w-full bg-[#f8f9ff] border border-transparent rounded-md py-3 px-4 text-sm outline-none appearance-none font-medium text-slate-700 focus:border-[#0058be]/30"
-                    >
-                      <option value="">Select...</option>
-                      {sections.map(s => <option key={s.id} value={s.id}>{s.name}</option>)}
-                    </select>
-                    <span className="material-symbols-outlined absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none">expand_more</span>
-                  </div>
+                  <input
+                    value={assignment?.academic_year_name || ''}
+                    disabled
+                    className="w-full bg-surface-container-low border-transparent rounded-xl px-4 py-3 text-sm font-medium opacity-70 cursor-not-allowed"
+                    placeholder="Select class first"
+                  />
                 </div>
               </div>
             </div>
-            <p className="text-[10px] text-gray-400 mt-4 leading-relaxed">
-              These UUIDs link directly to Django's ORM. Student lists update automatically based on Class/Section selections via DRF query filters.
-            </p>
           </Card>
+
+          {/* AI Insight */}
+          <div className="bg-orange-50 rounded-3xl p-6 relative overflow-hidden border border-amber-900/10">
+            <div className="flex items-start space-x-4">
+              <div className="bg-amber-700 text-white p-2 rounded-lg flex items-center justify-center">
+                <span className="material-symbols-outlined text-xl">auto_awesome</span>
+              </div>
+              <div className="relative z-10">
+                <h5 className="text-amber-900 font-bold text-sm">Attendance Insight</h5>
+                <p className="text-amber-800 text-xs mt-1 leading-relaxed">
+                  Students with recurring absences may benefit from a personalized check-in. Consider reaching out to their guardians.
+                </p>
+              </div>
+            </div>
+          </div>
         </div>
 
         {/* Right: Student Roster */}
         <div className="col-span-1 lg:col-span-8">
           <div className="bg-white rounded-2xl shadow-sm overflow-hidden border border-gray-100">
             {/* Table Header */}
-            <div className="px-8 py-6 bg-[#f8f9ff] flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-gray-100">
-              <h3 className="font-bold text-slate-800">Student Roster</h3>
-              <div className="flex items-center space-x-4 text-xs font-bold text-gray-500 uppercase tracking-widest">
+            <div className="px-8 py-6 bg-surface-container-low flex flex-col sm:flex-row sm:justify-between sm:items-center gap-4 border-b border-gray-100">
+              <div className="flex items-center gap-3">
+                <h3 className="font-display font-bold text-blue-900">Student Roster</h3>
+                {attendanceLoading && (
+                  <span className="inline-block w-2 h-2 rounded-full bg-primary animate-pulse" title="Refreshing attendance…" />
+                )}
+              </div>
+              <div className="flex items-center space-x-4 text-xs font-bold text-on-surface-variant uppercase tracking-widest">
                 <span>Status Key:</span>
                 <div className="flex items-center space-x-4">
-                  <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-1"></span> P</span>
-                  <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-red-500 mr-1"></span> A</span>
-                  <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-orange-500 mr-1"></span> L</span>
+                  <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-green-500 mr-1" /> P</span>
+                  <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-red-500 mr-1" /> A</span>
+                  <span className="flex items-center"><span className="w-2 h-2 rounded-full bg-orange-500 mr-1" /> L</span>
                 </div>
               </div>
             </div>
@@ -424,93 +433,81 @@ export default function MarkAttendance() {
                     <th className="px-8 py-4 text-[11px] font-bold uppercase tracking-widest text-right">Remarks</th>
                   </tr>
                 </thead>
-                <tbody className="divide-y divide-gray-50">
-                  {fetchingStudents ? (
-                    <tr>
-                      <td colSpan="4" className="text-center py-16 text-gray-500">
-                        <span className="material-symbols-outlined animate-spin text-3xl text-[#0058be] mb-3">progress_activity</span>
-                        <p>Fetching mapped student profiles for this section...</p>
-                      </td>
-                    </tr>
-                  ) : !selectedClass || !selectedSection ? (
-                    <tr>
-                      <td colSpan="4" className="text-center py-20 text-gray-400">
-                         <span className="material-symbols-outlined text-5xl mb-4 text-gray-200">rule</span>
-                         <h4 className="font-bold text-slate-700 text-lg mb-1">Awaiting Context</h4>
-                         <p className="text-sm">Please select a Class Level and Section on the left to populate the roster.</p>
-                      </td>
-                    </tr>
-                  ) : students.length === 0 ? (
-                    <tr>
-                      <td colSpan="4" className="text-center py-16 text-gray-500">
-                        No students are enrolled in this specific Class/Section.
-                      </td>
-                    </tr>
-                  ) : (
-                    students.map((student, idx) => (
-                      <tr key={student.id} className="hover:bg-gray-50 transition-colors group bg-white">
+                <tbody className="divide-y divide-surface-container/50">
+                  {rosterLoading
+                    ? Array.from({ length: 5 }).map((_, i) => <SkeletonRow key={i} cols={4} />)
+                    : studentsWithAttendance.map((student) => (
+                      <tr
+                        key={student.id}
+                        className="hover:bg-surface-container-low transition-colors group"
+                        style={{ opacity: attendanceLoading ? 0.6 : 1, transition: 'opacity 0.2s' }}
+                      >
                         <td className="px-8 py-5">
-                          <div className="flex items-center space-x-4">
-                            {student.profile_picture ? (
-                              <img src={student.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
-                            ) : (
-                              <div className={`w-10 h-10 rounded-full flex items-center justify-center font-bold text-sm bg-blue-50 text-[#0058be]`}>
-                                {getInitials(student.first_name, student.last_name)}
-                              </div>
-                            )}
+                          <div className="flex items-center space-x-3">
+                            <div className="w-10 h-10 rounded-full bg-blue-100 flex items-center justify-center text-primary font-bold">
+                              {student.initials}
+                            </div>
                             <div>
-                              <p className="text-sm font-bold text-slate-800">
-                                {student.first_name || student.last_name ? `${student.first_name} ${student.last_name}` : "Pending Name"}
-                              </p>
-                              <p className="text-[11px] text-gray-500 font-mono mt-0.5">{student.email}</p>
+                              <p className="text-sm font-bold text-on-surface">{student.name}</p>
+                              <p className="text-xs text-gray-500">{student.email}</p>
                             </div>
                           </div>
-                        </td>
-                        <td className="px-4 py-5 text-sm font-medium text-slate-600 font-mono">
-                          {student.enrollment_number || "N/A"}
-                        </td>
+                         </td>
+                        <td className="px-4 py-5 text-sm font-medium text-on-surface-variant">{student.roll}</td>
                         <td className="px-4 py-5">
                           <div className="flex items-center justify-center space-x-2">
-                            <button 
-                              onClick={() => updateStatus(student.id, 'P')}
-                              className={`w-12 py-2 rounded-lg font-bold text-xs transition-all ${student.status === 'P' ? 'bg-green-500 text-white shadow-md shadow-green-500/20' : 'bg-gray-100 text-gray-500 hover:bg-green-50 hover:text-green-600'}`}
-                            >P</button>
-                            <button 
-                              onClick={() => updateStatus(student.id, 'A')}
-                              className={`w-12 py-2 rounded-lg font-bold text-xs transition-all ${student.status === 'A' ? 'bg-red-500 text-white shadow-md shadow-red-500/20' : 'bg-gray-100 text-gray-500 hover:bg-red-50 hover:text-red-600'}`}
-                            >A</button>
-                            <button 
-                              onClick={() => updateStatus(student.id, 'L')}
-                              className={`w-12 py-2 rounded-lg font-bold text-xs transition-all ${student.status === 'L' ? 'bg-orange-500 text-white shadow-md shadow-orange-500/20' : 'bg-gray-100 text-gray-500 hover:bg-orange-50 hover:text-orange-600'}`}
-                            >L</button>
+                            {['Present', 'Absent', 'Late'].map((status) => {
+                              const colors = {
+                                Present: { active: 'bg-green-500 text-white shadow-md shadow-green-500/20', idle: 'bg-surface-container-high text-on-surface-variant hover:bg-green-50' },
+                                Absent: { active: 'bg-red-500 text-white shadow-md shadow-red-500/20', idle: 'bg-surface-container-high text-on-surface-variant hover:bg-red-50' },
+                                Late: { active: 'bg-orange-500 text-white shadow-md shadow-orange-500/20', idle: 'bg-surface-container-high text-on-surface-variant hover:bg-orange-50' },
+                              };
+                              const isActive = student.status === status;
+                              return (
+                                <button
+                                  key={status}
+                                  onClick={() => updateStatus(student.id, status)}
+                                  className={`w-12 py-2 rounded-lg font-bold text-xs transition-all ${isActive ? colors[status].active : colors[status].idle}`}
+                                >
+                                  {status[0]}
+                                </button>
+                              );
+                            })}
                           </div>
                         </td>
                         <td className="px-8 py-5 flex justify-end">
-                          <input 
-                            type="text"
-                            placeholder="Add remark..."
-                            value={student.remark}
-                            onChange={(e) => updateRemark(student.id, e.target.value)}
-                            className="text-xs px-3 py-1.5 bg-gray-50 border border-transparent focus:border-[#0058be]/30 focus:bg-white rounded-md outline-none text-right w-32 placeholder:text-gray-400 transition-all text-slate-700"
-                          />
+                          {student.remark ? (
+                            <button
+                              onClick={() => handleRemarkClick(student)} 
+                              className="text-[10px] bg-red-50 text-red-600 px-2 py-1 rounded-md font-bold uppercase tracking-tighter inline-block text-left max-w-[120px] truncate"
+                              title={student.remark}
+                            >
+                              {student.remark}
+                            </button>
+                          ) : (
+                            <button 
+                              onClick={() => handleRemarkClick(student)}
+                              className="p-2 rounded-lg text-slate-300 hover:text-primary transition-colors"
+                            >
+                              <span className="material-symbols-outlined">add_comment</span>
+                            </button>
+                          )}
                         </td>
                       </tr>
-                    ))
-                  )}
+                    ))}
                 </tbody>
               </table>
             </div>
 
-            {/* Table Footer */}
-            <div className="px-8 py-4 bg-[#f8f9ff] border-t border-gray-100 flex justify-between items-center text-sm font-medium text-gray-500">
-              <span>Showing {students.length} students</span>
-              <div className="flex space-x-2">
-                <button className="px-3 py-1.5 rounded-lg bg-[#0058be] text-white font-bold shadow-sm">1</button>
-              </div>
+            {/* Footer */}
+            <div className="px-8 py-4 bg-surface-container-lowest border-t border-slate-100 flex justify-between items-center text-sm font-medium text-on-surface-variant">
+              <span>Showing {studentsWithAttendance.length} students</span>
             </div>
           </div>
         </div>
       </div>
     </MainLayout>
   );
-}
+};
+
+export default MarkAttendance;

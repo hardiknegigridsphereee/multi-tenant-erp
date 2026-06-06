@@ -1,9 +1,17 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useState } from 'react';
 import MainLayout from "../../components/erp/teacher/MainLayout";
+import { getMyProfile, getTeacherProfile } from "../../services/api";
 
-export default function TeacherProfileManagement() {
-  const [profile, setProfile] = useState(null);
-  const [identity, setIdentity] = useState(null);
+const TeacherProfileManagement = () => {
+  const [profileData, setProfileData] = useState(() => {
+    try {
+      const local = localStorage.getItem("user_data");
+      return local ? JSON.parse(local) : null;
+    } catch {
+      return null;
+    }
+  });
+  const [teacherProfile, setTeacherProfile] = useState(null);
   
   // Form State
   const [firstName, setFirstName] = useState("");
@@ -18,54 +26,73 @@ export default function TeacherProfileManagement() {
   const [success, setSuccess] = useState(null);
 
   useEffect(() => {
-    const fetchProfileData = async () => {
+    let isMounted = true;
+
+    const loadTeacherProfile = async () => {
       setLoading(true);
       setError(null);
+      
+      // 1. Get initial teacherId if profileData is pre-populated
+      let teacherId = profileData?.profiles?.teacher?.id || profileData?.identity?.id;
+
+      // Define a helper to load the detailed teacher profile
+      const fetchTeacherDetails = async (id) => {
+        if (!id) return;
+        try {
+          const teacherData = await getTeacherProfile(id);
+          if (isMounted) {
+            setTeacherProfile(teacherData);
+            // Pre-fill form fields
+            setFirstName(teacherData.first_name || profileData?.identity?.first_name || "");
+            setLastName(teacherData.last_name || profileData?.identity?.last_name || "");
+            setPhone(teacherData.phone_number || "");
+            console.log("[TeacherProfileManagement] Teacher profile data:", teacherData);
+          }
+        } catch (error) {
+          console.error("[TeacherProfileManagement] Failed to load teacher details:", error);
+          if (isMounted) {
+            setError("Failed to load teacher profile details. Please refresh the page.");
+          }
+        }
+      };
+
+      // 2. Start fetching teacher details immediately if we already have the ID
+      if (teacherId) {
+        await fetchTeacherDetails(teacherId);
+      }
+
+      // 3. Fetch/revalidate the latest user profile in the background
       try {
-        const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL;
-        const token = localStorage.getItem("accessToken");
-        const headers = { "Authorization": `Bearer ${token}`, "Accept": "application/json" };
-
-        // STEP 1: Get the current user's Base Identity & Profile IDs
-        const meResponse = await fetch(`${baseUrl}v1/profiles/me/`, { headers });
-        
-        if (!meResponse.ok) {
-          throw new Error("Session expired or failed to authenticate user identity.");
+        const currentUserProfile = await getMyProfile();
+        if (isMounted) {
+          setProfileData(currentUserProfile);
+          localStorage.setItem('user_data', JSON.stringify(currentUserProfile));
+          console.log("[TeacherProfileManagement] Revalidated current user profile:", currentUserProfile);
         }
 
-        const meData = await meResponse.json();
-        setIdentity(meData.identity);
-
-        const teacherProfileId = meData.profiles?.teacher?.id;
-
-        if (!meData.profiles?.teacher?.exists || !teacherProfileId) {
-          throw new Error("Access Denied: No Teacher profile is linked to your account.");
+        const newTeacherId = currentUserProfile?.profiles?.teacher?.id || currentUserProfile?.identity?.id;
+        // If the teacher ID changed or wasn't loaded initially, fetch teacher details
+        if (newTeacherId && newTeacherId !== teacherId) {
+          await fetchTeacherDetails(newTeacherId);
         }
-
-        // STEP 2: Fetch the specific Teacher Profile details using the extracted ID
-        const teacherResponse = await fetch(`${baseUrl}v1/profiles/teachers/${teacherProfileId}/`, { headers });
-
-        if (!teacherResponse.ok) {
-          throw new Error("Failed to load teacher profile details.");
+      } catch (error) {
+        console.error("[TeacherProfileManagement] Failed to load current user profile:", error);
+        if (isMounted && !teacherProfile) {
+          setError("Failed to load user profile. Please check your connection.");
         }
-
-        const teacherData = await teacherResponse.json();
-        setProfile(teacherData);
-
-        // Pre-fill the editable form fields
-        setFirstName(teacherData.first_name || meData.identity.first_name || "");
-        setLastName(teacherData.last_name || meData.identity.last_name || "");
-        setPhone(teacherData.phone_number || "");
-
-      } catch (err) {
-        console.error("Profile Fetch Error:", err);
-        setError(err.message);
       } finally {
-        setLoading(false);
+        if (isMounted) {
+          setLoading(false);
+        }
       }
     };
 
-    fetchProfileData();
+    loadTeacherProfile();
+
+    return () => {
+      isMounted = false;
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   const handleSave = async (e) => {
@@ -83,33 +110,45 @@ export default function TeacherProfileManagement() {
       };
 
       const updatePromises = [];
+      const identity = profileData?.identity;
+      const teacherId = teacherProfile?.id;
 
-      // 1. Update Core Identity (User)
-      const userPayload = { first_name: firstName, last_name: lastName };
-      if (password) userPayload.password = password;
+      // 1. Update Core Identity (User) if available
+      if (identity?.id) {
+        const userPayload = { first_name: firstName, last_name: lastName };
+        if (password && password.trim()) {
+          userPayload.password = password;
+        }
 
-      updatePromises.push(
-        fetch(`${baseUrl}v1/users/${identity.id}/`, {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify(userPayload)
-        })
-      );
+        updatePromises.push(
+          fetch(`${baseUrl}/api/v1/users/${identity.id}/`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(userPayload)
+          })
+        );
+      }
 
-      // 2. Update Teacher Profile
-      const profilePayload = {
-        first_name: firstName,
-        last_name: lastName,
-        phone_number: phone
-      };
+      // 2. Update Teacher Profile if available
+      if (teacherId) {
+        const profilePayload = {
+          first_name: firstName,
+          last_name: lastName,
+          phone_number: phone
+        };
 
-      updatePromises.push(
-        fetch(`${baseUrl}v1/profiles/teachers/${profile.id}/`, {
-          method: 'PATCH',
-          headers,
-          body: JSON.stringify(profilePayload)
-        })
-      );
+        updatePromises.push(
+          fetch(`${baseUrl}/api/v1/profiles/teachers/${teacherId}/`, {
+            method: 'PATCH',
+            headers,
+            body: JSON.stringify(profilePayload)
+          })
+        );
+      }
+
+      if (updatePromises.length === 0) {
+        throw new Error("No profile data available to update.");
+      }
 
       const results = await Promise.allSettled(updatePromises);
       const failed = results.filter(res => res.status === 'rejected' || (res.value && !res.value.ok));
@@ -121,9 +160,25 @@ export default function TeacherProfileManagement() {
       setSuccess("Profile updated and synchronized successfully!");
       setPassword(""); // Clear password field after save
 
-      // Update local state to reflect changes without reloading
-      setProfile(prev => ({ ...prev, first_name: firstName, last_name: lastName, phone_number: phone }));
-      setIdentity(prev => ({ ...prev, first_name: firstName, last_name: lastName }));
+      // Update local state to reflect changes
+      if (teacherProfile) {
+        setTeacherProfile(prev => ({ 
+          ...prev, 
+          first_name: firstName, 
+          last_name: lastName, 
+          phone_number: phone 
+        }));
+      }
+      if (profileData?.identity) {
+        setProfileData(prev => ({
+          ...prev,
+          identity: { ...prev.identity, first_name: firstName, last_name: lastName }
+        }));
+        localStorage.setItem('user_data', JSON.stringify({
+          ...profileData,
+          identity: { ...profileData.identity, first_name: firstName, last_name: lastName }
+        }));
+      }
 
     } catch (err) {
       console.error(err);
@@ -132,6 +187,20 @@ export default function TeacherProfileManagement() {
       setSaving(false);
     }
   };
+
+  const identity = profileData?.identity;
+  const fullName = teacherProfile
+    ? [teacherProfile.first_name, teacherProfile.last_name].filter(Boolean).join(" ") || "Teacher Profile"
+    : [identity?.first_name, identity?.last_name].filter(Boolean).join(" ") || "Teacher Profile";
+  const email = teacherProfile?.email || identity?.email || "";
+  const phoneDisplay = teacherProfile?.phone_number || phone || "Not provided";
+  const qualification = teacherProfile?.qualification || "Teacher";
+  const employeeId = teacherProfile?.employee_id || "N/A";
+  const schoolName = teacherProfile?.school_name || identity?.school_name || "Current School";
+  const profileImage = teacherProfile?.profile_picture || "https://via.placeholder.com/400x400.png?text=Teacher+Profile";
+  const specializations = teacherProfile?.qualification
+    ? [teacherProfile.qualification]
+    : [];
 
   const getInitials = (first, last) => {
     if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
@@ -145,14 +214,14 @@ export default function TeacherProfileManagement() {
         <div className="flex items-center justify-center min-h-[60vh]">
           <div className="flex flex-col items-center gap-3 text-[#0058be]">
             <span className="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
-            <p className="font-semibold tracking-wide">Syncing Profile Data...</p>
+            <p className="font-semibold tracking-wide">Loading Profile Data...</p>
           </div>
         </div>
       </MainLayout>
     );
   }
 
-  if (error && !profile) {
+  if (error && !teacherProfile && !profileData) {
     return (
       <MainLayout title="Teacher Profile">
         <div className="max-w-4xl mx-auto mt-10 p-8 bg-white rounded-xl shadow-sm border border-red-100 text-center">
@@ -176,21 +245,21 @@ export default function TeacherProfileManagement() {
 
         {error && (
           <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex gap-3 shadow-sm">
-             <span className="material-symbols-outlined">error</span>
-             <div>
-               <p className="font-bold text-sm">Action Required</p>
-               <p className="text-sm mt-1">{error}</p>
-             </div>
+            <span className="material-symbols-outlined">error</span>
+            <div>
+              <p className="font-bold text-sm">Action Required</p>
+              <p className="text-sm mt-1">{error}</p>
+            </div>
           </div>
         )}
 
         {success && (
           <div className="p-4 bg-green-50 text-green-800 rounded-md border border-green-200 flex gap-3 shadow-sm">
-             <span className="material-symbols-outlined">check_circle</span>
-             <div>
-               <p className="font-bold text-sm">Success!</p>
-               <p className="text-sm mt-1">{success}</p>
-             </div>
+            <span className="material-symbols-outlined">check_circle</span>
+            <div>
+              <p className="font-bold text-sm">Success!</p>
+              <p className="text-sm mt-1">{success}</p>
+            </div>
           </div>
         )}
 
@@ -201,10 +270,10 @@ export default function TeacherProfileManagement() {
           
           <div className="relative group mx-auto md:mx-0">
             <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl overflow-hidden shadow-lg border-4 border-white bg-blue-50 flex items-center justify-center text-[#0058be]">
-              {profile?.profile_picture ? (
-                <img alt="Profile" className="w-full h-full object-cover" src={profile.profile_picture} />
+              {profileImage && profileImage !== "https://via.placeholder.com/400x400.png?text=Teacher+Profile" ? (
+                <img alt={fullName} className="w-full h-full object-cover" src={profileImage} />
               ) : (
-                <span className="text-5xl font-bold">{getInitials(profile?.first_name, profile?.last_name)}</span>
+                <span className="text-5xl font-bold">{getInitials(teacherProfile?.first_name, teacherProfile?.last_name)}</span>
               )}
             </div>
             <button className="absolute -bottom-2 -right-2 p-3 bg-[#0058be] text-white rounded-xl shadow-xl hover:scale-105 active:scale-95 transition-transform outline-none border-none cursor-pointer">
@@ -215,12 +284,10 @@ export default function TeacherProfileManagement() {
           <div className="flex-1 z-10 w-full">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
               <div>
-                <h3 className="text-3xl font-bold font-display text-slate-800 mb-1">
-                  {profile?.first_name || profile?.last_name ? `${profile?.first_name} ${profile?.last_name}` : "Faculty Member"}
-                </h3>
+                <h3 className="text-3xl font-bold font-display text-slate-800 mb-1">{fullName}</h3>
                 <p className="text-[#0058be] font-semibold flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm block">verified</span>
-                  {profile?.qualification ? `${profile.qualification}` : "Registered Educator"}
+                  {qualification}
                 </p>
               </div>
               <span className="bg-[#eff4ff] border border-blue-100 px-4 py-1.5 rounded-full text-xs font-bold text-[#0058be] uppercase tracking-wider shadow-sm">Active Status</span>
@@ -233,7 +300,16 @@ export default function TeacherProfileManagement() {
                 </div>
                 <div className="overflow-hidden">
                   <p className="text-xs text-gray-500 font-medium">Institutional Email</p>
-                  <p className="text-sm font-semibold text-slate-800 truncate">{profile?.email || identity?.email}</p>
+                  <p className="text-sm font-semibold text-slate-800 truncate">{email || "Not provided"}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-[#0058be] shrink-0 border border-gray-100">
+                  <span className="material-symbols-outlined block">call</span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">Contact Number</p>
+                  <p className="text-sm font-semibold text-slate-800">{phoneDisplay}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
@@ -242,15 +318,35 @@ export default function TeacherProfileManagement() {
                 </div>
                 <div>
                   <p className="text-xs text-gray-500 font-medium">Employee ID</p>
-                  <p className="text-sm font-semibold text-slate-800 font-mono">{profile?.employee_id || "Pending"}</p>
+                  <p className="text-sm font-semibold text-slate-800 font-mono">{employeeId}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-3">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-[#0058be] shrink-0 border border-gray-100">
+                  <span className="material-symbols-outlined block">school</span>
+                </div>
+                <div>
+                  <p className="text-xs text-gray-500 font-medium">School</p>
+                  <p className="text-sm font-semibold text-slate-800">{schoolName}</p>
                 </div>
               </div>
             </div>
             
-            <div className="mt-8 pt-6 border-t border-gray-100 flex flex-wrap gap-4 items-center">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest">System Identifiers:</p>
-              <span className="px-3 py-1 bg-gray-50 rounded-md text-[10px] font-mono text-[#0058be] font-bold border border-gray-200">User UUID: {identity?.id?.split('-')[0]}...</span>
-              <span className="px-3 py-1 bg-purple-50 rounded-md text-[10px] font-mono text-purple-700 font-bold border border-purple-100">Teacher UUID: {profile?.id?.split('-')[0]}...</span>
+            <div className="mt-8 pt-6 border-t border-gray-100">
+              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Core Specializations</p>
+              <div className="flex flex-wrap gap-2">
+                {specializations.length > 0 ? (
+                  specializations.map((item) => (
+                    <span key={item} className="px-3 py-1 bg-gray-50 rounded-md text-xs font-semibold text-[#0058be] border border-gray-100">
+                      {item}
+                    </span>
+                  ))
+                ) : (
+                  <span className="px-3 py-1 bg-gray-50 rounded-md text-xs font-semibold text-gray-500 border border-gray-100">
+                    No specialization added
+                  </span>
+                )}
+              </div>
             </div>
           </div>
         </section>
@@ -274,6 +370,7 @@ export default function TeacherProfileManagement() {
                     type="text" 
                     value={firstName}
                     onChange={(e) => setFirstName(e.target.value)}
+                    required
                   />
                   <span className="absolute right-4 top-3.5 text-gray-400 group-focus-within:text-[#0058be] material-symbols-outlined text-sm block">person</span>
                 </div>
@@ -288,6 +385,7 @@ export default function TeacherProfileManagement() {
                     type="text" 
                     value={lastName}
                     onChange={(e) => setLastName(e.target.value)}
+                    required
                   />
                   <span className="absolute right-4 top-3.5 text-gray-400 group-focus-within:text-[#0058be] material-symbols-outlined text-sm block">person</span>
                 </div>
@@ -322,11 +420,11 @@ export default function TeacherProfileManagement() {
                 <p className="text-[10px] text-gray-500 ml-1 font-medium">Leave blank if you do not wish to change your password.</p>
               </div>
               
-              <div className="bg-amber-50 p-4 rounded-xl flex items-start gap-3 border border-amber-100 md:col-span-2 lg:col-span-1">
+              <div className="bg-amber-50 p-4 rounded-xl flex items-start gap-3 border border-amber-100 md:col-span-2">
                 <span className="material-symbols-outlined text-[#924700] text-xl block">auto_awesome</span>
                 <div>
                   <p className="text-xs font-bold text-[#924700] uppercase">AI Security Insight</p>
-                  <p className="text-xs text-amber-900 mt-1">Your password was last changed during onboarding. We recommend updating it quarterly for optimal account security.</p>
+                  <p className="text-xs text-amber-900 mt-1">Profile data is loaded from your current teacher account. Update password details only after confirming with your admin policy.</p>
                 </div>
               </div>
 
@@ -338,10 +436,12 @@ export default function TeacherProfileManagement() {
                 className="w-full sm:w-auto px-8 py-3.5 rounded-md text-sm font-bold text-gray-500 hover:bg-gray-50 hover:text-slate-800 transition-colors outline-none border border-transparent cursor-pointer" 
                 type="button"
                 onClick={() => {
-                  setFirstName(profile?.first_name || identity?.first_name || "");
-                  setLastName(profile?.last_name || identity?.last_name || "");
-                  setPhone(profile?.phone_number || "");
+                  setFirstName(teacherProfile?.first_name || identity?.first_name || "");
+                  setLastName(teacherProfile?.last_name || identity?.last_name || "");
+                  setPhone(teacherProfile?.phone_number || "");
                   setPassword("");
+                  setError(null);
+                  setSuccess(null);
                 }}
               >
                 Reset Changes
@@ -365,10 +465,12 @@ export default function TeacherProfileManagement() {
             Data encrypted with AES-256
           </p>
           <div className="hidden sm:block h-1 w-1 bg-gray-300 rounded-full"></div>
-          <p className="text-xs text-gray-500 font-medium">Verified Tenant: {identity?.school_id?.split('-')[0]}...</p>
+          <p className="text-xs text-gray-500 font-medium">Teacher profile ID: {teacherProfile?.id || identity?.id || "Loading..."}</p>
         </div>
 
       </div>
     </MainLayout>
   );
-}
+};
+
+export default TeacherProfileManagement;
