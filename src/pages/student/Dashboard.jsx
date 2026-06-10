@@ -11,10 +11,27 @@ export default function Dashboard() {
     return <MainLayout> <div>Loading your academic data...</div></MainLayout>
   }
   
-  const attendance = studentData?.attendance?.results || [];
-  const attendanceRate = calculateAttendance(attendance);
-  const grades = studentData?.grades?.results || [];
-  const gpa = calculateGPA(grades);
+const attendance = studentData?.attendance?.results || [];
+const attendanceRate = Number(calculateAttendance(attendance));
+
+const grades = studentData?.grades?.results || [];
+const gpa = calculateGPA(grades);
+
+const attendanceStatus =
+  attendanceRate >= 80
+    ? {
+        label: "ON TRACK",
+        className: "text-green-800 bg-green-100",
+      }
+    : attendanceRate >= 65
+      ? {
+          label: "SATISFACTORY",
+          className: "text-amber-800 bg-amber-100",
+        }
+      : {
+          label: "AT RISK",
+          className: "text-red-800 bg-red-100",
+        };
 
   return (
     <MainLayout title="Dashboard">
@@ -52,9 +69,7 @@ export default function Dashboard() {
                   calendar_today
                 </span>
               </span>
-              <span className="text-xs font-bold text-blue-700 bg-blue-50 px-2 py-1 rounded">
-                ON TRACK
-              </span>
+              <span className={`text-xs font-bold px-2 py-1 rounded ${attendanceStatus.className}`}>{attendanceStatus.label}</span>
             </div>
             <div className="mt-4">
               <p className="text-sm font-medium text-on-surface-variant mb-1">
@@ -115,7 +130,7 @@ export default function Dashboard() {
 
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           <div className="lg:col-span-8 space-y-8">
-            <section className="bg-surface-container-low rounded-xl p-6">
+           {/*  <section className="bg-surface-container-low rounded-xl p-6">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold headline-font">
                   School Board
@@ -173,9 +188,9 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-            </section>
+            </section> */}
 
-            <section>
+          {/*   <section>
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xl font-bold headline-font">
                   Upcoming Tasks
@@ -249,7 +264,7 @@ export default function Dashboard() {
                   </div>
                 </div>
               </div>
-            </section>
+            </section> */}
           </div>
 
           <div className="lg:col-span-4 space-y-8">

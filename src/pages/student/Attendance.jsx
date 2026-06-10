@@ -26,6 +26,9 @@ export default function Attendance() {
     });
   }, [records, selectedYear]);
 
+console.log("RECORDS", records);
+console.log("FILTERED", filteredRecords);
+
   // --- CALENDAR DATA MAPPING ---
   const attendanceMap = useMemo(() => {
     if (!filteredRecords || !Array.isArray(filteredRecords)) return {};
@@ -61,11 +64,19 @@ export default function Attendance() {
 
   // --- DYNAMIC STATS ---
   const attendance = calculateAttendance(filteredRecords);
+  const minRequirement = 75;
+
+  const attendanceDifference =
+  attendance - minRequirement;
+
+  const requirementMet =
+  attendance >= minRequirement;
   const trends =
     filteredRecords.length > 0
       ? calculateMonthlyTrends(filteredRecords)
       : [0, 0, 0, 0, 0, 0];
   const monthLabels = getPastSixMonths();
+  
 
   return (
     <MainLayout title="Attendance">
@@ -131,8 +142,16 @@ export default function Attendance() {
               <span className="p-2 bg-purple-50 text-purple-600 rounded-lg">
                 <span className="material-symbols-outlined">gavel</span>
               </span>
-              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full">
-                Requirement Met
+              <span className="text-xs font-bold text-blue-600 bg-blue-50 px-2 py-1 rounded-full"
+                 className={`text-xs font-bold px-2 py-1 rounded-full ${
+                   requirementMet
+                     ? "text-green-600 bg-green-50"
+                     : "text-red-600 bg-red-50"
+                 }`}
+               >
+                 {requirementMet
+                    ? "Requirement Met"
+                    : "Requirement Not Met"}
               </span>
             </div>
             <div>
@@ -140,11 +159,15 @@ export default function Attendance() {
                 Min. Requirement
               </p>
               <h2 className="text-4xl font-extrabold font-headline text-on-surface">
-                75%
+                 {minRequirement}%
               </h2>
             </div>
             <p className="text-xs text-on-surface-variant italic">
-              You are 21% above the limit.
+               {requirementMet
+                  ? `You are ${attendanceDifference}% above the limit.`
+                  : `You are ${Math.abs(
+                     attendanceDifference
+                   )}% below the limit.`}
             </p>
           </div>
 
