@@ -58,11 +58,9 @@ export default function Settings() {
               <h3 className="text-xl font-bold">Preferences</h3>
             </div>
             <div className="grid md:grid-cols-2 gap-12">
-
               <div className="space-y-3">
                 <label className="block text-sm font-bold text-on-surface-variant uppercase tracking-widest">Interface Language</label>
                 <div className="relative">
-                  {/* Connected the Select dropdown to state */}
                   <select 
                     value={settings.language}
                     onChange={(e) => handleChange('language', e.target.value)}
@@ -87,7 +85,6 @@ export default function Settings() {
                     <span className="material-symbols-outlined text-on-surface-variant" data-icon="dark_mode">dark_mode</span>
                     <span className="font-semibold">Dark Mode</span>
                   </div>
-                  {/* Connected Dark Mode Toggle to state */}
                   <button 
                     onClick={() => handleChange('darkMode', !settings.darkMode)}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${settings.darkMode ? 'bg-primary' : 'bg-slate-200'}`}
@@ -105,7 +102,6 @@ export default function Settings() {
               <h3 className="text-xl font-bold">Communication</h3>
             </div>
             <div className="space-y-6">
-
               <div className="flex items-start justify-between p-4 hover:bg-surface-container-low rounded-xl transition-all">
                 <div className="flex gap-4">
                   <div className="mt-1">
@@ -116,7 +112,6 @@ export default function Settings() {
                     <p className="text-sm text-on-surface-variant">Get instant alerts for quiz results and class announcements.</p>
                   </div>
                 </div>
-                {/* Connected Push Notifications Toggle to state */}
                 <button 
                   onClick={() => handleChange('pushNotifications', !settings.pushNotifications)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${settings.pushNotifications ? 'bg-primary' : 'bg-slate-200'}`}
@@ -134,7 +129,6 @@ export default function Settings() {
                     <p className="text-sm text-on-surface-variant">Receive weekly performance summaries and parent updates.</p>
                   </div>
                 </div>
-                 {/* Connected Email Alerts Toggle to state */}
                 <button 
                   onClick={() => handleChange('emailAlerts', !settings.emailAlerts)}
                   className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${settings.emailAlerts ? 'bg-primary' : 'bg-slate-200'}`}
@@ -165,7 +159,6 @@ export default function Settings() {
           <button className="px-8 py-3 text-primary font-bold text-sm hover:bg-surface-variant rounded-md transition-all">
             Cancel Changes
           </button>
-          {/* Connected Save function and added loading state visual feedback */}
           <button 
             onClick={handleSave}
             disabled={isSaving}
