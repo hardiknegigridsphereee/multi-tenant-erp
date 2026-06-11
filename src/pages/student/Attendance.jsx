@@ -51,7 +51,14 @@ export default function Attendance() {
 
   const monthWord = getMonthName(month);
   const academicYears = academic?.years || [];
-  const subjects = academic?.subs || [];
+  const subjects = Array.from(
+  new Map(
+    (academic?.subs || []).map((subject) => [
+      subject.name,
+      subject,
+    ])
+  ).values()
+);
 
   // --- DYNAMIC STATS ---
   const attendance = calculateAttendance(filteredRecords);

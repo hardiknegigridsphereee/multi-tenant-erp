@@ -25,10 +25,8 @@ export default function Sidebar() {
   };
 
   return (
-    // ✅ Koi bhi dark: prefix nahi — sab CSS variables se chalega
     <aside className="hidden md:flex flex-col h-screen w-72 left-0 top-0 fixed bg-surface-container-low border-r border-outline-variant/30 z-50 overflow-y-auto transition-colors duration-300">
       <div className="flex flex-col h-full py-8 gap-2">
-
         <div className="px-8 mb-8">
           <span className="text-xl font-headline font-bold text-primary">
             Academic Architect
@@ -79,7 +77,7 @@ export default function Sidebar() {
             <NavLink
               to="/student/profile"
               className={({ isActive }) =>
-                `flex items-center gap-4 py-3 px-6 transition-all font-body text-sm font-semibold border-l-4 ${
+                `flex items-center gap-4 py-3 px-6 transition-all duration-300 font-body text-sm font-semibold border-l-4 ${
                   isActive
                     ? 'text-primary bg-surface-container-lowest rounded-r-full border-primary shadow-sm'
                     : 'text-on-surface-variant hover:text-primary hover:bg-surface-container/50 rounded-r-full border-transparent'
@@ -91,7 +89,7 @@ export default function Sidebar() {
             <NavLink
               to="/student/settings"
               className={({ isActive }) =>
-                `flex items-center gap-4 py-3 px-6 transition-all font-body text-sm font-semibold border-l-4 ${
+                `flex items-center gap-4 py-3 px-6 transition-all duration-300 font-body text-sm font-semibold border-l-4 ${
                   isActive
                     ? 'text-primary bg-surface-container-lowest rounded-r-full border-primary shadow-sm'
                     : 'text-on-surface-variant hover:text-primary hover:bg-surface-container/50 rounded-r-full border-transparent'
@@ -102,13 +100,12 @@ export default function Sidebar() {
             </NavLink>
             <button
               onClick={handleLogout}
-              className="flex items-center gap-4 py-3 px-6 text-error hover:bg-surface-container transition-all font-body text-sm font-semibold border-l-4 border-transparent w-full text-left rounded-r-full"
+              className="flex items-center gap-4 py-3 px-6 text-error hover:bg-surface-container transition-all duration-300 font-body text-sm font-semibold border-l-4 border-transparent w-full text-left rounded-r-full"
             >
               <span className="material-symbols-outlined">logout</span> Log Out
             </button>
           </div>
         </nav>
-
       </div>
     </aside>
   );
