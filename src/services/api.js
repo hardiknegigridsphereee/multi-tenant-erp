@@ -419,4 +419,4 @@ export const deleteSavedAIContent = (id) =>
   apiCall(`/api/v1/academics/saved-ai-content/${id}/`, {
     method: "DELETE",
   });
-  callAiApi("/api/v1/generate_rubric", payload);
+  
