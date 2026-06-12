@@ -11,25 +11,47 @@ export default function Teachers() {
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    fetchTeachers();
-  }, []);
+  // Pagination & Search States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const fetchTeachers = async () => {
+  // Debounce search input (500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset to page 1 whenever search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  // Fetch teachers when page or debounced search changes
+  useEffect(() => {
+    fetchTeachers(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch]);
+
+  const fetchTeachers = async (page, search = "") => {
     setLoading(true);
     setError(null);
 
     try {
-      // Production-level call: No manual URL building
-      const data = await schoolAdminApi.getTeachers();
+      // Pass both page and search parameters
+      const data = await schoolAdminApi.getTeachers(page, search);
       
       // Handle DRF pagination structure
       if (data.results) {
         setTeachers(data.results);
         setTotalCount(data.count);
+        setTotalPages(Math.ceil(data.count / 10)); // Assuming standard 10 items per page
       } else {
         setTeachers(data);
         setTotalCount(data.length);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Fetch Teachers Error:", err);
@@ -86,9 +108,20 @@ export default function Teachers() {
                   search
                 </span>
                 <input
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   placeholder="Search faculty..."
-                  className="w-full bg-white pl-9 pr-4 py-2 rounded-md text-sm border-transparent focus:border-[#0058be]/30 focus:ring-2 focus:ring-[#0058be]/10 outline-none transition-all shadow-sm"
+                  className="w-full bg-white pl-9 pr-9 py-2 rounded-md text-sm border-transparent focus:border-[#0058be]/30 focus:ring-2 focus:ring-[#0058be]/10 outline-none transition-all shadow-sm"
                 />
+                {/* Clear button added for proper search UX */}
+                {searchQuery && (
+                  <button 
+                    onClick={() => setSearchQuery("")}
+                    className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                  >
+                    <span className="material-symbols-outlined text-sm">close</span>
+                  </button>
+                )}
               </div>
             </div>
             <div className="text-sm text-[#6b7280] font-medium flex items-center">
@@ -122,7 +155,7 @@ export default function Teachers() {
                 ) : teachers.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="text-center py-12 text-gray-500">
-                      No teachers found in this institution.
+                      {searchQuery ? "No teachers match your search." : "No teachers found in this institution."}
                     </td>
                   </tr>
                 ) : (
@@ -184,20 +217,28 @@ export default function Teachers() {
             </table>
           </div>
 
-          {/* pagination */}
+          {/* Fully Functional Pagination */}
           <div className="flex justify-between items-center px-8 py-4 border-t border-gray-100 bg-gray-50 text-sm">
-            <button className="text-[#0058be] flex gap-1 items-center text-sm font-semibold hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors">
+            <button 
+              disabled={currentPage === 1}
+              onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.max(1, p - 1)); }}
+              className={`text-[#0058be] flex gap-1 items-center text-sm font-semibold hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               <span className="material-symbols-outlined text-sm">arrow_back</span>
               Previous
             </button>
 
             <div className="flex items-center gap-1">
               <button className="w-8 h-8 rounded-md bg-[#0058be] text-white text-xs font-bold shadow-sm">
-                1
+                {currentPage}
               </button>
             </div>
 
-            <button className="text-[#0058be] flex gap-1 items-center text-sm font-semibold hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors">
+            <button 
+              disabled={currentPage >= totalPages || totalPages === 0}
+              onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
+              className={`text-[#0058be] flex gap-1 items-center text-sm font-semibold hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors ${(currentPage >= totalPages || totalPages === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               Next
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>

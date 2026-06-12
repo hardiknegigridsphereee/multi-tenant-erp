@@ -42,8 +42,9 @@ export default function Login() {
     setLoading(true);
 
     try {
-      // Use the base URL from the .env file (supports Vite and Create React App)
-      const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL || "http://localhost:8000";
+      // Use the base URL from the .env file (supports both Vite and Create React App)
+      // No hardcoded fallback – environment variable must be set
+      const baseUrl = import.meta.env?.VITE_API_BASE_URL || process.env?.REACT_APP_API_BASE_URL;
       
       console.log("Attempting login to:", `${baseUrl}/api/v1/auth/login/`);
       

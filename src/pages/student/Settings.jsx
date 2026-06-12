@@ -3,6 +3,92 @@ import MainLayout from '../../layouts/MainLayout';
 import { schoolAdminApi } from '../../services/schoolAdminApi';
 import { useTheme } from '../../context/ThemeContext';
 
+// Skeleton Components
+function Skeleton({ className = "" }) {
+  return <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />;
+}
+
+function SettingsSkeleton() {
+  return (
+    <MainLayout title="Account Settings">
+      <div className="max-w-4xl mx-auto">
+        <div className="grid gap-8">
+          {/* Preferences Section Skeleton */}
+          <section className="bg-white p-8 rounded-lg shadow-sm">
+            <div className="flex items-center gap-3 mb-8">
+              <Skeleton className="w-6 h-6 rounded-full" />
+              <Skeleton className="w-40 h-7" />
+            </div>
+            <div className="grid md:grid-cols-2 gap-12">
+              <div className="space-y-3">
+                <Skeleton className="w-36 h-4 mb-2" />
+                <Skeleton className="w-full h-12 rounded-md" />
+                <Skeleton className="w-64 h-3" />
+              </div>
+
+              <div className="space-y-4">
+                <Skeleton className="w-24 h-4 mb-2" />
+                <div className="flex items-center justify-between p-4 bg-gray-50 rounded-md">
+                  <div className="flex items-center gap-3">
+                    <Skeleton className="w-5 h-5 rounded-full" />
+                    <Skeleton className="w-24 h-5" />
+                  </div>
+                  <Skeleton className="w-11 h-6 rounded-full" />
+                </div>
+              </div>
+            </div>
+          </section>
+
+          {/* Communication Section Skeleton */}
+          <section className="bg-white p-8 rounded-lg shadow-sm">
+            <div className="flex items-center gap-3 mb-8">
+              <Skeleton className="w-6 h-6 rounded-full" />
+              <Skeleton className="w-40 h-7" />
+            </div>
+            <div className="space-y-6">
+              {[1, 2].map((i) => (
+                <div key={i} className="flex items-start justify-between p-4 rounded-xl">
+                  <div className="flex gap-4 flex-1">
+                    <Skeleton className="w-5 h-5 rounded-full mt-1" />
+                    <div className="flex-1">
+                      <Skeleton className="w-32 h-5 mb-2" />
+                      <Skeleton className="w-64 h-3" />
+                    </div>
+                  </div>
+                  <Skeleton className="w-11 h-6 rounded-full" />
+                </div>
+              ))}
+            </div>
+          </section>
+
+          {/* Bottom Cards Skeleton */}
+          <div className="grid md:grid-cols-3 gap-6">
+            <div className="md:col-span-2 bg-gradient-to-r from-blue-600 to-blue-400 p-8 rounded-lg">
+              <Skeleton className="w-48 h-7 mb-2 bg-white/20" />
+              <Skeleton className="w-80 h-4 mb-6 bg-white/20" />
+              <Skeleton className="w-36 h-10 rounded-md bg-white/20" />
+            </div>
+            <div className="bg-gray-100 p-8 rounded-lg">
+              <div className="flex items-center gap-2 mb-2">
+                <Skeleton className="w-5 h-5 rounded-full" />
+                <Skeleton className="w-16 h-4" />
+              </div>
+              <Skeleton className="w-full h-3" />
+              <Skeleton className="w-3/4 h-3 mt-2" />
+            </div>
+          </div>
+        </div>
+
+        {/* Action Buttons Skeleton */}
+        <div className="mt-12 flex justify-end gap-4">
+          <Skeleton className="w-32 h-11 rounded-md" />
+          <Skeleton className="w-36 h-11 rounded-md" />
+        </div>
+      </div>
+    </MainLayout>
+  );
+}
+
 export default function Settings() {
   const { darkMode, toggleDarkMode } = useTheme();
 
@@ -13,6 +99,7 @@ export default function Settings() {
   });
 
   const [isSaving, setIsSaving] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const fetchSettings = async () => {
@@ -23,10 +110,15 @@ export default function Settings() {
         }
       } catch (error) {
         console.error("Failed to load settings:", error);
+      } finally {
+        setLoading(false);
       }
     };
     fetchSettings();
   }, []);
+
+  // Show skeleton while loading
+  if (loading) return <SettingsSkeleton />;
 
   const handleChange = (field, value) => {
     setSettings(prev => ({ ...prev, [field]: value }));
@@ -45,10 +137,16 @@ export default function Settings() {
     }
   };
 
+  const handleCancel = () => {
+    // Reset to previous settings or navigate back
+    window.history.back();
+  };
+
   return (
     <MainLayout title="Account Settings">
       <div className="max-w-4xl mx-auto">
         <div className="grid gap-8">
+          {/* Preferences Section */}
           <section className="bg-surface-container-lowest p-8 rounded-lg ambient-shadow">
             <div className="flex items-center gap-3 mb-8">
               <span className="material-symbols-outlined text-primary">tune</span>
@@ -90,7 +188,7 @@ export default function Settings() {
                     </span>
                     <span className="font-semibold text-on-surface">Dark Mode</span>
                   </div>
-                  {/* ✅ toggleDarkMode — global context update */}
+                  {/* toggleDarkMode — global context update */}
                   <button
                     onClick={toggleDarkMode}
                     className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
@@ -108,6 +206,7 @@ export default function Settings() {
             </div>
           </section>
 
+          {/* Communication Section */}
           <section className="bg-surface-container-lowest p-8 rounded-lg ambient-shadow">
             <div className="flex items-center gap-3 mb-8">
               <span className="material-symbols-outlined text-primary">notifications_active</span>
@@ -168,6 +267,7 @@ export default function Settings() {
             </div>
           </section>
 
+          {/* Help & Support Cards */}
           <div className="grid md:grid-cols-3 gap-6">
             <div className="md:col-span-2 primary-gradient p-8 rounded-lg text-white">
               <h4 className="text-xl font-bold mb-2">Need Academic Help?</h4>
@@ -190,8 +290,12 @@ export default function Settings() {
           </div>
         </div>
 
+        {/* Action Buttons */}
         <div className="mt-12 flex justify-end gap-4">
-          <button className="px-8 py-3 text-primary font-bold text-sm hover:bg-surface-container rounded-md transition-all">
+          <button 
+            onClick={handleCancel}
+            className="px-8 py-3 text-primary font-bold text-sm hover:bg-surface-container rounded-md transition-all"
+          >
             Cancel Changes
           </button>
           <button

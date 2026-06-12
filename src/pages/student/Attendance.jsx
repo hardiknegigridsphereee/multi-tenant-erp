@@ -6,6 +6,124 @@ import {
   getMonthName,
 } from "../../utils/calculations";
 
+// Skeleton Components
+function Skeleton({ className = "" }) {
+  return <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />;
+}
+
+function AttendanceSkeleton() {
+  return (
+    <MainLayout title="Attendance">
+      <div className="p-8 max-w-7xl mx-auto space-y-8">
+        {/* FILTERS SKELETON */}
+        <section className="flex flex-wrap items-center gap-4">
+          <div className="flex-1 flex gap-4">
+            <Skeleton className="w-48 h-10 rounded-md" />
+            <Skeleton className="w-48 h-10 rounded-md" />
+          </div>
+          <Skeleton className="w-28 h-10 rounded-md" />
+        </section>
+
+        {/* STATS CARDS SKELETON */}
+        <section className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
+          {/* Card 1 */}
+          <div className="bg-white p-6 rounded-xl space-y-4 shadow-sm">
+            <Skeleton className="w-10 h-10 rounded-lg" />
+            <div>
+              <Skeleton className="w-32 h-4 mb-2" />
+              <Skeleton className="w-20 h-10" />
+            </div>
+            <Skeleton className="w-full h-1.5 rounded-full" />
+          </div>
+
+          {/* Card 2 */}
+          <div className="bg-white p-6 rounded-xl space-y-4 shadow-sm">
+            <div className="flex justify-between items-start">
+              <Skeleton className="w-10 h-10 rounded-lg" />
+              <Skeleton className="w-28 h-6 rounded-full" />
+            </div>
+            <div>
+              <Skeleton className="w-32 h-4 mb-2" />
+              <Skeleton className="w-20 h-10" />
+            </div>
+            <Skeleton className="w-40 h-3" />
+          </div>
+
+          {/* Card 3 - Monthly Breakdown */}
+          <div className="bg-white p-6 rounded-xl shadow-sm">
+            <Skeleton className="w-36 h-4 mb-1" />
+            <Skeleton className="w-24 h-3 mb-4" />
+            <div className="flex items-end gap-4 h-32">
+              <div className="flex-1 flex flex-col items-center gap-1">
+                <Skeleton className="w-6 h-4" />
+                <div className="w-full bg-gray-200 rounded-t-md h-16" />
+                <Skeleton className="w-12 h-3" />
+              </div>
+              <div className="flex-1 flex flex-col items-center gap-1">
+                <Skeleton className="w-6 h-4" />
+                <div className="w-full bg-gray-200 rounded-t-md h-24" />
+                <Skeleton className="w-12 h-3" />
+              </div>
+              <div className="flex-1 flex flex-col items-center gap-1">
+                <Skeleton className="w-6 h-4" />
+                <div className="w-full bg-gray-200 rounded-t-md h-8" />
+                <Skeleton className="w-12 h-3" />
+              </div>
+            </div>
+          </div>
+        </section>
+
+        {/* CALENDAR SKELETON */}
+        <section className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          <div className="lg:col-span-8 bg-white rounded-xl p-8 shadow-sm">
+            <div className="flex justify-between items-center mb-8">
+              <div>
+                <Skeleton className="w-40 h-7 mb-2" />
+                <Skeleton className="w-32 h-4" />
+              </div>
+              <div className="flex gap-2">
+                <Skeleton className="w-10 h-10 rounded-lg" />
+                <Skeleton className="w-10 h-10 rounded-lg" />
+              </div>
+            </div>
+
+            <div className="grid grid-cols-7 gap-2">
+              {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day, i) => (
+                <div key={day} className="text-center pb-2">
+                  <Skeleton key={i} className="w-8 h-3 mx-auto" />
+                </div>
+              ))}
+
+              {[...Array(35)].map((_, i) => (
+                <Skeleton key={i} className="h-12 w-12 rounded-lg" />
+              ))}
+            </div>
+
+            <div className="flex flex-wrap gap-6 mt-8 pt-8 border-t border-gray-100">
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-3 h-3 rounded-full" />
+                <Skeleton className="w-12 h-3" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-3 h-3 rounded-full" />
+                <Skeleton className="w-12 h-3" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-3 h-3 rounded-full" />
+                <Skeleton className="w-12 h-3" />
+              </div>
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-3 h-3 rounded-full" />
+                <Skeleton className="w-16 h-3" />
+              </div>
+            </div>
+          </div>
+        </section>
+      </div>
+    </MainLayout>
+  );
+}
+
 export default function Attendance() {
   const { attendanceRecords: records, academic, loading } = useStudent();
 
@@ -13,18 +131,24 @@ export default function Attendance() {
   const [selectedYear, setSelectedYear] = useState("");
   const [selectedSubject, setSelectedSubject] = useState("");
 
+  // --- ALL useMemo hooks MUST be called before any conditional return ---
+  
   // --- FILTERING LOGIC ---
   const filteredRecords = useMemo(() => {
     if (!records) return [];
-    return records.filter((record) => {
-      const matchYear =
-        selectedYear === "" || record.academic_year === selectedYear;
+    
+    let filtered = records.filter((record) => {
+      const matchYear = selectedYear === "" || record.academic_year === selectedYear;
       return matchYear;
     });
-  }, [records, selectedYear]);
 
-  console.log("RECORDS", records);
-  console.log("FILTERED", filteredRecords);
+    // Filter by subject if selected
+    if (selectedSubject !== "") {
+      filtered = filtered.filter((record) => record.subject === selectedSubject);
+    }
+
+    return filtered;
+  }, [records, selectedYear, selectedSubject]);
 
   // --- CALENDAR DATA MAPPING ---
   const attendanceMap = useMemo(() => {
@@ -36,7 +160,7 @@ export default function Attendance() {
     }, {});
   }, [filteredRecords]);
 
-  // --- CALENDAR NAVIGATION ---
+  // Calendar calculations
   const year = currentDate.getFullYear();
   const month = currentDate.getMonth();
 
@@ -52,13 +176,13 @@ export default function Attendance() {
   const monthWord = getMonthName(month);
   const academicYears = academic?.years || [];
   const subjects = Array.from(
-  new Map(
-    (academic?.subs || []).map((subject) => [
-      subject.name,
-      subject,
-    ])
-  ).values()
-);
+    new Map(
+      (academic?.subs || []).map((subject) => [
+        subject.name,
+        subject,
+      ])
+    ).values()
+  );
 
   // --- DYNAMIC STATS ---
   const attendance = calculateAttendance(filteredRecords);
@@ -66,7 +190,7 @@ export default function Attendance() {
   const attendanceDifference = attendance - minRequirement;
   const requirementMet = attendance >= minRequirement;
 
-  // ✅ useMemo for monthly distribution
+  // useMemo for monthly distribution
   const monthlyDistribution = useMemo(() => {
     const summary = { Present: 0, Absent: 0, Late: 0 };
     filteredRecords.forEach((record) => {
@@ -83,13 +207,18 @@ export default function Attendance() {
     return summary;
   }, [filteredRecords, year, month]);
 
-  // ✅ Early return after all hooks
-  if (loading) return <MainLayout title="Attendance">Loading...</MainLayout>;
+  // --- AFTER all hooks, now check for loading ---
+  if (loading) return <AttendanceSkeleton />;
+
+  // Handle apply filters
+  const handleApplyFilters = () => {
+    // Filters are already applied via useMemo
+    // This button click can trigger any additional logic if needed
+  };
 
   return (
     <MainLayout title="Attendance">
       <div className="p-8 max-w-7xl mx-auto space-y-8">
-
         {/* FILTERS */}
         <section className="flex flex-wrap items-center gap-4">
           <div className="flex-1 flex gap-4">
@@ -119,14 +248,16 @@ export default function Attendance() {
               ))}
             </select>
           </div>
-          <button className="bg-surface-container-high text-primary px-6 py-2.5 rounded-md font-['Inter'] font-semibold text-sm hover:bg-blue-200 transition-colors">
+          <button 
+            onClick={handleApplyFilters}
+            className="bg-surface-container-high text-primary px-6 py-2.5 rounded-md font-['Inter'] font-semibold text-sm hover:bg-blue-200 transition-colors"
+          >
             Apply Filters
           </button>
         </section>
 
         {/* STATS CARDS */}
         <section className="grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-6">
-
           {/* Card 1: Overall Attendance */}
           <div className="bg-surface-container-lowest p-6 rounded-xl space-y-4 shadow-sm border border-outline-variant/10">
             <div className="flex justify-between items-start">
@@ -144,8 +275,8 @@ export default function Attendance() {
             </div>
             <div className="w-full bg-surface-container rounded-full h-1.5">
               <div
-                className="bg-primary h-1.5 rounded-full"
-                style={{ width: `${attendance}%` }}
+                className="bg-primary h-1.5 rounded-full transition-all duration-500"
+                style={{ width: `${Math.min(attendance, 100)}%` }}
               />
             </div>
           </div>
@@ -176,7 +307,7 @@ export default function Attendance() {
             </div>
             <p className="text-xs text-on-surface-variant italic">
               {requirementMet
-                ? `You are ${attendanceDifference}% above the limit.`
+                ? `You are ${Math.abs(attendanceDifference)}% above the limit.`
                 : `You are ${Math.abs(attendanceDifference)}% below the limit.`}
             </p>
           </div>
@@ -254,7 +385,6 @@ export default function Attendance() {
               </div>
             )}
           </div>
-
         </section>
 
         {/* CALENDAR */}
@@ -289,21 +419,21 @@ export default function Attendance() {
               {["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"].map((day) => (
                 <div
                   key={day}
-                  className="text-center text-xs font-bold text-slate-400 pb-2 w-12"
+                  className="text-center text-xs font-bold text-slate-400 pb-2"
                 >
                   {day}
                 </div>
               ))}
 
               {emptyDays.map((blank) => (
-                <div key={`blank-${blank}`} className="w-12 h-12" />
+                <div key={`blank-${blank}`} className="h-12 w-12" />
               ))}
 
               {days.map((day) => {
                 const dateKey = `${year}-${String(month + 1).padStart(2, "0")}-${String(day).padStart(2, "0")}`;
                 const record = attendanceMap?.[dateKey];
                 const baseClass =
-                  "h-12 w-12 rounded-lg flex items-center justify-center text-sm font-semibold border transition-all";
+                  "h-12 w-12 rounded-lg flex items-center justify-center text-sm font-semibold border transition-all cursor-default";
                 const statusClasses = {
                   Present: "bg-green-100 text-green-700 border-green-200",
                   Absent: "bg-red-100 text-red-700 border-red-200",
@@ -339,12 +469,11 @@ export default function Attendance() {
               </div>
               <div className="flex items-center gap-2">
                 <div className="w-3 h-3 rounded-full bg-slate-200" />
-                <span className="text-xs font-semibold text-on-surface-variant">Holiday/Weekend</span>
+                <span className="text-xs font-semibold text-on-surface-variant">No Record</span>
               </div>
             </div>
           </div>
         </section>
-
       </div>
     </MainLayout>
   );

@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import SchoolLayout from "../../components/erp/school/SchoolLayout";
 import { schoolAdminApi } from '../../services/schoolAdminApi';
@@ -10,6 +10,7 @@ export default function RolesPermissions() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
+  const [searchQuery, setSearchQuery] = useState(""); // Added Search State
 
   useEffect(() => {
     fetchRoles();
@@ -30,9 +31,16 @@ export default function RolesPermissions() {
     }
   };
 
-  // --- NEW: Safe Navigation Handler ---
+  // --- NEW: Memoized Filter Logic for Performance ---
+  const filteredRoles = useMemo(() => {
+    if (!searchQuery) return roles;
+    return roles.filter((role) =>
+      role.name.toLowerCase().includes(searchQuery.toLowerCase())
+    );
+  }, [roles, searchQuery]);
+
   const handleEditClick = (e, id) => {
-    e.stopPropagation(); // Stops the click from bubbling up to the row/container
+    e.stopPropagation();
     navigate(`/school-admin/roles/edit/${id}`);
   };
 
@@ -84,6 +92,8 @@ export default function RolesPermissions() {
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400">search</span>
               <input
                 placeholder="Search roles..."
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 className="w-full bg-white rounded-md pl-10 pr-4 py-2 outline-none border border-transparent focus:border-[#0058be]/30 transition-all shadow-sm"
               />
             </div>
@@ -104,12 +114,12 @@ export default function RolesPermissions() {
                   <tr>
                     <td colSpan="4" className="text-center py-10 text-gray-500">Loading roles...</td>
                   </tr>
-                ) : roles.length === 0 ? (
+                ) : filteredRoles.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="text-center py-10 text-gray-500">No roles found.</td>
+                    <td colSpan="4" className="text-center py-10 text-gray-500">No roles found matching your search.</td>
                   </tr>
                 ) : (
-                  roles.map((r) => {
+                  filteredRoles.map((r) => {
                     const aes = getRoleAesthetics(r.name);
                     return (
                       <tr key={r.id} className="hover:bg-[#f8f9ff]">
@@ -130,7 +140,6 @@ export default function RolesPermissions() {
                           {r.description || "No description provided."}
                         </td>
                         <td className="text-right pr-6">
-                          {/* --- FIXED: Added Stop Propagation --- */}
                           <button 
                             onClick={(e) => handleEditClick(e, r.id)}
                             className="px-4 py-1.5 text-sm font-medium text-[#0058be] bg-[#eff4ff] hover:bg-[#dce9ff] rounded-md transition-colors"

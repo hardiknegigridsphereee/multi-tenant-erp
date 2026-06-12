@@ -11,28 +11,47 @@ export default function TeacherAssignment() {
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
 
-  // ADDED: State for Search Functionality
-  const [searchTerm, setSearchTerm] = useState("");
+  // Pagination & Search States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
+  // Debounce search input (500ms)
   useEffect(() => {
-    fetchAssignments();
-  }, []);
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
 
-  const fetchAssignments = async () => {
+  // Reset to page 1 whenever search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  // Fetch assignments when page or debounced search changes
+  useEffect(() => {
+    fetchAssignments(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch]);
+
+  const fetchAssignments = async (page, search = "") => {
     setLoading(true);
     setError(null);
 
     try {
-      // Production-level call: No hardcoded URLs or tokens here
-      const data = await schoolAdminApi.getTeacherAssignments();
+      // Pass both page and search parameters
+      const data = await schoolAdminApi.getTeacherAssignments(page, search);
       
       // Handle DRF pagination structure
       if (data.results) {
         setAssignments(data.results);
         setTotalCount(data.count);
+        setTotalPages(Math.ceil(data.count / 10)); // Assuming 10 items per page
       } else {
         setAssignments(data);
         setTotalCount(data.length);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Fetch Assignments Error:", err);
@@ -42,15 +61,19 @@ export default function TeacherAssignment() {
     }
   };
 
-  // ADDED: Delete Functionality
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to remove this assignment?")) {
       try {
         await schoolAdminApi.deleteTeacherAssignment(id);
-        // Remove it from the screen without reloading the page
+        // Optimistic UI update: Remove it from the screen
         setAssignments(assignments.filter((item) => item.id !== id));
         setTotalCount(prevCount => prevCount - 1);
-        alert("Assignment deleted successfully.");
+        
+        // Optional: If you delete the last item on a page, fetch the previous page
+        if (assignments.length === 1 && currentPage > 1) {
+            setCurrentPage(currentPage - 1);
+        }
+        
       } catch (err) {
         console.error("Failed to delete", err);
         alert("Failed to delete assignment.");
@@ -69,17 +92,6 @@ export default function TeacherAssignment() {
     const colors = ["bg-[#e9ddff] text-[#6b38d4]", "bg-[#d8e2ff] text-[#0058be]", "bg-[#ffdcc6] text-[#924700]", "bg-[#eff4ff] text-[#2170e4]"];
     return colors[index % colors.length];
   };
-
-  // ADDED: Filter logic to apply the search term
-  const filteredAssignments = assignments.filter((item) => {
-    const searchLower = searchTerm.toLowerCase();
-    return (
-      (item.teacher_name && item.teacher_name.toLowerCase().includes(searchLower)) ||
-      (item.subject_name && item.subject_name.toLowerCase().includes(searchLower)) ||
-      (item.class_level_name && item.class_level_name.toLowerCase().includes(searchLower)) ||
-      (item.teacher_employee_id && item.teacher_employee_id.toLowerCase().includes(searchLower))
-    );
-  });
 
   return (
     <SchoolLayout title="Teacher Assignment">
@@ -148,10 +160,19 @@ export default function TeacherAssignment() {
               <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-[#6b7280] text-sm">search</span>
               <input
                 placeholder="Search assignment records..."
-                value={searchTerm} // ADDED: Value binding
-                onChange={(e) => setSearchTerm(e.target.value)} // ADDED: onChange handler
-                className="w-full pl-10 pr-4 py-2.5 bg-white rounded-md outline-none border border-gray-200 focus:border-[#0058be]/30 shadow-sm transition-all text-sm"
+                value={searchQuery} // CHANGED: Re-wired to robust state
+                onChange={(e) => setSearchQuery(e.target.value)}
+                className="w-full pl-10 pr-9 py-2.5 bg-white rounded-md outline-none border border-gray-200 focus:border-[#0058be]/30 shadow-sm transition-all text-sm"
               />
+              {/* Added Clear Button */}
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              )}
             </div>
             <button className="flex items-center gap-2 px-4 py-2.5 bg-white border border-gray-200 rounded-md text-sm font-medium text-slate-700 hover:bg-gray-50 shadow-sm transition-colors">
               <span className="material-symbols-outlined text-[18px]">filter_list</span>
@@ -182,14 +203,14 @@ export default function TeacherAssignment() {
                       </div>
                     </td>
                   </tr>
-                ) : filteredAssignments.length === 0 ? ( // CHANGED: Now mapping over filteredAssignments
+                ) : assignments.length === 0 ? ( // CHANGED: Mapping raw assignments (data from backend)
                   <tr>
                     <td colSpan="6" className="text-center py-12 text-gray-500">
-                      No teachers assigned to classes yet.
+                      {searchQuery ? "No assignments match your search." : "No teachers assigned to classes yet."}
                     </td>
                   </tr>
                 ) : (
-                  filteredAssignments.map((a, i) => ( // CHANGED: Now mapping over filteredAssignments
+                  assignments.map((a, i) => (
                     <tr key={a.id} className="hover:bg-[#fcfdff] transition-colors group">
                       <td className="px-6 py-5">
                         <div className="flex items-center gap-3">
@@ -235,13 +256,13 @@ export default function TeacherAssignment() {
                       <td className="px-6 py-5 text-right opacity-0 group-hover:opacity-100 transition-opacity">
                         <div className="flex justify-end gap-2">
                           <button 
-                            onClick={() => navigate(`/school-admin/teacher-assignment/edit/${a.id}`)} // ADDED: Navigate to Edit Page
+                            onClick={() => navigate(`/school-admin/teacher-assignment/edit/${a.id}`)}
                             className="p-2 hover:bg-blue-50 text-[#0058be] rounded-md transition-colors"
                           >
                             <span className="material-symbols-outlined text-[18px]">edit</span>
                           </button>
                           <button 
-                            onClick={() => handleDelete(a.id)} // ADDED: Handle Delete API call
+                            onClick={() => handleDelete(a.id)}
                             className="p-2 hover:bg-red-50 text-red-500 rounded-md transition-colors"
                           >
                             <span className="material-symbols-outlined text-[18px]">delete</span>
@@ -255,17 +276,29 @@ export default function TeacherAssignment() {
             </table>
           </div>
 
-          {/* pagination */}
+          {/* Fully Functional Pagination */}
           <div className="flex justify-between items-center p-4 border-t border-gray-100 bg-gray-50">
             <p className="text-sm text-[#6b7280] font-medium">
-              Showing {filteredAssignments.length} of {totalCount} assignments
+              Showing {assignments.length} of {totalCount} assignments
             </p>
             <div className="flex gap-2">
-              <button className="w-10 h-10 flex items-center justify-center border border-gray-200 bg-white hover:bg-gray-50 rounded-md text-gray-500 transition-colors">
+              <button 
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                className={`w-10 h-10 flex items-center justify-center border border-gray-200 bg-white hover:bg-gray-50 rounded-md text-gray-500 transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
                 <span className="material-symbols-outlined text-[18px]">chevron_left</span>
               </button>
-              <span className="w-10 h-10 flex items-center justify-center bg-[#0058be] text-white rounded-md font-bold shadow-sm">1</span>
-              <button className="w-10 h-10 flex items-center justify-center border border-gray-200 bg-white hover:bg-gray-50 rounded-md text-gray-500 transition-colors">
+              
+              <span className="w-10 h-10 flex items-center justify-center bg-[#0058be] text-white rounded-md font-bold shadow-sm">
+                {currentPage}
+              </span>
+              
+              <button 
+                disabled={currentPage >= totalPages || totalPages === 0}
+                onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                className={`w-10 h-10 flex items-center justify-center border border-gray-200 bg-white hover:bg-gray-50 rounded-md text-gray-500 transition-colors ${(currentPage >= totalPages || totalPages === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+              >
                 <span className="material-symbols-outlined text-[18px]">chevron_right</span>
               </button>
             </div>

@@ -22,8 +22,6 @@ import GlobalSettings from "../pages/globalAdmin/Settings";
 
 /* SCHOOL ADMIN */
 import SchoolDashboard from "../pages/schoolAdmin/Dashboard";
-import CreateClass from "../pages/schoolAdmin/CreateClass";
-import CreateSection from '../pages/schoolAdmin/CreateSection';
 import AcademicYears from "../pages/schoolAdmin/AcademicYears";
 import CreateAcademicYear from "../pages/schoolAdmin/CreateAcademicYear";
 import RolesPermissions from "../pages/schoolAdmin/RolesPermissions";
@@ -39,13 +37,14 @@ import AddMapping from "../pages/schoolAdmin/AddMapping";
 import TeacherAssignment from "../pages/schoolAdmin/TeacherAssignment";
 import AssignTeacher from "../pages/schoolAdmin/AssignTeacher";
 import SchoolSettings from "../pages/schoolAdmin/Settings";
-import SchoolNotifications from "../pages/schoolAdmin/Notifications";
 import ParentDetail from "../pages/schoolAdmin/ParentDetail";
 import StudentDetail from "../pages/schoolAdmin/StudentDetail";
 import EditStudent from "../pages/schoolAdmin/EditStudent";
 import TeacherDetail from "../pages/schoolAdmin/TeacherDetail";
 import MappingDetail from "../pages/schoolAdmin/MappingDetail";
 import EditTeacherAssignment from "../pages/schoolAdmin/EditTeacherAssignment";
+import ClassLevels from "../pages/schoolAdmin/ClassLevels"; // Adjust the folder path if yours is slightly different!
+import CreateClassSection from "../pages/schoolAdmin/CreateClassSection";
 
 /* ================= STUDENT ================= */
 import StudentDashboard from "../pages/student/Dashboard";
@@ -163,10 +162,7 @@ function AppRoutes() {
 
         {/* ================= SCHOOL ADMIN ================= */}
         <Route path="/school-admin" element={<SchoolDashboard />} />
-        <Route path="/school-admin/notifications" element={<SchoolNotifications />} />
         <Route path="/school-admin/settings" element={<SchoolSettings />} />
-        <Route path="/school-admin/create-class" element={<CreateClass />} />
-        <Route path="/school-admin/create-section" element={<CreateSection />} />
         <Route path="/school-admin/academic-years" element={<AcademicYears />} />
         <Route path="/school-admin/academic-years/create" element={<CreateAcademicYear />} />
         <Route path="/school-admin/academic-years/edit/:id" element={<CreateAcademicYear />} />
@@ -184,12 +180,19 @@ function AppRoutes() {
         <Route path="/school-admin/teacher-assignment" element={<TeacherAssignment />} />
         <Route path="/school-admin/teacher-assignment/create" element={<AssignTeacher />} />
         <Route path="/school-admin/parents/:id" element={<ParentDetail />} />
-        <Route path="/school-admin/students" element={<Students />} />
         <Route path="/school-admin/students/:id" element={<StudentDetail />} />
         <Route path="/school-admin/students/edit/:id" element={<EditStudent />} />
         <Route path="/school-admin/teachers/:id" element={<TeacherDetail />} />
         <Route path="/school-admin/mapping/:id" element={<MappingDetail />} />
         <Route path="/school-admin/teacher-assignment/edit/:id" element={<EditTeacherAssignment />} />
+        <Route path="/school-admin/manage-classes" element={<CreateClassSection />} /> 
+        <Route path="/school-admin/notifications" element={<Notifications />} />
+        
+        {/* Commented out duplicates to prevent routing bugs */}
+        {/* <Route path="/school-admin/dashboard" element={<Dashboard />} /> */}
+        {/* <Route path="/school-admin/students" element={<Students />} /> */}
+        
+        <Route path="/school-admin/class-levels" element={<ClassLevels />} />
 
         {/* ================= STUDENT ================= */}
         <Route path="/students" element={<Navigate to="/student" replace />} />

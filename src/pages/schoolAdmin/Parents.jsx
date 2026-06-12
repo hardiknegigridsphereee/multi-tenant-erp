@@ -11,25 +11,45 @@ export default function Parents() {
   const [error, setError] = useState(null);
   const [totalCount, setTotalCount] = useState(0);
 
-  useEffect(() => {
-    fetchParents();
-  }, []);
+  // Pagination & Search States
+  const [currentPage, setCurrentPage] = useState(1);
+  const [totalPages, setTotalPages] = useState(1);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const fetchParents = async () => {
+  // Debounce search input (500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset to page 1 whenever search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  // Fetch parents when page or debounced search changes
+  useEffect(() => {
+    fetchParents(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch]);
+
+  const fetchParents = async (page, search = "") => {
     setLoading(true);
     setError(null);
-
     try {
-      // Production-level call: No manual URLs or tokens needed here
-      const data = await schoolAdminApi.getParents();
+      // Pass both page and search parameters
+      const data = await schoolAdminApi.getParents(page, search);
       
-      // Handle DRF pagination structure
       if (data.results) {
         setParents(data.results);
         setTotalCount(data.count);
+        setTotalPages(Math.ceil(data.count / 10)); // Assuming 10 items per page
       } else {
         setParents(data);
         setTotalCount(data.length);
+        setTotalPages(1);
       }
     } catch (err) {
       console.error("Fetch Parents Error:", err);
@@ -39,7 +59,6 @@ export default function Parents() {
     }
   };
 
-  // Helper to generate initials
   const getInitials = (first, last, email) => {
     if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
     if (first) return first.substring(0, 2).toUpperCase();
@@ -47,7 +66,6 @@ export default function Parents() {
     return "PR";
   };
 
-  // Helper to assign a random background color class to initials
   const getColorClass = (index) => {
     const colors = ["bg-[#e9ddff] text-[#6b38d4]", "bg-[#d8e2ff] text-[#0058be]", "bg-[#ffdcc6] text-[#924700]", "bg-[#eff4ff] text-[#2170e4]"];
     return colors[index % colors.length];
@@ -93,7 +111,7 @@ export default function Parents() {
           </div>
         )}
 
-        {/* table */}
+        {/* table container */}
         <div className="bg-white rounded-xl shadow-sm overflow-hidden border border-gray-100">
           <div className="p-6 flex justify-between items-center bg-[#f8f9ff] border-b border-gray-100">
             <div className="relative w-80">
@@ -101,9 +119,20 @@ export default function Parents() {
                 search
               </span>
               <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
                 placeholder="Search guardians..."
-                className="w-full bg-white pl-9 pr-4 py-2.5 rounded-md text-sm border border-gray-200 focus:border-[#0058be]/30 focus:ring-2 focus:ring-[#0058be]/10 outline-none transition-all shadow-sm"
+                className="w-full bg-white pl-9 pr-9 py-2.5 rounded-md text-sm border border-gray-200 focus:border-[#0058be]/30 outline-none transition-all shadow-sm"
               />
+              {/* Clear button added for proper search UX */}
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              )}
             </div>
 
             <div className="flex items-center gap-4 text-xs text-[#6b7280] font-medium">
@@ -140,7 +169,7 @@ export default function Parents() {
                 ) : parents.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="text-center py-12 text-gray-500">
-                      No parents found in the directory.
+                      {searchQuery ? "No guardians match your search." : "No parents found in the directory."}
                     </td>
                   </tr>
                 ) : (
@@ -205,20 +234,28 @@ export default function Parents() {
             </table>
           </div>
 
-          {/* pagination */}
+          {/* Fully Functional Pagination */}
           <div className="flex justify-between items-center px-6 py-4 border-t border-gray-100 bg-gray-50">
-            <button className="flex items-center gap-1 text-sm font-semibold text-[#0058be] hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors">
+            <button 
+              disabled={currentPage === 1}
+              onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.max(1, p - 1)); }}
+              className={`flex items-center gap-1 text-sm font-semibold text-[#0058be] hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors ${currentPage === 1 ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               <span className="material-symbols-outlined text-sm">arrow_back</span>
               Previous
             </button>
 
             <div className="flex gap-1">
               <span className="w-8 h-8 flex items-center justify-center rounded-md bg-[#0058be] text-white text-sm font-bold shadow-sm">
-                1
+                {currentPage}
               </span>
             </div>
 
-            <button className="flex items-center gap-1 text-sm font-semibold text-[#0058be] hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors">
+            <button 
+              disabled={currentPage >= totalPages || totalPages === 0}
+              onClick={(e) => { e.stopPropagation(); setCurrentPage(p => Math.min(totalPages, p + 1)); }}
+              className={`flex items-center gap-1 text-sm font-semibold text-[#0058be] hover:bg-blue-50 px-3 py-1.5 rounded-md transition-colors ${(currentPage >= totalPages || totalPages === 0) ? 'opacity-50 cursor-not-allowed' : ''}`}
+            >
               Next
               <span className="material-symbols-outlined text-sm">arrow_forward</span>
             </button>

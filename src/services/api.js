@@ -1,14 +1,4 @@
-/**
- * API Service - Centralized API endpoint management
- *
- * Configure your API base URL here:
- * - Development: http://localhost:8000
- * - Production: https://api.example.com
- */
-
-// Get API base URL from environment or use default
-export const API_BASE_URL =
-  process.env.REACT_APP_API_URL || "http://localhost:8000";
+export const API_BASE_URL = process.env.REACT_APP_API_BASE_URL;
 
 console.log("[API SERVICE] Initialized with base URL:", API_BASE_URL);
 
@@ -262,11 +252,10 @@ export const getExams = () => fetchAllPages("/api/v1/operations/exams/");
 export const getExam = (id) => apiCall(`/api/v1/operations/exams/${id}/`);
 
 /**
- * Generic AI API caller
+ * Generic AI API caller – no hardcoded fallback
  */
 const callAiApi = async (endpoint, payload) => {
-  const AI_API_BASE_URL =
-    process.env.REACT_APP_AI_API_URL || "http://127.0.0.1:8001";
+  const AI_API_BASE_URL = process.env.REACT_APP_AI_API_URL;   // Removed hardcoded fallback
   const url = `${AI_API_BASE_URL}${endpoint}`;
 
   const token = localStorage.getItem("access_token");
@@ -430,3 +419,4 @@ export const deleteSavedAIContent = (id) =>
   apiCall(`/api/v1/academics/saved-ai-content/${id}/`, {
     method: "DELETE",
   });
+  callAiApi("/api/v1/generate_rubric", payload);

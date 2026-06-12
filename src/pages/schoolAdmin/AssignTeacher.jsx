@@ -10,7 +10,8 @@ export default function AssignTeacher() {
   const [teachers, setTeachers] = useState([]);
   const [academicYears, setAcademicYears] = useState([]);
   const [classLevels, setClassLevels] = useState([]);
-  const [sections, setSections] = useState([]);
+  const [sections, setSections] = useState([]); // Holds all raw sections
+  const [filteredSections, setFilteredSections] = useState([]); // Holds sections for the selected class
   const [subjects, setSubjects] = useState([]);
 
   // Form State
@@ -37,11 +38,20 @@ export default function AssignTeacher() {
           schoolAdminApi.getSubjects(),
         ]);
 
+        // Extract results and sort alphabetically/numerically for a clean UI
+        const fetchedClasses = classRes.results || classRes;
+        const fetchedSubjects = subjectRes.results || subjectRes;
+        
         setTeachers(teacherRes.results || teacherRes);
         setAcademicYears(yearRes.results || yearRes);
-        setClassLevels(classRes.results || classRes);
+        
+        // Sort Classes and Subjects A-Z
+        setClassLevels(fetchedClasses.sort((a, b) => a.name.localeCompare(b.name)));
+        setSubjects(fetchedSubjects.sort((a, b) => a.name.localeCompare(b.name)));
+        
+        // Store raw sections to be filtered later
         setSections(sectionRes.results || sectionRes);
-        setSubjects(subjectRes.results || subjectRes);
+        
       } catch (err) {
         console.error("Error fetching FK dropdowns:", err);
         setError("Failed to load configuration data.");
@@ -52,6 +62,25 @@ export default function AssignTeacher() {
 
     fetchDropdownData();
   }, []);
+
+  // --- CASCADING DROPDOWN LOGIC ---
+  // When the user selects a Class, filter the Sections dropdown to only show related sections
+  useEffect(() => {
+    if (selectedClass) {
+      const relatedSections = sections.filter(s => 
+        String(s.class_level) === String(selectedClass) || 
+        String(s.class_level_id) === String(selectedClass) ||
+        String(s.class_level?.id) === String(selectedClass)
+      );
+      // Sort the filtered sections alphabetically
+      setFilteredSections(relatedSections.sort((a, b) => a.name.localeCompare(b.name)));
+    } else {
+      setFilteredSections([]);
+    }
+    // Automatically reset the section dropdown when class changes
+    setSelectedSection("");
+  }, [selectedClass, sections]);
+
 
   const submit = async (e) => {
     e.preventDefault();
@@ -242,10 +271,11 @@ export default function AssignTeacher() {
                         required
                         value={selectedSection}
                         onChange={e => setSelectedSection(e.target.value)}
-                        className="w-full pl-10 pr-10 py-3.5 bg-[#f8f9ff] rounded-md outline-none focus:border-[#0058be]/40 focus:ring-2 focus:ring-[#0058be]/10 border border-transparent transition-all font-medium text-slate-700 appearance-none"
+                        disabled={!selectedClass} // Automatically disable if no Class is selected
+                        className="w-full pl-10 pr-10 py-3.5 bg-[#f8f9ff] rounded-md outline-none focus:border-[#0058be]/40 focus:ring-2 focus:ring-[#0058be]/10 border border-transparent transition-all font-medium text-slate-700 appearance-none disabled:opacity-50 disabled:cursor-not-allowed"
                       >
-                        <option value="">Select Section...</option>
-                        {initialLoading ? <option disabled>Loading...</option> : sections.map(s => (
+                        <option value="">{selectedClass ? "Select Section..." : "Select Class First..."}</option>
+                        {initialLoading ? <option disabled>Loading...</option> : filteredSections.map(s => (
                           <option key={s.id} value={s.id}>{s.name}</option>
                         ))}
                       </select>

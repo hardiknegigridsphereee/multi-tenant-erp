@@ -15,21 +15,37 @@ export default function Students() {
   const [currentPage, setCurrentPage] = useState(1);
   const [totalPages, setTotalPages] = useState(1);
 
-  useEffect(() => {
-    fetchStudents(currentPage);
-  }, [currentPage]);
+  // Search state
+  const [searchQuery, setSearchQuery] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
 
-  const fetchStudents = async (page) => {
+  // Debounce search input (500ms)
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      setDebouncedSearch(searchQuery);
+    }, 500);
+    return () => clearTimeout(timer);
+  }, [searchQuery]);
+
+  // Reset to page 1 whenever search changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [debouncedSearch]);
+
+  // Fetch students when page or debounced search changes
+  useEffect(() => {
+    fetchStudents(currentPage, debouncedSearch);
+  }, [currentPage, debouncedSearch]);
+
+  const fetchStudents = async (page, search = "") => {
     setLoading(true);
     setError(null);
     try {
-      // Pass the current page to the API
-      const data = await schoolAdminApi.getStudents(page);
+      const data = await schoolAdminApi.getStudents(page, search);
       
       if (data.results) {
         setStudents(data.results);
         setTotalCount(data.count);
-        // Assuming 10 items per page as per standard DRF pagination
         setTotalPages(Math.ceil(data.count / 10));
       } else {
         setStudents(data);
@@ -44,7 +60,6 @@ export default function Students() {
     }
   };
 
-  // Helper to generate initials for avatar placeholder
   const getInitials = (first, last, email) => {
     if (first && last) return `${first[0]}${last[0]}`.toUpperCase();
     if (first) return first.substring(0, 2).toUpperCase();
@@ -83,16 +98,24 @@ export default function Students() {
         <div className="bg-white rounded-lg shadow-sm overflow-hidden border border-gray-100">
           {/* filters */}
           <div className="p-6 flex justify-between bg-[#eff4ff] border-b border-blue-50">
-            <div className="flex gap-3">
-              <div className="relative w-80">
-                <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
-                  search
-                </span>
-                <input
-                  placeholder="Search by name or enrollment no..."
-                  className="w-full bg-white pl-9 pr-4 py-2 rounded-md text-sm border-transparent focus:border-[#0058be]/30 focus:ring-2 focus:ring-[#0058be]/10 outline-none transition-all shadow-sm"
-                />
-              </div>
+            <div className="relative w-80">
+              <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm">
+                search
+              </span>
+              <input
+                value={searchQuery}
+                onChange={(e) => setSearchQuery(e.target.value)}
+                placeholder="Search by name or enrollment no..."
+                className="w-full bg-white pl-9 pr-9 py-2 rounded-md text-sm border-transparent focus:border-[#0058be]/30 focus:ring-2 focus:ring-[#0058be]/10 outline-none transition-all shadow-sm"
+              />
+              {searchQuery && (
+                <button 
+                  onClick={() => setSearchQuery("")}
+                  className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 hover:text-gray-600"
+                >
+                  <span className="material-symbols-outlined text-sm">close</span>
+                </button>
+              )}
             </div>
             <div className="text-sm text-[#6b7280] font-medium flex items-center">
               Showing {students.length} of {totalCount} records
@@ -125,47 +148,29 @@ export default function Students() {
                 ) : students.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="text-center py-12 text-gray-500">
-                      No students enrolled in this institution yet.
+                      {searchQuery ? "No students match your search." : "No students enrolled in this institution yet."}
                     </td>
                   </tr>
                 ) : (
                   students.map((s) => (
-                    <tr
-                      key={s.id}
-                      className="hover:bg-[#fcfdff] transition-colors"
-                    >
+                    <tr key={s.id} className="hover:bg-[#fcfdff] transition-colors">
                       <td className="px-6 py-4">
                         <div className="flex gap-4 items-center">
                           {s.profile_picture ? (
-                            <img 
-                              src={s.profile_picture} 
-                              alt="Profile" 
-                              className="w-10 h-10 rounded-full object-cover border border-gray-200"
-                            />
+                            <img src={s.profile_picture} alt="Profile" className="w-10 h-10 rounded-full object-cover border border-gray-200" />
                           ) : (
                             <div className="w-10 h-10 rounded-full bg-gradient-to-br from-[#e5eeff] to-[#cce0ff] text-[#0058be] flex items-center justify-center font-bold text-sm shadow-inner border border-white">
                               {getInitials(s.first_name, s.last_name, s.email)}
                             </div>
                           )}
                           <div>
-                            <p className="font-semibold text-gray-900">
-                              {s.first_name || s.last_name ? `${s.first_name} ${s.last_name}` : "Pending Name"}
-                            </p>
-                            <p className="text-xs text-[#6b7280] font-mono mt-0.5">
-                              {s.email || "No Email Provided"}
-                            </p>
+                            <p className="font-semibold text-gray-900">{s.first_name || s.last_name ? `${s.first_name} ${s.last_name}` : "Pending Name"}</p>
+                            <p className="text-xs text-[#6b7280] font-mono mt-0.5">{s.email || "No Email Provided"}</p>
                           </div>
                         </div>
                       </td>
-
-                      <td className="text-sm text-gray-900 font-semibold font-mono">
-                        {s.enrollment_number || "N/A"}
-                      </td>
-
-                      <td className="text-sm text-[#727785]">
-                        {s.phone_number || "No Phone"}
-                      </td>
-
+                      <td className="text-sm text-gray-900 font-semibold font-mono">{s.enrollment_number || "N/A"}</td>
+                      <td className="text-sm text-[#727785]">{s.phone_number || "No Phone"}</td>
                       <td className="text-center">
                         {!s.is_archived ? (
                            <span className="px-3 py-1 bg-[#e5eeff] text-[#0058be] rounded-full text-xs font-semibold flex items-center gap-1 w-max mx-auto border border-blue-100">
@@ -179,7 +184,6 @@ export default function Students() {
                            </span>
                         )}
                       </td>
-
                       <td className="text-right pr-6">
                         <ActionMenu studentId={s.id} />
                       </td>
@@ -190,60 +194,13 @@ export default function Students() {
             </table>
           </div>
 
-          {/* New Pagination Component */}
-          <Pagination 
-            currentPage={currentPage} 
-            totalPages={totalPages} 
-            onPageChange={(page) => setCurrentPage(page)} 
-          />
-        </div>
-
-        {/* analytics cards */}
-        <div className="grid md:grid-cols-3 gap-6 mt-12 mb-12">
-          <div className="md:col-span-2 bg-gradient-to-r from-[#6b38d4] to-[#8455ef] text-white p-8 rounded-xl shadow-lg relative overflow-hidden">
-            <div className="absolute right-0 top-0 opacity-10">
-              <span className="material-symbols-outlined text-9xl">school</span>
-            </div>
-            <h3 className="text-xl font-bold mb-2 relative z-10">
-              Institution Student Analytics
-            </h3>
-            <p className="text-sm text-purple-100 mb-8 max-w-lg relative z-10">
-              Your Django backend strictly isolates these student profiles to your specific school tenant. This module manages domain-specific data such as enrollment numbers and historical records.
-            </p>
-
-            <div className="flex gap-12 relative z-10">
-              <div>
-                <p className="text-xs text-purple-200 uppercase tracking-wider font-semibold mb-1">
-                  Total Enrolled
-                </p>
-                <p className="text-4xl font-bold">
-                  {totalCount}
-                </p>
-              </div>
-              <div>
-                <p className="text-xs text-purple-200 uppercase tracking-wider font-semibold mb-1">
-                  Active Profiles
-                </p>
-                <p className="text-4xl font-bold">
-                  {students.filter(s => !s.is_archived).length}
-                </p>
-              </div>
-            </div>
-          </div>
-
-          <div className="relative">
-            <div className="bg-[#e7c6ad] p-8 rounded-2xl border border-[#d9b39a] h-full flex flex-col justify-center">
-              <div className="w-12 h-12 rounded-xl bg-[#f2dfd0] flex items-center justify-center mb-4">
-                <span className="material-symbols-outlined text-[#9a4d00]">how_to_reg</span>
-              </div>
-              <h3 className="text-lg font-bold text-[#3a1f0b] mb-2">
-                Profile Infrastructure
-              </h3>
-              <p className="text-[#6b3b13] text-sm leading-relaxed mb-4">
-                You are now viewing the extended `StudentProfile` model. This connects to the base identity via a One-to-One relationship in Django!
-              </p>
-            </div>
-          </div>
+          {totalPages > 1 && (
+            <Pagination 
+              currentPage={currentPage} 
+              totalPages={totalPages} 
+              onPageChange={(page) => setCurrentPage(page)} 
+            />
+          )}
         </div>
       </div>
     </SchoolLayout>

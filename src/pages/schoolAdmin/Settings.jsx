@@ -101,7 +101,8 @@ Public identity details for your institution. These appear on reports and commun
 <div className="w-32 h-32 rounded-xl overflow-hidden bg-[#e5eeff] flex items-center justify-center">
 
 <img
-src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0PxJ_8SB7PeuHJ6jEs7-sIwRwTikSfENbH1FouMWRNesI1WjU1QhW18afOaKuUkTgzx7xYH-vVcaIRiNE8eNHAuALHoeL_FcyjHHlxYrSLsHIni34it7gZu4Ye4xXRTDGVivmbLWPf6oKR2vyHwQag5cnmHisA22-LERoPtMFtuXddOD2LmYnFZtoNgZ5TfGJ_go7yarLqr4L7lAO_tb-BU5R1HAbQHNbUL-Y95JynVeOYanWM4IzC2dCBlHejLnYTk0geV04Ow"
+  src="https://lh3.googleusercontent.com/aida-public/AB6AXuA0PxJ_8SB7PeuHJ6jEs7-sIwRwTikSfENbH1FouMWRNesI1WjU1QhW18afOaKuUkTgzx7xYH-vVcaIRiNE8eNHAuALHoeL_FcyjHHlxYrSLsHIni34it7gZu4Ye4xXRTDGVivmbLWPf6oKR2vyHwQag5cnmHisA22-LERoPtMFtuXddOD2LmYnFZtoNgZ5TfGJ_go7yarLqr4L7lAO_tb-BU5R1HAbQHNbUL-Y95JynVeOYanWM4IzC2dCBlHejLnYTk0geV04Ow"
+  alt="Institution Logo"
 />
 
 </div>

@@ -16,11 +16,6 @@ export const getNotifications = async () => {
     return response.data;
 };
 
-export const getRecentActivity = async () => {
-    const response = await apiClient.get('/school-admin/logs/');
-    return response.data;
-};
-
 // --- Academic Years ---
 export const getAcademicYearDetails = async (id) => {
     const response = await apiClient.get(`/academics/academic-years/${id}/`);
@@ -190,29 +185,36 @@ export const updateSettings = async (data) => {
     return response.data;
 };
 
-// --- Paginated List Methods ---
-export const getStudents = async (page = 1) => {
-    const response = await apiClient.get(`/profiles/students/?page=${page}`);
+// src/services/schoolAdminApi.js
+
+export const getStudents = async (page = 1, search = "") => {
+    const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+    const response = await apiClient.get(`/profiles/students/?page=${page}${searchParam}`);
     return response.data;
 };
 
-export const getTeachers = async (page = 1) => {
-    const response = await apiClient.get(`/profiles/teachers/?page=${page}`);
+export const getTeachers = async (page = 1, search = "") => {
+    const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+    const response = await apiClient.get(`/profiles/teachers/?page=${page}${searchParam}`);
     return response.data;
 };
 
-export const getParents = async (page = 1) => {
-    const response = await apiClient.get(`/profiles/parents/?page=${page}`);
+export const getParents = async (page = 1, search = "") => {
+    // Append the search parameter only if a search query is provided
+    const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+    const response = await apiClient.get(`/profiles/parents/?page=${page}${searchParam}`);
     return response.data;
 };
 
-export const getParentStudentMappings = async (page = 1) => {
-    const response = await apiClient.get(`/profiles/parent-student-mappings/?page=${page}`);
+export const getParentStudentMappings = async (page = 1, search = "") => {
+    const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+    const response = await apiClient.get(`/profiles/parent-student-mappings/?page=${page}${searchParam}`);
     return response.data;
 };
 
-export const getTeacherAssignments = async (page = 1) => {
-    const response = await apiClient.get(`/academics/teacher-assignments/?page=${page}`);
+export const getTeacherAssignments = async (page = 1, search = "") => {
+    const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
+    const response = await apiClient.get(`/academics/teacher-assignments/?page=${page}${searchParam}`);
     return response.data;
 };
 
@@ -221,12 +223,32 @@ export const getAcademicYears = async (page = 1) => {
     return response.data;
 };
 
+// Add these to src/services/schoolAdminApi.js
+
+// Fetch sections for a SPECIFIC class level only
+export const getSectionsByClass = async (classId) => {
+    const response = await apiClient.get(`/academics/sections/?class_level=${classId}`);
+    return response.data;
+};
+
+// Securely delete a specific Class Level
+export const deleteClassLevelById = async (id) => {
+    const response = await apiClient.delete(`/academics/class-levels/${id}/`);
+    return response.data;
+};
+
+// Securely delete a specific Section
+export const deleteSectionById = async (id) => {
+    const response = await apiClient.delete(`/academics/sections/${id}/`);
+    return response.data;
+};
+
+
 // --- Bundled Export ---
 export const schoolAdminApi = {
     getDashboardStats,
     getEnrollmentTrends,
     getNotifications,
-    getRecentActivity,
     getAcademicYears,
     getAcademicYearDetails,
     createAcademicYear,
@@ -265,5 +287,8 @@ export const schoolAdminApi = {
     deleteTeacherAssignment,
     createSection,
     getSettings,
-    updateSettings
+    updateSettings,
+    getSectionsByClass,
+    deleteClassLevelById,
+    deleteSectionById
 };

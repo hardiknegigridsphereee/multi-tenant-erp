@@ -7,12 +7,10 @@ export default function EditTeacherAssignment() {
   const { id } = useParams();
   const navigate = useNavigate();
   
-  // State for form fields
-  const [formData, setFormData] = useState({ 
-      role: "" 
-  });
+  // State for form fields - FIXED: Changed to boolean to match database
+  const [isClassTeacher, setIsClassTeacher] = useState(false);
   const [displayData, setDisplayData] = useState(null);
-  const [loading, setLoading] = useState(true); // Added loading state
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const loadData = async () => {
@@ -20,14 +18,12 @@ export default function EditTeacherAssignment() {
         const data = await schoolAdminApi.getTeacherAssignmentById(id);
         setDisplayData(data);
         
-        // Populate the form data with the existing values
-        setFormData({
-            role: data.role || ""
-        });
+        // Populate the form data with the existing boolean value
+        setIsClassTeacher(data.is_class_teacher || false);
       } catch (err) {
         console.error("Error loading assignment:", err);
       } finally {
-        setLoading(false); // Stop loading regardless of success/fail
+        setLoading(false); 
       }
     };
     loadData();
@@ -36,7 +32,10 @@ export default function EditTeacherAssignment() {
   const handleSubmit = async (e) => {
     e.preventDefault();
     try {
-      await schoolAdminApi.updateTeacherAssignment(id, formData);
+      // Send the correct field name (is_class_teacher) to the backend
+      await schoolAdminApi.updateTeacherAssignment(id, { 
+        is_class_teacher: isClassTeacher 
+      });
       alert("Updated successfully!");
       navigate("/school-admin/teacher-assignment");
     } catch (err) {
@@ -45,7 +44,6 @@ export default function EditTeacherAssignment() {
     }
   };
 
-  // Safe loading UI to prevent crashes before data arrives
   if (loading) {
     return (
       <SchoolLayout title="Edit Assignment">
@@ -80,17 +78,20 @@ export default function EditTeacherAssignment() {
         )}
 
         <form onSubmit={handleSubmit}>
+            {/* FIXED: Replaced text input with the correct Boolean Checkbox */}
             <div className="mb-8">
-                <label className="block text-sm font-semibold text-gray-600 mb-2 uppercase tracking-wider">
-                  Assignment Role
-                </label>
+              <label className="flex items-center justify-between p-4 bg-orange-50 border border-orange-100 rounded-md cursor-pointer hover:bg-orange-100/50 transition-colors">
+                <div>
+                  <span className="font-bold text-[#924700]">Assign as Class Teacher</span>
+                  <p className="text-xs text-orange-800/80 mt-0.5">Designate this teacher as the primary academic advisor.</p>
+                </div>
                 <input 
-                  type="text"
-                  value={formData.role} 
-                  onChange={(e) => setFormData({...formData, role: e.target.value})}
-                  className="w-full p-2.5 border border-gray-300 rounded-lg focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be] outline-none transition-all" 
-                  placeholder="e.g. Class Teacher, Subject Teacher"
+                  type="checkbox" 
+                  checked={isClassTeacher} 
+                  onChange={() => setIsClassTeacher(!isClassTeacher)}
+                  className="w-5 h-5 rounded text-[#924700] focus:ring-[#924700]" 
                 />
+              </label>
             </div>
             
             <div className="flex gap-3">

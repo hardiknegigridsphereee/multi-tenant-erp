@@ -25,6 +25,121 @@ function timeAgo(dateStr) {
   return `${Math.floor(h / 24)}d ago`;
 }
 
+// Skeleton Components
+function Skeleton({ className = "" }) {
+  return <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />;
+}
+
+function AiTutorSkeleton() {
+  return (
+    <MainLayout title="Student Portal">
+      <div className="p-8 h-[calc(100vh-80px)] flex flex-col gap-6 overflow-hidden">
+        {/* Header Skeleton */}
+        <div className="flex justify-between items-end">
+          <div>
+            <Skeleton className="w-64 h-9 mb-2" />
+            <Skeleton className="w-96 h-5" />
+          </div>
+          <div className="flex gap-3">
+            <Skeleton className="w-24 h-10 rounded-md" />
+            <Skeleton className="w-32 h-10 rounded-md" />
+          </div>
+        </div>
+
+        <div className="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
+          {/* Left Panel Skeleton */}
+          <div className="col-span-12 lg:col-span-3 h-full flex flex-col bg-white rounded-xl border shadow-sm overflow-hidden">
+            <div className="px-4 py-3 border-b">
+              <Skeleton className="w-20 h-3" />
+            </div>
+            <div className="flex-1 overflow-y-auto p-2 space-y-2">
+              {[1, 2, 3, 4, 5].map((i) => (
+                <div key={i} className="px-4 py-3 border-b">
+                  <div className="flex items-start justify-between gap-2">
+                    <Skeleton className="w-32 h-4 flex-1" />
+                    <Skeleton className="w-6 h-6 rounded" />
+                  </div>
+                  <div className="flex items-center gap-2 mt-1">
+                    <Skeleton className="w-12 h-3 rounded-full" />
+                    <Skeleton className="w-16 h-3" />
+                  </div>
+                  <Skeleton className="w-48 h-3 mt-1" />
+                </div>
+              ))}
+            </div>
+            <div className="p-3 border-t">
+              <Skeleton className="w-full h-8 rounded-lg" />
+            </div>
+          </div>
+
+          {/* Chat Window Skeleton */}
+          <div className="col-span-12 lg:col-span-9 h-full flex flex-col bg-white rounded-xl border shadow-sm overflow-hidden">
+            {/* Chat Header Skeleton */}
+            <div className="px-6 py-4 border-b flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Skeleton className="w-2 h-2 rounded-full" />
+                <Skeleton className="w-40 h-5" />
+                <Skeleton className="w-16 h-4 rounded-full" />
+              </div>
+              <div className="flex items-center gap-3">
+                <Skeleton className="w-20 h-3" />
+                <div className="flex gap-2">
+                  <Skeleton className="w-9 h-9 rounded-full" />
+                  <Skeleton className="w-9 h-9 rounded-full" />
+                </div>
+              </div>
+            </div>
+
+            {/* Messages Area Skeleton */}
+            <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-gray-50/30">
+              {/* AI Message Skeleton */}
+              <div className="flex justify-start items-start gap-3">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                <div className="max-w-[80%] bg-white p-5 rounded-2xl rounded-tl-none">
+                  <Skeleton className="w-64 h-4 mb-2" />
+                  <Skeleton className="w-96 h-4 mb-2" />
+                  <Skeleton className="w-80 h-4 mb-2" />
+                  <Skeleton className="w-56 h-4" />
+                  <Skeleton className="w-32 h-3 mt-3" />
+                </div>
+              </div>
+
+              {/* User Message Skeleton */}
+              <div className="flex justify-end items-start gap-3">
+                <div className="max-w-[70%] bg-white p-4 rounded-2xl rounded-tr-none">
+                  <Skeleton className="w-48 h-4 mb-2" />
+                  <Skeleton className="w-64 h-4" />
+                  <Skeleton className="w-20 h-3 mt-2" />
+                </div>
+              </div>
+
+              {/* Another AI Message Skeleton */}
+              <div className="flex justify-start items-start gap-3">
+                <Skeleton className="w-8 h-8 rounded-full shrink-0" />
+                <div className="max-w-[80%] bg-white p-5 rounded-2xl rounded-tl-none">
+                  <Skeleton className="w-72 h-4 mb-2" />
+                  <Skeleton className="w-88 h-4 mb-2" />
+                  <Skeleton className="w-64 h-4" />
+                  <Skeleton className="w-32 h-3 mt-3" />
+                </div>
+              </div>
+            </div>
+
+            {/* Input Bar Skeleton */}
+            <div className="p-4 bg-white border-t">
+              <div className="flex items-center gap-2">
+                <Skeleton className="flex-1 h-11 rounded-xl" />
+                <Skeleton className="w-10 h-10 rounded-xl" />
+              </div>
+              <Skeleton className="w-64 h-3 mx-auto mt-2" />
+            </div>
+          </div>
+        </div>
+      </div>
+    </MainLayout>
+  );
+}
+
 function NewConvModal({ onClose, onCreate }) {
   const [title, setTitle] = useState('');
   const [subject, setSubject] = useState('');
@@ -325,6 +440,9 @@ export default function AiTutor() {
     openConversation(conv.id);
   }
 
+  // Show skeleton while loading conversations
+  if (loadingConvs && conversations.length === 0) return <AiTutorSkeleton />;
+
   if (showTrash) return <MainLayout title="Student Portal"><TrashView onBack={() => setShowTrash(false)} /></MainLayout>;
 
   return (
@@ -348,7 +466,7 @@ export default function AiTutor() {
         </div>
       )}
 
-      <div className="p-8 flex-1 flex flex-col gap-6">
+      <div className="p-8 h-[calc(100vh-80px)] flex flex-col gap-6 overflow-hidden">
         <div className="flex justify-between items-end">
           <div>
             <h2 className="text-3xl font-extrabold font-headline text-on-surface tracking-tight">AI Intelligent Tutor</h2>
@@ -368,10 +486,10 @@ export default function AiTutor() {
           </div>
         </div>
 
-        <div className="grid grid-cols-12 gap-6 flex-1 min-h-[600px]">
+        <div className="grid grid-cols-12 gap-6 flex-1 overflow-hidden">
 
           {/* ── Left: Conversation List ── */}
-          <div className="col-span-12 lg:col-span-3 flex flex-col bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm overflow-hidden">
+          <div className="col-span-12 lg:col-span-3 h-full flex flex-col bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm overflow-hidden">
             <div className="px-4 py-3 border-b border-outline-variant/5 bg-surface-container-low/40">
               <p className="text-xs font-bold text-on-surface-variant uppercase tracking-wider">Sessions</p>
             </div>
@@ -415,7 +533,9 @@ export default function AiTutor() {
           </div>
 
           {/* ── Chat Window — now col-span-9 (full right side) ── */}
-          <div className="col-span-12 lg:col-span-9 flex flex-col bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm overflow-hidden">
+          <div
+            className="col-span-12 lg:col-span-9 h-full flex flex-col bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm overflow-hidden"
+          >
             {/* Chat Header */}
             <div className="px-6 py-4 border-b border-outline-variant/5 flex items-center justify-between bg-surface-container-low/30">
               {activeConv ? (
@@ -444,7 +564,9 @@ export default function AiTutor() {
             </div>
 
             {/* Messages */}
-            <div className="flex-1 p-6 overflow-y-auto space-y-6 bg-gray-50/30">
+            <div
+              className="flex-1 p-6 overflow-y-auto space-y-6 bg-gray-50/30"
+            >
               {loadingChat ? (
                 <div className="flex items-center justify-center h-full text-sm text-on-surface-variant">Loading messages…</div>
               ) : !activeConv ? (
