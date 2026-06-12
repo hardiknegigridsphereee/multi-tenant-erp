@@ -1,84 +1,71 @@
-import React from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useEffect } from 'react';
+import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
-
+import { getSavedAIContent, deleteSavedAIContent } from '../../services/api';
 
 const toolsInfo = [
-
-{
-id: 1,
-title: 'Lesson Plan Generator',
-desc: 'Create structured 45-minute lesson plans aligned with curriculum standards.',
-icon: 'assignment',
-
-link: '/teacher/ai-tools/lesson-plan'
-},
-
-{
-id: 2,
-title: 'Worksheet Generator',
-desc: 'Generate topic-specific practice sheets with varying difficulty levels.',
-icon: 'description',
-
-link: '/teacher/ai-tools/worksheet'
-},
-
-{
-id: 3,
-title: 'Quiz Generator',
-desc: 'Instant MCQs and short answers based on your uploaded reading material.',
-icon: 'quiz',
-
-link: '/teacher/ai-tools/quiz'
-},
-
-{
-id: 4,
-title: 'Question Paper Generator',
-desc: 'Design formal term exams with automated marks allocation and keys.',
-icon: 'history_edu',
-
-link: '/teacher/ai-tools/question-paper'
-},
-
-{
-id: 5,
-title: 'Study Notes Generator',
-desc: 'Synthesize complex lectures into bulleted summaries.',
-icon: 'menu_book',
-
-link: '/teacher/ai-tools/study-notes'
-},
-
-{
-id: 6,
-title: 'Presentation Outline',
-desc: 'Develop slide-by-slide narrative arcs.',
-icon: 'speaker_notes',
-
-link: '/teacher/ai-tools/presentation-outline'
-},
-
-{
-id: 7,
-title: 'Rubric Generator',
-desc: 'Create objective grading criteria.',
-icon: 'rule',
-
-link: '/teacher/ai-tools/rubric'
-}
-
+{ id: 1, title: 'Lesson Plan Generator', desc: 'Create structured 45-minute lesson plans aligned with curriculum standards.', icon: 'assignment', link: '/teacher/ai-tools/lesson-plan' },
+{ id: 2, title: 'Worksheet Generator', desc: 'Generate topic-specific practice sheets with varying difficulty levels.', icon: 'description', link: '/teacher/ai-tools/worksheet' },
+{ id: 3, title: 'Quiz Generator', desc: 'Instant MCQs and short answers based on your uploaded reading material.', icon: 'quiz', link: '/teacher/ai-tools/quiz' },
+{ id: 4, title: 'Question Paper Generator', desc: 'Design formal term exams with automated marks allocation and keys.', icon: 'history_edu', link: '/teacher/ai-tools/question-paper' },
+{ id: 5, title: 'Study Notes Generator', desc: 'Synthesize complex lectures into bulleted summaries.', icon: 'menu_book', link: '/teacher/ai-tools/study-notes' },
+{ id: 6, title: 'Presentation Outline', desc: 'Develop slide-by-slide narrative arcs.', icon: 'speaker_notes', link: '/teacher/ai-tools/presentation-outline' },
+{ id: 7, title: 'Rubric Generator', desc: 'Create objective grading criteria.', icon: 'rule', link: '/teacher/ai-tools/rubric' }
 ];
 
-const historyData = [
-  { id: 1, title: 'Quantum Mechanics Basics', type: 'Lesson Plan', subject: 'Physics 101', date: 'Oct 24, 2023', icon: 'article', iconColor: 'text-blue-500', badgeColor: 'bg-blue-50 text-blue-700' },
-  { id: 2, title: 'Molecular Biology Mid-Term', type: 'Question Paper', subject: 'Biology', date: 'Oct 22, 2023', icon: 'quiz', iconColor: 'text-[#6b38d4]', badgeColor: 'bg-purple-50 text-purple-700' },
-  { id: 3, title: 'Lab Safety Procedures', type: 'Rubric', subject: 'Chemistry', date: 'Oct 19, 2023', icon: 'task_alt', iconColor: 'text-[#b75b00]', badgeColor: 'bg-orange-50 text-orange-700' },
-  { id: 4, title: 'Industrial Revolution Summary', type: 'Study Notes', subject: 'History', date: 'Oct 15, 2023', icon: 'edit_note', iconColor: 'text-green-500', badgeColor: 'bg-green-50 text-green-700' }
-];
+const getTypeVisuals = (type) => {
+  switch(type) {
+    case 'LessonPlan': return { icon: 'assignment', iconColor: 'text-blue-500', badgeColor: 'bg-blue-50 text-blue-700', path: 'lesson-plan' };
+    case 'Worksheet': return { icon: 'description', iconColor: 'text-indigo-500', badgeColor: 'bg-indigo-50 text-indigo-700', path: 'worksheet' };
+    case 'Quiz': return { icon: 'quiz', iconColor: 'text-[#6b38d4]', badgeColor: 'bg-purple-50 text-purple-700', path: 'quiz' };
+    case 'QuestionPaper': return { icon: 'history_edu', iconColor: 'text-red-500', badgeColor: 'bg-red-50 text-red-700', path: 'question-paper' };
+    case 'StudyNotes': return { icon: 'menu_book', iconColor: 'text-green-500', badgeColor: 'bg-green-50 text-green-700', path: 'study-notes' };
+    case 'PresentationOutline': return { icon: 'speaker_notes', iconColor: 'text-teal-500', badgeColor: 'bg-teal-50 text-teal-700', path: 'presentation-outline' };
+    case 'Rubric': return { icon: 'rule', iconColor: 'text-[#b75b00]', badgeColor: 'bg-orange-50 text-orange-700', path: 'rubric' };
+    default: return { icon: 'article', iconColor: 'text-gray-500', badgeColor: 'bg-gray-50 text-gray-700', path: 'lesson-plan' };
+  }
+};
 
 const ContentAIToolsDashboard = () => {
+  const navigate = useNavigate();
+  const [historyData, setHistoryData] = useState([]);
+  const [loadingHistory, setLoadingHistory] = useState(true);
+
+  const fetchHistory = async () => {
+    setLoadingHistory(true);
+    try {
+      // Get the latest 5 items for the dashboard
+      const data = await getSavedAIContent({ limit: 5 });
+      setHistoryData(data.results || data);
+    } catch (error) {
+      console.error("Failed to fetch history:", error);
+    } finally {
+      setLoadingHistory(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchHistory();
+  }, []);
+
+  const handleDelete = async (id) => {
+    if (window.confirm("Are you sure you want to delete this saved content?")) {
+      try {
+        await deleteSavedAIContent(id);
+        setHistoryData(prev => prev.filter(item => item.id !== id));
+      } catch (error) {
+        console.error("Failed to delete item:", error);
+        alert("Failed to delete content");
+      }
+    }
+  };
+
+  const getTitle = (item) => {
+    if (item.data && item.data.title) return item.data.title;
+    return `${item.subject} ${item.content_type}`;
+  };
+
   return (
     <MainLayout title="Content & AI Tools">
       <div className="max-w-7xl mx-auto space-y-12">
@@ -135,49 +122,72 @@ const ContentAIToolsDashboard = () => {
         <section className="space-y-6">
           <div className="flex items-center justify-between">
             <h3 className="text-2xl font-display font-bold text-on-surface">Saved & Recent Content</h3>
-            <button className="text-primary font-bold text-sm flex items-center gap-1 hover:underline outline-none border-none cursor-pointer bg-transparent">
+            <Link to="/teacher/ai-tools/history" className="text-primary font-bold text-sm flex items-center gap-1 hover:underline outline-none border-none cursor-pointer bg-transparent">
               View All History <span className="material-symbols-outlined text-sm block">arrow_forward</span>
-            </button>
+            </Link>
           </div>
           
           {/* Table Container */}
           <Card className="p-0 overflow-hidden" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.06)'}}>
             <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse min-w-[800px]">
-                <thead>
-                  <tr className="bg-surface-container-low border-b border-surface-container">
-                    <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Content Title</th>
-                    <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Type</th>
-                    <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Subject</th>
-                    <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Date</th>
-                    <th className="px-6 py-4 font-display font-bold text-sm text-on-surface text-right">Actions</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-surface-container/50">
-                  {historyData.map(item => (
-                    <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
-                      <td className="px-6 py-5">
-                        <div className="flex items-center gap-3">
-                          <span className={`material-symbols-outlined ${item.iconColor} block`}>{item.icon}</span>
-                          <span className="font-bold text-sm text-on-surface">{item.title}</span>
-                        </div>
-                      </td>
-                      <td className="px-6 py-5">
-                        <span className={`px-3 py-1 ${item.badgeColor} rounded-full text-[11px] font-bold uppercase tracking-tight whitespace-nowrap`}>{item.type}</span>
-                      </td>
-                      <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">{item.subject}</td>
-                      <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">{item.date}</td>
-                      <td className="px-6 py-5 text-right">
-                        <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <button className="p-2 hover:bg-white rounded-lg transition-colors text-on-surface-variant shadow-sm outline-none border-none cursor-pointer bg-transparent" title="Open"><span className="material-symbols-outlined text-lg block">open_in_new</span></button>
-                          <button className="p-2 hover:bg-white rounded-lg transition-colors text-on-surface-variant shadow-sm outline-none border-none cursor-pointer bg-transparent" title="Edit"><span className="material-symbols-outlined text-lg block">edit</span></button>
-                          <button className="p-2 hover:bg-white rounded-lg transition-colors text-on-surface-variant shadow-sm outline-none border-none cursor-pointer bg-transparent" title="Download"><span className="material-symbols-outlined text-lg block">download</span></button>
-                        </div>
-                      </td>
+              {loadingHistory ? (
+                <div className="p-8 text-center text-on-surface-variant">Loading history...</div>
+              ) : historyData.length === 0 ? (
+                <div className="p-8 text-center text-on-surface-variant">No saved content yet. Generate some using the tools above!</div>
+              ) : (
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-surface-container-low border-b border-surface-container">
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Content Title</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Type</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Subject</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Date</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface text-right">Actions</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container/50">
+                    {historyData.map(item => {
+                      const visuals = getTypeVisuals(item.content_type);
+                      return (
+                      <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
+                        <td className="px-6 py-5">
+                          <div className="flex items-center gap-3">
+                            <span className={`material-symbols-outlined ${visuals.iconColor} block`}>{visuals.icon}</span>
+                            <span className="font-bold text-sm text-on-surface truncate max-w-xs block">{getTitle(item)}</span>
+                          </div>
+                        </td>
+                        <td className="px-6 py-5">
+                          <span className={`px-3 py-1 ${visuals.badgeColor} rounded-full text-[11px] font-bold uppercase tracking-tight whitespace-nowrap`}>
+                            {item.content_type.replace(/([A-Z])/g, ' $1').trim()}
+                          </span>
+                        </td>
+                        <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">{item.subject}</td>
+                        <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">
+                          {new Date(item.updated_at).toLocaleDateString()}
+                        </td>
+                        <td className="px-6 py-5 text-right">
+                          <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <button 
+                              onClick={() => navigate(`/teacher/ai-tools/${visuals.path}?id=${item.id}`)}
+                              className="p-2 hover:bg-white rounded-lg transition-colors text-primary shadow-sm outline-none border-none cursor-pointer bg-transparent" 
+                              title="Open/Edit"
+                            >
+                              <span className="material-symbols-outlined text-lg block">open_in_new</span>
+                            </button>
+                            <button 
+                              onClick={() => handleDelete(item.id)}
+                              className="p-2 hover:bg-white rounded-lg transition-colors text-red-500 shadow-sm outline-none border-none cursor-pointer bg-transparent" 
+                              title="Delete"
+                            >
+                              <span className="material-symbols-outlined text-lg block">delete</span>
+                            </button>
+                          </div>
+                        </td>
+                      </tr>
+                    )})}
+                  </tbody>
+                </table>
+              )}
             </div>
           </Card>
         </section>

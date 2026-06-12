@@ -1,35 +1,77 @@
 import React, { useState } from 'react';
-import { handleShare, downloadFromServer } from '../../../services/exportService';
+import { handleShare } from '../../../services/exportService';
+import html2pdf from 'html2pdf.js';
 
 export default function ToolActionButtons({ 
   contentData, 
   toolName, 
-  exportType = 'PDF' // Defaults to PDF, pass 'PPTX' for presentations
+  exportType = 'PDF', // Defaults to PDF, pass 'PPTX' for presentations
+  contentRef, // reference to the DOM element to print
+  onSave,
+  isSaving = false,
+  requiresAnswerPrompt = false,
+  onToggleAnswers
 }) {
   const [isExporting, setIsExporting] = useState(false);
   const [isShareOpen, setIsShareOpen] = useState(false); // State for dropdown menu
 
   const onExport = async () => {
-    if (!contentData) return;
-    setIsExporting(true);
+    if (!contentData || !contentRef?.current) {
+      alert("No content available to export.");
+      return;
+    }
     
-    const filename = `${toolName.replace(/\s+/g, '_')}_${new Date().getTime()}.${exportType.toLowerCase()}`;
-    
-    const baseUrl = process.env.REACT_APP_AI_API_URL;
-    const endpoint = exportType === 'PPTX'
-         ? `${baseUrl}/api/v1/export/pptx`
-         : `${baseUrl}/api/v1/export/pdf`;
-      
-    const payload = exportType === 'PPTX' 
-      ? contentData 
-      : { tool_name: toolName, content_data: contentData };
+    // Prompt for answers if required
+    let toggledAnswers = false;
+    if (requiresAnswerPrompt && onToggleAnswers) {
+      const reveal = window.confirm("Do you want to export with the answers revealed?");
+      if (reveal) {
+        await onToggleAnswers(true);
+        toggledAnswers = true;
+        // Wait a tick for React to render the answers
+        await new Promise(r => setTimeout(r, 100));
+      }
+    }
 
+    setIsExporting(true);
+    const element = contentRef.current;
+    
+    // Store original styles and scroll position
+    const originalStyle = element.getAttribute('style') || '';
+    const originalScrollTop = element.scrollTop;
+    
     try {
-      await downloadFromServer(endpoint, payload, filename);
+      // Temporarily expand element to full height and reset scroll to top 
+      // so html2canvas captures the entire content.
+      element.style.overflow = 'visible';
+      element.style.height = 'max-content';
+      element.style.maxHeight = 'none';
+      element.scrollTop = 0;
+
+      const filename = `${toolName.replace(/\s+/g, '_')}_${new Date().getTime()}.pdf`;
+      
+      const opt = {
+        margin:       [0.5, 0.5, 0.5, 0.5],
+        filename:     filename,
+        image:        { type: 'jpeg', quality: 0.98 },
+        html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+        jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+      };
+
+      await html2pdf().set(opt).from(element).save();
     } catch (error) {
       console.error("Export failed:", error);
+      alert("Failed to export PDF.");
     } finally {
+      // Restore original styles and scroll position
+      element.setAttribute('style', originalStyle);
+      element.scrollTop = originalScrollTop;
       setIsExporting(false);
+      
+      // Hide answers again if we toggled them
+      if (toggledAnswers && onToggleAnswers) {
+        await onToggleAnswers(false);
+      }
     }
   };
 
@@ -51,31 +93,46 @@ export default function ToolActionButtons({
         return;
       }
 
-      // 2. Share physical PDF
+      // 2. Share physical PDF using html2pdf
       if (shareType === 'pdf') {
-        const endpoint = 'http://localhost:8001/api/v1/export/pdf';
-        const payload = { tool_name: toolName, content_data: contentData };
-
-        const response = await fetch(endpoint, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify(payload)
-        });
-
-        if (!response.ok) throw new Error('Failed to generate PDF');
-
-        const blob = await response.blob();
+        if (!contentRef?.current) return;
+        
         const fileName = `${toolName.replace(/\s+/g, '_')}.pdf`;
-        const file = new File([blob], fileName, { type: 'application/pdf' });
+        const element = contentRef.current;
+        
+        const originalStyle = element.getAttribute('style') || '';
+        const originalScrollTop = element.scrollTop;
+        
+        try {
+          element.style.overflow = 'visible';
+          element.style.height = 'max-content';
+          element.style.maxHeight = 'none';
+          element.scrollTop = 0;
 
-        // Open the native share dialog directly with the fetched file
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            title: fileName, 
-            files: [file]
-          });
-        } else {
-          alert("Your browser does not support direct file sharing. Please use the Export button to download it first.");
+          const opt = {
+            margin:       0.5,
+            filename:     fileName,
+            image:        { type: 'jpeg', quality: 0.98 },
+            html2canvas:  { scale: 2, useCORS: true, scrollY: 0 },
+            jsPDF:        { unit: 'in', format: 'letter', orientation: 'portrait' }
+          };
+
+          // Output as blob
+          const pdfBlob = await html2pdf().set(opt).from(element).output('blob');
+          const file = new File([pdfBlob], fileName, { type: 'application/pdf' });
+
+          // Open the native share dialog directly with the fetched file
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              title: fileName, 
+              files: [file]
+            });
+          } else {
+            alert("Your browser does not support direct file sharing. Please use the Export button to download it first.");
+          }
+        } finally {
+          element.setAttribute('style', originalStyle);
+          element.scrollTop = originalScrollTop;
         }
       }
 
@@ -88,9 +145,15 @@ export default function ToolActionButtons({
 
   return (
     <div className="flex flex-wrap items-center gap-4 mt-8 pt-6 border-t border-gray-100 bg-white rounded-b-xl">
-      <button className="flex items-center gap-2 px-6 py-2.5 bg-[#0058be] text-white text-sm font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-all">
-        <span className="material-symbols-outlined text-[18px]">save</span>
-        Save {toolName.split(' ')[0]}
+      <button 
+        onClick={onSave}
+        disabled={isSaving || !contentData}
+        className="flex items-center gap-2 px-6 py-2.5 bg-[#0058be] text-white text-sm font-bold rounded-lg shadow-sm hover:bg-blue-700 transition-all disabled:opacity-50"
+      >
+        <span className="material-symbols-outlined text-[18px]">
+          {isSaving ? 'sync' : 'save'}
+        </span>
+        {isSaving ? 'Saving...' : `Save ${toolName.split(' ')[0]}`}
       </button>
 
       <button 

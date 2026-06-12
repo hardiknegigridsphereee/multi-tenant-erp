@@ -88,6 +88,7 @@ import AIToolWorkspaceQuestionPaper from "../pages/teacher/AIToolWorkspaceQuesti
 import AIToolWorkspaceStudyNotes from "../pages/teacher/AIToolWorkspaceStudyNotes";
 import AIToolWorkspacePresentationOutline from "../pages/teacher/AIToolWorkspacePresentationOutline";
 import AIToolWorkspaceRubric from "../pages/teacher/AIToolWorkspaceRubric";
+import AIToolHistory from "../pages/teacher/AIToolHistory";
 import StudentAnalyticsOverview from "../pages/teacher/StudentAnalyticsOverview";
 import DetailedStudentAnalytics from "../pages/teacher/DetailedStudentAnalytics";
 import TeacherProfileManagement from "../pages/teacher/TeacherProfileManagement";
@@ -354,6 +355,7 @@ function AppRoutes() {
         <Route path="/teacher/ai-tools/study-notes" element={<AIToolWorkspaceStudyNotes />} />
         <Route path="/teacher/ai-tools/presentation-outline" element={<AIToolWorkspacePresentationOutline />} />
         <Route path="/teacher/ai-tools/rubric" element={<AIToolWorkspaceRubric />} />
+        <Route path="/teacher/ai-tools/history" element={<AIToolHistory />} />
         <Route path="/teacher/analytics" element={<StudentAnalyticsOverview />} />
         <Route path="/teacher/analytics/student/:id" element={<DetailedStudentAnalytics />} />
         <Route path="/teacher/profile" element={<TeacherProfileManagement />} />

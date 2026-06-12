@@ -1,8 +1,9 @@
-import React, { useState } from 'react';
-import { Link } from 'react-router-dom';
+import React, { useState, useRef, useEffect } from 'react';
+import { Link, useLocation, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
-import { generateStudyNotes } from '../../services/api';
+import { generateStudyNotes, saveAIContent, getSavedAIContentById, updateSavedAIContent } from '../../services/api';
 import ToolActionButtons from '../../components/erp/global/ToolActionButtons';
+import AIResultEditor from '../../components/erp/global/AIResultEditor';
 const MATHEMATICS_CHAPTERS = {
   '9': [
     '1 - NUMBER SYSTEMS',
@@ -39,6 +40,15 @@ const MATHEMATICS_CHAPTERS = {
 };
 
 const AIToolWorkspaceStudyNotes = () => {
+  const navigate = useNavigate();
+  const location = useLocation();
+  const queryParams = new URLSearchParams(location.search);
+  const savedId = queryParams.get('id');
+
+  const [isSaving, setIsSaving] = useState(false);
+  const [isDirty, setIsDirty] = useState(false);
+  const [currentSaveId, setCurrentSaveId] = useState(savedId);
+
   const [subject, setSubject] = useState('Mathematics');
   const [className, setClassName] = useState('10');
   const [chapterName, setChapterName] = useState('10 - CIRCLES');
@@ -59,6 +69,79 @@ const AIToolWorkspaceStudyNotes = () => {
   const [result, setResult] = useState(null);
   const [error, setError] = useState(null);
 
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const [isEditing, setIsEditing] = useState(false);
+  const previewRef = useRef(null);
+
+  // Load saved content if ID exists
+  useEffect(() => {
+    if (savedId) {
+      setLoading(true);
+      getSavedAIContentById(savedId)
+        .then(data => {
+          setResult(data.data);
+          setSubject(data.subject || 'Mathematics');
+          setClassName(data.class_name || '10');
+          setIsDirty(false);
+        })
+        .catch(err => {
+          console.error("Failed to load saved content:", err);
+          setError("Failed to load saved content. It may have been deleted.");
+        })
+        .finally(() => setLoading(false));
+    }
+  }, [savedId]);
+
+  // Handle BeforeUnload for unsaved changes
+  useEffect(() => {
+    const handleBeforeUnload = (e) => {
+      if (isDirty) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [isDirty]);
+
+  const handleBackNavigation = (e) => {
+    e.preventDefault();
+    if (isDirty) {
+      const confirmExit = window.confirm("You have unsaved changes. Do you want to exit without saving?");
+      if (!confirmExit) return;
+    }
+    navigate('/teacher/ai-tools');
+  };
+
+  const handleSave = async () => {
+    if (!result) return;
+    setIsSaving(true);
+    try {
+      const payload = {
+        class_name: className,
+        subject: subject,
+        content_type: 'StudyNotes',
+        data: result
+      };
+
+      if (currentSaveId) {
+        await updateSavedAIContent(currentSaveId, payload);
+        alert("StudyNotes updated successfully!");
+      } else {
+        const saved = await saveAIContent(payload);
+        setCurrentSaveId(saved.id);
+        alert("StudyNotes saved successfully!");
+      }
+      setIsDirty(false);
+    } catch (err) {
+      console.error("Failed to save:", err);
+      alert("Failed to save StudyNotes. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
+
   const handleGenerate = async (e) => {
     e.preventDefault();
     setError(null);
@@ -69,6 +152,8 @@ const AIToolWorkspaceStudyNotes = () => {
       const payload = { class_name: String(className), subject: String(subject), chapter_name: String(chapterName), topic: String(topic) };
       const data = await generateStudyNotes(payload);
       setResult(data);
+      setIsDirty(true);
+      setCurrentSaveId(null);
     } catch (err) {
       // Show validation details if available
       const details = err && err.details ? err.details : null;
@@ -93,13 +178,13 @@ const AIToolWorkspaceStudyNotes = () => {
         
         {/* Back Button & Breadcrumb */}
         <div className="mb-6 flex items-center justify-between">
-          <Link
-            to="/teacher/ai-tools"
-            className="flex items-center gap-2 text-primary font-semibold text-sm mb-6 hover:-translate-x-1 transition-transform w-max font-display"
+          <button
+            onClick={handleBackNavigation}
+            className="flex items-center gap-2 text-primary font-semibold text-sm mb-6 hover:-translate-x-1 transition-transform w-max font-display outline-none border-none bg-transparent cursor-pointer p-0"
           >
             <span className="material-symbols-outlined text-sm">arrow_back</span>
             Back to AI Tools
-          </Link>
+          </button>
           <span className="bg-[#ffdcc6] text-[#311400] px-3 py-1 rounded-full text-xs font-bold flex items-center gap-1 font-display">
             <span className="material-symbols-outlined text-sm">psychology</span>
             AI POWERED
@@ -203,25 +288,29 @@ const AIToolWorkspaceStudyNotes = () => {
           <div className="lg:col-span-7 flex flex-col gap-6">
             
             {/* Preview Panel */}
-            <div className="bg-surface-container-lowest rounded-2xl shadow-sm overflow-hidden flex flex-col h-full min-h-[600px] border border-outline-variant/10">
+            <div className={`bg-surface-container-lowest shadow-sm flex flex-col h-full border border-outline-variant/10 ${isFullscreen ? 'fixed inset-0 z-50 rounded-none overflow-y-auto w-full' : 'rounded-2xl overflow-hidden min-h-[600px]'}`}>
               <div className="bg-surface-container-high p-4 flex items-center justify-between">
                 <div className="flex items-center gap-2">
                   <span className="material-symbols-outlined text-primary block">menu_book</span>
                   <span className="font-bold font-display text-on-surface">Study Notes Preview</span>
                 </div>
                 <div className="flex gap-2">
-                  <button className="bg-white/80 p-2 rounded-md hover:bg-white transition-colors border-none outline-none cursor-pointer shadow-sm flex items-center">
-                    <span className="material-symbols-outlined text-on-surface-variant text-sm block">edit</span>
-                  </button>
-                  <button className="bg-white/80 p-2 rounded-md hover:bg-white transition-colors border-none outline-none cursor-pointer shadow-sm flex items-center">
-                    <span className="material-symbols-outlined text-on-surface-variant text-sm block">fullscreen</span>
+                  {result && (
+                    <button onClick={() => setIsEditing(!isEditing)} className={`p-2 rounded-md transition-colors border-none outline-none cursor-pointer shadow-sm flex items-center ${isEditing ? 'bg-primary text-white' : 'bg-white/80 hover:bg-white text-on-surface-variant'}`}>
+                      <span className={`material-symbols-outlined text-sm block ${isEditing ? 'text-white' : 'text-on-surface-variant'}`}>edit</span>
+                    </button>
+                  )}
+                  <button onClick={() => setIsFullscreen(!isFullscreen)} className="bg-white/80 p-2 rounded-md hover:bg-white transition-colors border-none outline-none cursor-pointer shadow-sm flex items-center">
+                    <span className="material-symbols-outlined text-on-surface-variant text-sm block">{isFullscreen ? 'close_fullscreen' : 'fullscreen'}</span>
                   </button>
                 </div>
               </div>
               
-              <div className="p-6 md:p-8 flex-1 overflow-y-auto">
+              <div className="p-6 md:p-8 flex-1 overflow-y-auto" ref={previewRef}>
                 <div className="max-w-2xl mx-auto space-y-8">
-                  {result ? (
+                  {isEditing && result ? (
+                    <AIResultEditor data={result} onChange={(newData) => { setResult(newData); setIsDirty(true); }} />
+                  ) : result ? (
                     <>
                       <header className="text-center pb-6 border-b border-outline-variant/15">
                         <h1 className="text-3xl font-extrabold font-display mb-3 text-on-surface tracking-tight">Study Notes: {result.topic || 'Summary Guide'}</h1>
@@ -370,9 +459,12 @@ const AIToolWorkspaceStudyNotes = () => {
               {result && (
                 <div className="px-6 pb-6 bg-surface-container-lowest">
                   <ToolActionButtons 
+                    onSave={handleSave}
+                    isSaving={isSaving}
                     contentData={result} 
                     toolName="Study Notes" 
                     exportType="PDF" 
+                    contentRef={previewRef}
                   />
                 </div>
               )}
