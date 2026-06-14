@@ -1,8 +1,10 @@
-import React, { useState, useEffect } from 'react';
+import React from 'react';
 import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
 import { getSavedAIContent, deleteSavedAIContent } from '../../services/api';
+import { useStaleData } from '../../hooks/useStaleData';
+import { RevalidatingBar, SkeletonRow } from '../../components/erp/teacher/LoadingPrimitives';
 
 const toolsInfo = [
 { id: 1, title: 'Lesson Plan Generator', desc: 'Create structured 45-minute lesson plans aligned with curriculum standards.', icon: 'assignment', link: '/teacher/ai-tools/lesson-plan' },
@@ -16,47 +18,52 @@ const toolsInfo = [
 
 const getTypeVisuals = (type) => {
   switch(type) {
-    case 'LessonPlan': return { icon: 'assignment', iconColor: 'text-blue-500', badgeColor: 'bg-blue-50 text-blue-700', path: 'lesson-plan' };
-    case 'Worksheet': return { icon: 'description', iconColor: 'text-indigo-500', badgeColor: 'bg-indigo-50 text-indigo-700', path: 'worksheet' };
-    case 'Quiz': return { icon: 'quiz', iconColor: 'text-[#6b38d4]', badgeColor: 'bg-purple-50 text-purple-700', path: 'quiz' };
-    case 'QuestionPaper': return { icon: 'history_edu', iconColor: 'text-red-500', badgeColor: 'bg-red-50 text-red-700', path: 'question-paper' };
-    case 'StudyNotes': return { icon: 'menu_book', iconColor: 'text-green-500', badgeColor: 'bg-green-50 text-green-700', path: 'study-notes' };
-    case 'PresentationOutline': return { icon: 'speaker_notes', iconColor: 'text-teal-500', badgeColor: 'bg-teal-50 text-teal-700', path: 'presentation-outline' };
-    case 'Rubric': return { icon: 'rule', iconColor: 'text-[#b75b00]', badgeColor: 'bg-orange-50 text-orange-700', path: 'rubric' };
-    default: return { icon: 'article', iconColor: 'text-gray-500', badgeColor: 'bg-gray-50 text-gray-700', path: 'lesson-plan' };
+    case 'LessonPlan': return { icon: 'assignment', iconColor: 'text-blue-500 dark:text-blue-400', badgeColor: 'bg-blue-50 dark:bg-blue-900/30 text-blue-700 dark:text-blue-300', path: 'lesson-plan' };
+    case 'Worksheet': return { icon: 'description', iconColor: 'text-indigo-500 dark:text-indigo-400', badgeColor: 'bg-indigo-50 dark:bg-indigo-900/30 text-indigo-700 dark:text-indigo-300', path: 'worksheet' };
+    case 'Quiz': return { icon: 'quiz', iconColor: 'text-[#6b38d4] dark:text-[#a27dfc]', badgeColor: 'bg-purple-50 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300', path: 'quiz' };
+    case 'QuestionPaper': return { icon: 'history_edu', iconColor: 'text-red-500 dark:text-red-400', badgeColor: 'bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-300', path: 'question-paper' };
+    case 'StudyNotes': return { icon: 'menu_book', iconColor: 'text-green-500 dark:text-green-400', badgeColor: 'bg-green-50 dark:bg-green-900/30 text-green-700 dark:text-green-300', path: 'study-notes' };
+    case 'PresentationOutline': return { icon: 'speaker_notes', iconColor: 'text-teal-500 dark:text-teal-400', badgeColor: 'bg-teal-50 dark:bg-teal-900/30 text-teal-700 dark:text-teal-300', path: 'presentation-outline' };
+    case 'Rubric': return { icon: 'rule', iconColor: 'text-[#b75b00] dark:text-orange-400', badgeColor: 'bg-orange-50 dark:bg-orange-950/30 text-orange-700 dark:text-orange-300', path: 'rubric' };
+    default: return { icon: 'article', iconColor: 'text-gray-500 dark:text-gray-400', badgeColor: 'bg-gray-50 dark:bg-slate-800 text-gray-700 dark:text-slate-300', path: 'lesson-plan' };
   }
 };
 
 const ContentAIToolsDashboard = () => {
   const navigate = useNavigate();
-  const [historyData, setHistoryData] = useState([]);
-  const [loadingHistory, setLoadingHistory] = useState(true);
 
-  const fetchHistory = async () => {
-    setLoadingHistory(true);
-    try {
-      // Get the latest 5 items for the dashboard
-      const data = await getSavedAIContent({ limit: 5 });
-      setHistoryData(data.results || data);
-    } catch (error) {
-      console.error("Failed to fetch history:", error);
-    } finally {
-      setLoadingHistory(false);
-    }
-  };
+  const { data: historyPayload, loading: loadingHistory, revalidating, mutate: mutateHistory, revalidate: revalidateHistory } = useStaleData(
+    "teacher:ai-content:history-limit-5",
+    () => getSavedAIContent({ limit: 5 })
+  );
 
-  useEffect(() => {
-    fetchHistory();
-  }, []);
+  const historyData = historyPayload?.results || historyPayload || [];
 
   const handleDelete = async (id) => {
     if (window.confirm("Are you sure you want to delete this saved content?")) {
+      const currentData = historyPayload;
       try {
+        // Optimistic update
+        let nextData;
+        if (currentData && Array.isArray(currentData.results)) {
+          nextData = {
+            ...currentData,
+            results: currentData.results.filter(item => item.id !== id)
+          };
+        } else if (Array.isArray(currentData)) {
+          nextData = currentData.filter(item => item.id !== id);
+        } else {
+          nextData = [];
+        }
+
+        mutateHistory(nextData);
         await deleteSavedAIContent(id);
-        setHistoryData(prev => prev.filter(item => item.id !== id));
+        revalidateHistory();
       } catch (error) {
         console.error("Failed to delete item:", error);
         alert("Failed to delete content");
+        // Revert to original
+        mutateHistory(currentData);
       }
     }
   };
@@ -68,6 +75,8 @@ const ContentAIToolsDashboard = () => {
 
   return (
     <MainLayout title="Content & AI Tools">
+      <RevalidatingBar show={revalidating} />
+
       <div className="max-w-7xl mx-auto space-y-12">
         
         {/* Welcome Header Section */}
@@ -97,13 +106,13 @@ const ContentAIToolsDashboard = () => {
           
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
             {toolsInfo.map(tool => (
-              <Link to={tool.link} key={tool.id} className="group bg-surface-container-lowest p-6 rounded-2xl shadow-ambient hover:bg-primary transition-all duration-300 transform hover:-translate-y-1" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.06)'}}>
+              <Link to={tool.link} key={tool.id} className="group bg-surface-container-lowest p-6 rounded-2xl shadow-ambient hover:bg-primary dark:hover:bg-primary-container transition-all duration-300 transform hover:-translate-y-1" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.06)'}}>
                 <div className="w-12 h-12 bg-surface-container-low group-hover:bg-white/20 rounded-xl flex items-center justify-center mb-4 transition-colors">
                   <span className="material-symbols-outlined text-primary group-hover:text-white" style={{fontVariationSettings: "'FILL' 1"}}>{tool.icon}</span>
                 </div>
                 <h4 className="font-display font-bold text-lg mb-2 group-hover:text-white text-on-surface">{tool.title}</h4>
-                <p className="text-on-surface-variant text-sm group-hover:text-blue-100 mb-6 font-body leading-relaxed">{tool.desc}</p>
-                <div className="w-full py-3 bg-surface-container-high group-hover:bg-white text-primary font-bold rounded-xl text-sm transition-colors text-center">Open Tool</div>
+                <p className="text-on-surface-variant text-sm group-hover:text-blue-100 dark:group-hover:text-blue-200 mb-6 font-body leading-relaxed">{tool.desc}</p>
+                <div className="w-full py-3 bg-surface-container-high group-hover:bg-white text-primary group-hover:text-primary-container dark:group-hover:text-blue-900 font-bold rounded-xl text-sm transition-colors text-center">Open Tool</div>
               </Link>
             ))}
 
@@ -130,8 +139,21 @@ const ContentAIToolsDashboard = () => {
           {/* Table Container */}
           <Card className="p-0 overflow-hidden" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.06)'}}>
             <div className="overflow-x-auto">
-              {loadingHistory ? (
-                <div className="p-8 text-center text-on-surface-variant">Loading history...</div>
+              {loadingHistory && historyData.length === 0 ? (
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead>
+                    <tr className="bg-surface-container-low border-b border-surface-container">
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Content Title</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Type</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Subject</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Date</th>
+                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface text-right">Actions</th>
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y divide-surface-container/50">
+                    {Array.from({ length: 5 }).map((_, index) => <SkeletonRow key={index} cols={5} />)}
+                  </tbody>
+                </table>
               ) : historyData.length === 0 ? (
                 <div className="p-8 text-center text-on-surface-variant">No saved content yet. Generate some using the tools above!</div>
               ) : (
@@ -149,7 +171,7 @@ const ContentAIToolsDashboard = () => {
                     {historyData.map(item => {
                       const visuals = getTypeVisuals(item.content_type);
                       return (
-                      <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
+                      <tr key={item.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/40 transition-colors group">
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <span className={`material-symbols-outlined ${visuals.iconColor} block`}>{visuals.icon}</span>
@@ -169,14 +191,14 @@ const ContentAIToolsDashboard = () => {
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                               onClick={() => navigate(`/teacher/ai-tools/${visuals.path}?id=${item.id}`)}
-                              className="p-2 hover:bg-white rounded-lg transition-colors text-primary shadow-sm outline-none border-none cursor-pointer bg-transparent" 
+                              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-primary shadow-sm outline-none border-none cursor-pointer bg-transparent" 
                               title="Open/Edit"
                             >
                               <span className="material-symbols-outlined text-lg block">open_in_new</span>
                             </button>
                             <button 
                               onClick={() => handleDelete(item.id)}
-                              className="p-2 hover:bg-white rounded-lg transition-colors text-red-500 shadow-sm outline-none border-none cursor-pointer bg-transparent" 
+                              className="p-2 hover:bg-slate-100 dark:hover:bg-slate-800 rounded-lg transition-colors text-red-500 shadow-sm outline-none border-none cursor-pointer bg-transparent" 
                               title="Delete"
                             >
                               <span className="material-symbols-outlined text-lg block">delete</span>

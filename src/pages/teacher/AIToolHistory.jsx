@@ -3,6 +3,7 @@ import { Link, useNavigate } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
 import { getSavedAIContent, deleteSavedAIContent } from '../../services/api';
+import { useTheme } from '../../context/ThemeContext';
 
 const getTypeVisuals = (type) => {
   switch(type) {
@@ -17,8 +18,54 @@ const getTypeVisuals = (type) => {
   }
 };
 
+// Skeleton component for loading state
+const TableSkeleton = ({ darkMode }) => (
+  <table className="w-full text-left border-collapse min-w-[800px]">
+    <thead>
+      <tr className={darkMode ? 'bg-slate-800 border-b border-slate-700' : 'bg-surface-container-low border-b border-surface-container'}>
+        {['Content Title', 'Type', 'Subject', 'Class', 'Date Modified', 'Actions'].map((header) => (
+          <th key={header} className={`px-6 py-4 font-display font-bold text-sm ${darkMode ? 'text-slate-300' : 'text-on-surface'}`}>
+            {header}
+          </th>
+        ))}
+      </tr>
+    </thead>
+    <tbody className={darkMode ? 'divide-y divide-slate-700' : 'divide-y divide-surface-container/50'}>
+      {[...Array(5)].map((_, i) => (
+        <tr key={i} className={darkMode ? 'bg-slate-800/50' : ''}>
+          <td className="px-6 py-5">
+            <div className="flex items-center gap-3">
+              <div className="w-5 h-5 bg-slate-300 rounded animate-pulse" />
+              <div className="h-4 w-48 bg-slate-300 rounded animate-pulse" />
+            </div>
+          </td>
+          <td className="px-6 py-5">
+            <div className="h-6 w-24 bg-slate-300 rounded-full animate-pulse" />
+          </td>
+          <td className="px-6 py-5">
+            <div className="h-4 w-20 bg-slate-300 rounded animate-pulse" />
+          </td>
+          <td className="px-6 py-5">
+            <div className="h-4 w-16 bg-slate-300 rounded animate-pulse" />
+          </td>
+          <td className="px-6 py-5">
+            <div className="h-4 w-32 bg-slate-300 rounded animate-pulse" />
+          </td>
+          <td className="px-6 py-5">
+            <div className="flex gap-2 justify-end">
+              <div className="w-8 h-8 bg-slate-300 rounded-lg animate-pulse" />
+              <div className="w-8 h-8 bg-slate-300 rounded-lg animate-pulse" />
+            </div>
+          </td>
+        </tr>
+      ))}
+    </tbody>
+  </table>
+);
+
 const AIToolHistory = () => {
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
   const [historyData, setHistoryData] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -75,30 +122,33 @@ const AIToolHistory = () => {
           <div>
             <Link
               to="/teacher/ai-tools"
-              className="flex items-center gap-2 text-primary font-semibold text-sm mb-4 hover:-translate-x-1 transition-transform w-max font-display"
+              className={`flex items-center gap-2 font-semibold text-sm mb-4 hover:-translate-x-1 transition-transform w-max font-display ${
+                darkMode ? 'text-blue-400' : 'text-primary'
+              }`}
             >
               <span className="material-symbols-outlined text-sm">arrow_back</span>
               Back to Dashboard
             </Link>
-            <h2 className="text-3xl font-display font-bold text-on-surface">Content History</h2>
-            <p className="text-on-surface-variant font-body">All your saved AI-generated content in one place.</p>
+            <h2 className={`text-3xl font-display font-bold ${darkMode ? 'text-white' : 'text-on-surface'}`}>Content History</h2>
+            <p className={`font-body ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>All your saved AI-generated content in one place.</p>
           </div>
         </div>
 
         {/* History List */}
-        <Card className="p-0 overflow-hidden" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.06)'}}>
+        <Card className={`p-0 overflow-hidden ${darkMode ? 'bg-slate-800 border-slate-700' : ''}`} style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.06)'}}>
           <div className="overflow-x-auto">
             {loading ? (
-              <div className="p-8 text-center text-on-surface-variant flex flex-col items-center gap-3">
-                <span className="material-symbols-outlined animate-spin text-3xl text-primary">sync</span>
-                <p>Loading your history...</p>
-              </div>
+              <TableSkeleton darkMode={darkMode} />
             ) : historyData.length === 0 ? (
               <div className="p-12 text-center flex flex-col items-center">
-                <span className="material-symbols-outlined text-6xl text-outline-variant mb-4">folder_open</span>
-                <h3 className="text-xl font-bold text-on-surface font-display mb-2">No Content Saved</h3>
-                <p className="text-on-surface-variant font-body mb-6">You haven't saved any AI generated content yet.</p>
-                <Link to="/teacher/ai-tools" className="bg-primary text-white px-6 py-2 rounded-lg font-bold hover:bg-primary/90 transition-colors">
+                <span className={`material-symbols-outlined text-6xl mb-4 ${darkMode ? 'text-slate-600' : 'text-outline-variant'}`}>folder_open</span>
+                <h3 className={`text-xl font-bold font-display mb-2 ${darkMode ? 'text-white' : 'text-on-surface'}`}>No Content Saved</h3>
+                <p className={`font-body mb-6 ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>You haven't saved any AI generated content yet.</p>
+                <Link to="/teacher/ai-tools" className={`px-6 py-2 rounded-lg font-bold transition-colors ${
+                  darkMode
+                    ? 'bg-blue-600 text-white hover:bg-blue-500'
+                    : 'bg-primary text-white hover:bg-primary/90'
+                }`}>
                   Create Content
                 </Link>
               </div>
@@ -106,24 +156,26 @@ const AIToolHistory = () => {
               <>
                 <table className="w-full text-left border-collapse min-w-[800px]">
                   <thead>
-                    <tr className="bg-surface-container-low border-b border-surface-container">
-                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Content Title</th>
-                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Type</th>
-                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Subject</th>
-                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Class</th>
-                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface">Date Modified</th>
-                      <th className="px-6 py-4 font-display font-bold text-sm text-on-surface text-right">Actions</th>
+                    <tr className={darkMode ? 'bg-slate-800 border-b border-slate-700' : 'bg-surface-container-low border-b border-surface-container'}>
+                      <th className={`px-6 py-4 font-display font-bold text-sm ${darkMode ? 'text-slate-300' : 'text-on-surface'}`}>Content Title</th>
+                      <th className={`px-6 py-4 font-display font-bold text-sm ${darkMode ? 'text-slate-300' : 'text-on-surface'}`}>Type</th>
+                      <th className={`px-6 py-4 font-display font-bold text-sm ${darkMode ? 'text-slate-300' : 'text-on-surface'}`}>Subject</th>
+                      <th className={`px-6 py-4 font-display font-bold text-sm ${darkMode ? 'text-slate-300' : 'text-on-surface'}`}>Class</th>
+                      <th className={`px-6 py-4 font-display font-bold text-sm ${darkMode ? 'text-slate-300' : 'text-on-surface'}`}>Date Modified</th>
+                      <th className={`px-6 py-4 font-display font-bold text-sm text-right ${darkMode ? 'text-slate-300' : 'text-on-surface'}`}>Actions</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-surface-container/50">
+                  <tbody className={darkMode ? 'divide-y divide-slate-700' : 'divide-y divide-surface-container/50'}>
                     {historyData.map(item => {
                       const visuals = getTypeVisuals(item.content_type);
                       return (
-                      <tr key={item.id} className="hover:bg-blue-50/30 transition-colors group">
+                      <tr key={item.id} className={`transition-colors group ${
+                        darkMode ? 'hover:bg-slate-700/50' : 'hover:bg-blue-50/30'
+                      }`}>
                         <td className="px-6 py-5">
                           <div className="flex items-center gap-3">
                             <span className={`material-symbols-outlined ${visuals.iconColor} block`}>{visuals.icon}</span>
-                            <span className="font-bold text-sm text-on-surface truncate max-w-sm block" title={getTitle(item)}>{getTitle(item)}</span>
+                            <span className={`font-bold text-sm truncate max-w-sm block ${darkMode ? 'text-white' : 'text-on-surface'}`} title={getTitle(item)}>{getTitle(item)}</span>
                           </div>
                         </td>
                         <td className="px-6 py-5">
@@ -131,23 +183,31 @@ const AIToolHistory = () => {
                             {item.content_type.replace(/([A-Z])/g, ' $1').trim()}
                           </span>
                         </td>
-                        <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">{item.subject}</td>
-                        <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">{item.class_name}</td>
-                        <td className="px-6 py-5 text-sm text-on-surface-variant font-medium whitespace-nowrap">
+                        <td className={`px-6 py-5 text-sm font-medium whitespace-nowrap ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>{item.subject}</td>
+                        <td className={`px-6 py-5 text-sm font-medium whitespace-nowrap ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>{item.class_name}</td>
+                        <td className={`px-6 py-5 text-sm font-medium whitespace-nowrap ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>
                           {new Date(item.updated_at).toLocaleString()}
                         </td>
                         <td className="px-6 py-5 text-right">
                           <div className="flex items-center justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <button 
                               onClick={() => navigate(`/teacher/ai-tools/${visuals.path}?id=${item.id}`)}
-                              className="p-2 hover:bg-white rounded-lg transition-colors text-primary shadow-sm outline-none border-none cursor-pointer bg-transparent" 
+                              className={`p-2 rounded-lg transition-colors shadow-sm outline-none border-none cursor-pointer bg-transparent ${
+                                darkMode
+                                  ? 'hover:bg-slate-600 text-blue-400'
+                                  : 'hover:bg-white text-primary'
+                              }`} 
                               title="Open/Edit"
                             >
                               <span className="material-symbols-outlined text-lg block">open_in_new</span>
                             </button>
                             <button 
                               onClick={() => handleDelete(item.id)}
-                              className="p-2 hover:bg-white rounded-lg transition-colors text-red-500 shadow-sm outline-none border-none cursor-pointer bg-transparent" 
+                              className={`p-2 rounded-lg transition-colors shadow-sm outline-none border-none cursor-pointer bg-transparent ${
+                                darkMode
+                                  ? 'hover:bg-slate-600 text-red-400'
+                                  : 'hover:bg-white text-red-500'
+                              }`} 
                               title="Delete"
                             >
                               <span className="material-symbols-outlined text-lg block">delete</span>
@@ -161,22 +221,34 @@ const AIToolHistory = () => {
                 
                 {/* Pagination Controls */}
                 {totalPages > 1 && (
-                  <div className="px-6 py-4 flex items-center justify-between border-t border-surface-container bg-surface-container-lowest">
-                    <span className="text-sm text-on-surface-variant font-medium">
+                  <div className={`px-6 py-4 flex items-center justify-between border-t ${
+                    darkMode
+                      ? 'border-slate-700 bg-slate-800'
+                      : 'border-surface-container bg-surface-container-lowest'
+                  }`}>
+                    <span className={`text-sm font-medium ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>
                       Page {currentPage} of {totalPages}
                     </span>
                     <div className="flex items-center gap-2">
                       <button 
                         onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                         disabled={currentPage === 1}
-                        className="p-2 rounded-lg border border-outline-variant text-on-surface-variant disabled:opacity-50 hover:bg-surface-container-low transition-colors"
+                        className={`p-2 rounded-lg border transition-colors ${
+                          darkMode
+                            ? 'border-slate-600 text-slate-400 disabled:opacity-50 hover:bg-slate-700'
+                            : 'border-outline-variant text-on-surface-variant disabled:opacity-50 hover:bg-surface-container-low'
+                        }`}
                       >
                         <span className="material-symbols-outlined text-sm block">chevron_left</span>
                       </button>
                       <button 
                         onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                         disabled={currentPage === totalPages}
-                        className="p-2 rounded-lg border border-outline-variant text-on-surface-variant disabled:opacity-50 hover:bg-surface-container-low transition-colors"
+                        className={`p-2 rounded-lg border transition-colors ${
+                          darkMode
+                            ? 'border-slate-600 text-slate-400 disabled:opacity-50 hover:bg-slate-700'
+                            : 'border-outline-variant text-on-surface-variant disabled:opacity-50 hover:bg-surface-container-low'
+                        }`}
                       >
                         <span className="material-symbols-outlined text-sm block">chevron_right</span>
                       </button>

@@ -4,6 +4,26 @@ import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
 import { getMyProfile, getTeacherClasses, getAttendanceRecords } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
+import { RevalidatingBar, SkeletonBlock } from "../../components/erp/teacher/LoadingPrimitives";
+
+const AttendanceStatSkeleton = () => (
+  <>
+    <SkeletonBlock className="h-11 w-24 bg-white/25" />
+    <SkeletonBlock className="h-4 w-32 mt-4 bg-white/25" />
+  </>
+);
+
+const AttendanceClassSkeleton = () => (
+  <div className="bg-surface-container-lowest rounded-xl p-5 flex flex-col sm:flex-row sm:items-center shadow-sm gap-4">
+    <SkeletonBlock className="w-14 h-14 rounded-xl shrink-0" />
+    <div className="flex-grow space-y-2">
+      <SkeletonBlock className="h-5 w-44" />
+      <SkeletonBlock className="h-4 w-32" />
+    </div>
+    <SkeletonBlock className="h-10 w-32 rounded-md sm:ml-6" />
+    <SkeletonBlock className="h-10 w-28 rounded-xl sm:ml-2" />
+  </div>
+);
 
 const AttendanceOverview = () => {
   const navigate = useNavigate();
@@ -11,7 +31,7 @@ const AttendanceOverview = () => {
   const { data: profileData } = useStaleData("profile:me", getMyProfile);
   const teacherId = profileData?.profiles?.teacher?.id || profileData?.identity?.id;
 
-  const { data: assignmentsData, loading: classesLoading } = useStaleData(
+  const { data: assignmentsData, loading: classesLoading, revalidating: classesRevalidating } = useStaleData(
     `teacher:classes:${teacherId}`,
     () => getTeacherClasses(teacherId),
     { skip: !teacherId }
@@ -19,7 +39,7 @@ const AttendanceOverview = () => {
 
   const classes = assignmentsData?.results || [];
 
-  const { data: attendancePayload, loading: attendanceLoading } = useStaleData(
+  const { data: attendancePayload, loading: attendanceLoading, revalidating: attendanceRevalidating } = useStaleData(
     `teacher:attendance-records:${teacherId}`,
     async () => {
       if (!teacherId || classes.length === 0) return [];
@@ -117,6 +137,8 @@ const AttendanceOverview = () => {
 
   return (
     <MainLayout title="The Academic Architect">
+      <RevalidatingBar show={classesRevalidating || attendanceRevalidating} />
+
       {/* Header Section */}
       <div className="flex flex-col sm:flex-row sm:items-end justify-between mb-8 gap-4">
         <div>
@@ -142,46 +164,58 @@ const AttendanceOverview = () => {
 
       {/* Bento Stats Grid */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mb-10">
-        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-sm border border-gray-100">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#0058be]/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-lg bg-gradient-to-br from-[#0058be] to-[#0044a0] border-none">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
-            <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Average Attendance</p>
-            <h3 className="text-4xl font-extrabold text-primary">
-              {attendanceLoading ? '—' : `${avgAttendance}%`}
-            </h3>
+            <p className="text-sm font-semibold text-blue-100 mb-1 uppercase tracking-wider">Average Attendance</p>
+            {attendanceLoading && !attendancePayload ? (
+              <AttendanceStatSkeleton />
+            ) : (
+              <h3 className="text-4xl font-extrabold text-white">{`${avgAttendance}%`}</h3>
+            )}
           </div>
-          <div className="mt-4 flex items-center text-xs font-bold text-green-600 relative z-10">
-            <span className="material-symbols-outlined text-[16px] mr-1">trending_up</span>
-            <span>{attendanceLoading ? '—' : `${totalAttendanceRecords} total records`}</span>
-          </div>
+          {!(attendanceLoading && !attendancePayload) && (
+            <div className="mt-4 flex items-center text-xs font-bold text-green-300 relative z-10">
+              <span className="material-symbols-outlined text-[16px] mr-1">trending_up</span>
+              <span>{`${totalAttendanceRecords} total records`}</span>
+            </div>
+          )}
         </Card>
 
-        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-sm border border-gray-100">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-[#6b38d4]/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-lg bg-gradient-to-br from-[#6b38d4] to-[#5527b0] border-none">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
-            <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Weekly Avg</p>
-            <h3 className="text-4xl font-extrabold text-[#6b38d4]">
-              {attendanceLoading ? '—' : `${weeklyAvg}%`}
-            </h3>
+            <p className="text-sm font-semibold text-purple-100 mb-1 uppercase tracking-wider">Weekly Avg</p>
+            {attendanceLoading && !attendancePayload ? (
+              <AttendanceStatSkeleton />
+            ) : (
+              <h3 className="text-4xl font-extrabold text-white">{`${weeklyAvg}%`}</h3>
+            )}
           </div>
-          <div className="mt-4 flex items-center text-xs font-bold text-slate-500 relative z-10">
-            <span className="material-symbols-outlined text-[16px] mr-1">history</span>
-            <span>{attendanceLoading ? '—' : `${weeklyRecords.length} records in last 7 days`}</span>
-          </div>
+          {!(attendanceLoading && !attendancePayload) && (
+            <div className="mt-4 flex items-center text-xs font-bold text-purple-200 relative z-10">
+              <span className="material-symbols-outlined text-[16px] mr-1">history</span>
+              <span>{`${weeklyRecords.length} records in last 7 days`}</span>
+            </div>
+          )}
         </Card>
 
-        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-sm border border-gray-100">
-          <div className="absolute -right-4 -top-4 w-24 h-24 bg-red-500/5 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
+        <Card className="flex flex-col justify-between relative overflow-hidden group shadow-lg bg-gradient-to-br from-[#dc2626] to-[#b91c1c] border-none">
+          <div className="absolute -right-4 -top-4 w-24 h-24 bg-white/10 rounded-full group-hover:scale-110 transition-transform duration-500"></div>
           <div className="relative z-10">
-            <p className="text-sm font-semibold text-on-surface-variant mb-1 uppercase tracking-wider">Absent Students</p>
-            <h3 className="text-4xl font-extrabold text-red-600">
-              {attendanceLoading ? '—' : absentLatest}
-            </h3>
+            <p className="text-sm font-semibold text-red-100 mb-1 uppercase tracking-wider">Absent Students</p>
+            {attendanceLoading && !attendancePayload ? (
+              <AttendanceStatSkeleton />
+            ) : (
+              <h3 className="text-4xl font-extrabold text-white">{absentLatest}</h3>
+            )}
           </div>
-          <div className="mt-4 flex items-center text-xs font-bold text-red-600 relative z-10">
-            <span className="material-symbols-outlined text-[16px] mr-1">warning</span>
-            <span>{attendanceLoading ? '—' : latestDate ? `On latest run (${latestDate})` : 'No records yet'}</span>
-          </div>
+          {!(attendanceLoading && !attendancePayload) && (
+            <div className="mt-4 flex items-center text-xs font-bold text-red-200 relative z-10">
+              <span className="material-symbols-outlined text-[16px] mr-1">warning</span>
+              <span>{latestDate ? `On latest run (${latestDate})` : 'No records yet'}</span>
+            </div>
+          )}
         </Card>
       </div>
 
@@ -196,8 +230,8 @@ const AttendanceOverview = () => {
           </div>
           <div className="space-y-4">
             
-            {classesLoading ? (
-              <div className="p-5 text-center text-slate-500 font-semibold bg-surface-container-lowest rounded-xl shadow-sm">Loading classes...</div>
+            {classesLoading && classes.length === 0 ? (
+              Array.from({ length: 4 }).map((_, index) => <AttendanceClassSkeleton key={index} />)
             ) : classes.length === 0 ? (
               <div className="p-5 text-center text-slate-500 font-semibold bg-surface-container-lowest rounded-xl shadow-sm">No classes scheduled for today.</div>
             ) : (
@@ -257,42 +291,42 @@ const AttendanceOverview = () => {
           */}
 
           {/* Attendance Distribution */}
-          <Card className="shadow-sm border border-gray-100">
-            <h4 className="font-bold text-slate-800 mb-6">Presence Distribution</h4>
+          <Card className="shadow-lg bg-gradient-to-br from-slate-800 to-slate-900 border-none">
+            <h4 className="font-bold text-white mb-6">Presence Distribution</h4>
             <div className="space-y-4">
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1">
-                  <span className="text-on-surface-variant">Physical Presence</span>
-                  <span className="text-primary">{presentPct}%</span>
+                  <span className="text-slate-300">Physical Presence</span>
+                  <span className="text-blue-400">{presentPct}%</span>
                 </div>
-                <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-primary rounded-full transition-all" style={{ width: `${presentPct}%` }}></div>
+                <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-blue-500 rounded-full transition-all" style={{ width: `${presentPct}%` }}></div>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1">
-                  <span className="text-on-surface-variant">Late Arrivals</span>
-                  <span className="text-amber-600">{latePct}%</span>
+                  <span className="text-slate-300">Late Arrivals</span>
+                  <span className="text-amber-400">{latePct}%</span>
                 </div>
-                <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
+                <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
                   <div className="h-full bg-amber-500 rounded-full transition-all" style={{ width: `${latePct}%` }}></div>
                 </div>
               </div>
               <div>
                 <div className="flex justify-between text-xs font-bold mb-1">
-                  <span className="text-on-surface-variant">Authorized Leaves</span>
-                  <span className="text-[#6b38d4]">{leavePct}%</span>
+                  <span className="text-slate-300">Authorized Leaves</span>
+                  <span className="text-purple-400">{leavePct}%</span>
                 </div>
-                <div className="w-full h-2 bg-surface-container rounded-full overflow-hidden">
-                  <div className="h-full bg-[#6b38d4] rounded-full transition-all" style={{ width: `${leavePct}%` }}></div>
+                <div className="w-full h-2 bg-slate-700 rounded-full overflow-hidden">
+                  <div className="h-full bg-purple-500 rounded-full transition-all" style={{ width: `${leavePct}%` }}></div>
                 </div>
               </div>
             </div>
 
             {/* Attendance Trends Line Chart */}
             {trendData.length > 0 && (
-              <div className="mt-8 pt-6 border-t border-outline-variant/10">
-                <h5 className="text-xs font-bold text-on-surface-variant mb-4 uppercase tracking-wider">Attendance Trends</h5>
+              <div className="mt-8 pt-6 border-t border-slate-700">
+                <h5 className="text-xs font-bold text-slate-400 mb-4 uppercase tracking-wider">Attendance Trends</h5>
                 <div className="w-full h-[80px] relative">
                   <svg viewBox="0 0 100 40" className="w-full h-full" preserveAspectRatio="none">
                     <path
@@ -304,8 +338,8 @@ const AttendanceOverview = () => {
                     />
                     <defs>
                       <linearGradient id="trendGradient" x1="0%" x2="100%" y1="0%" y2="0%">
-                        <stop offset="0%" stopColor="#2563eb" />
-                        <stop offset="100%" stopColor="#7c3aed" />
+                        <stop offset="0%" stopColor="#3b82f6" />
+                        <stop offset="100%" stopColor="#8b5cf6" />
                       </linearGradient>
                     </defs>
                   </svg>
@@ -317,7 +351,7 @@ const AttendanceOverview = () => {
                     return (
                       <div key={idx} className="text-center">
                         <div>{label}</div>
-                        <div className="text-primary font-black mt-0.5">{d.pct}%</div>
+                        <div className="text-blue-400 font-black mt-0.5">{d.pct}%</div>
                       </div>
                     );
                   })}

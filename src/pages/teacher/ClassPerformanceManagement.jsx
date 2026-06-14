@@ -5,11 +5,13 @@ import Card from "../../components/erp/teacher/Card";
 import { getTeacherAssignment, getSectionEnrollments, getAttendanceRecords, getGrades } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
 import { RevalidatingBar, SkeletonRow } from "../../components/erp/teacher/LoadingPrimitives";
+import { useTheme } from "../../context/ThemeContext";
 
 const ClassPerformanceManagement = () => {
   const { id } = useParams();
   const [showAllStudents, setShowAllStudents] = useState(false);
   const [activeTab, setActiveTab] = useState('Students');
+  const { darkMode } = useTheme();
 
   const {
     data: payload,
@@ -145,8 +147,8 @@ const ClassPerformanceManagement = () => {
             </div>
           ) : (
             <>
-              <h2 className="text-3xl font-extrabold font-display text-blue-900 tracking-tight">{className}</h2>
-              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 text-blue-700 mt-2">
+              <h2 className="text-3xl font-extrabold font-display text-on-surface tracking-tight">{className}</h2>
+              <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-blue-100 dark:bg-blue-950/40 text-blue-700 dark:text-blue-300 mt-2">
                 Active Semester — {assignment?.academic_year_name}
               </span>
             </>
@@ -211,7 +213,7 @@ const ClassPerformanceManagement = () => {
                   </span>
                   <span className="material-symbols-outlined text-xs">chevron_right</span>
                 </Link>
-                <Link
+                {/* <Link
                   to="/assignments/create"
                   className="flex items-center justify-between p-3 rounded-md hover:bg-surface-container-low transition-colors text-sm font-semibold text-slate-700 border border-transparent hover:border-outline-variant/20"
                 >
@@ -227,7 +229,7 @@ const ClassPerformanceManagement = () => {
                     View Analytics
                   </span>
                   <span className="material-symbols-outlined text-xs">chevron_right</span>
-                </button>
+                </button> */}
               </div>
             </Card>
 
@@ -257,20 +259,23 @@ const ClassPerformanceManagement = () => {
               label: 'Total Students',
               value: loading && !payload ? '—' : totalStudents,
               sub: 'Capacity: 35',
-              subColor: 'text-slate-400',
+              subColor: 'text-slate-300',
+              bg: 'from-blue-600 to-blue-700',
             },
             {
               label: 'Avg Performance',
               value: loading && !payload ? '—' : `${avgPerformance}%`,
               sub: '+2.1',
-              subColor: 'text-green-600',
+              subColor: 'text-green-300',
               subIcon: 'trending_up',
+              bg: 'from-green-600 to-green-700',
             },
             {
               label: 'Attendance Rate',
               value: loading && !payload ? '—' : `${avgAttendance}%`,
               bar: true,
               barWidth: `${avgAttendance}%`,
+              bg: 'from-purple-600 to-purple-700',
             },
             // {
             //   label: 'Submissions',
@@ -280,24 +285,32 @@ const ClassPerformanceManagement = () => {
             //   subBg: 'bg-red-50',
             // },
           ].map((stat, i) => (
-            <Card key={i} className="p-6 border border-outline-variant/5 shadow-sm">
-              <p className="text-xs font-bold text-slate-500 uppercase tracking-widest mb-2">{stat.label}</p>
+            <Card key={i} className={`p-6 border transition-all duration-300 ${
+              darkMode 
+                ? `border-transparent shadow-lg bg-gradient-to-br ${stat.bg} text-white` 
+                : 'bg-surface-container-lowest border-outline-variant/10 shadow-sm text-on-surface'
+            }`}>
+              <p className={`text-xs font-bold uppercase tracking-widest mb-2 ${darkMode ? 'text-white/70' : 'text-on-surface-variant'}`}>{stat.label}</p>
               <div className="flex items-end justify-between">
-                <p className="text-3xl font-display font-extrabold text-on-surface">{stat.value}</p>
+                <p className={`text-3xl font-display font-extrabold ${darkMode ? 'text-white' : 'text-on-surface'}`}>{stat.value}</p>
                 {stat.subIcon && (
-                  <span className={`flex items-center text-xs font-bold ${stat.subColor} mb-1`}>
+                  <span className={`flex items-center text-xs font-bold mb-1 ${darkMode ? stat.subColor : 'text-green-600'}`}>
                     <span className="material-symbols-outlined text-sm">{stat.subIcon}</span>
                     {stat.sub}
                   </span>
                 )}
                 {stat.sub && !stat.subIcon && (
-                  <span className={`text-xs font-semibold ${stat.subColor} ${stat.subBg ?? ''} ${stat.subBg ? 'px-2 py-0.5 rounded-full' : ''} mb-1`}>
+                  <span className={`text-xs font-semibold mb-1 ${
+                    darkMode 
+                      ? `${stat.subColor} ${stat.subBg ?? ''} ${stat.subBg ? 'px-2 py-0.5 rounded-full' : ''}` 
+                      : 'text-on-surface-variant'
+                  }`}>
                     {stat.sub}
                   </span>
                 )}
                 {stat.bar && (
-                  <div className="w-16 h-1.5 bg-slate-100 rounded-full mb-3 overflow-hidden ml-2">
-                    <div className="bg-primary h-full" style={{ width: stat.barWidth }} />
+                  <div className={`w-16 h-1.5 rounded-full mb-3 overflow-hidden ml-2 ${darkMode ? 'bg-white/20' : 'bg-surface-container-low'}`}>
+                    <div className={`h-full ${darkMode ? 'bg-white' : 'bg-primary'}`} style={{ width: stat.barWidth }} />
                   </div>
                 )}
               </div>
@@ -334,12 +347,12 @@ const ClassPerformanceManagement = () => {
               </div>
               <div className="overflow-x-auto max-h-[400px] overflow-y-auto">
                 <table className="w-full text-left border-collapse">
-                  <thead className="sticky top-0 z-10 bg-white outline outline-1 outline-surface-container-low/50">
+                  <thead className="sticky top-0 z-10 bg-surface-container-lowest outline outline-1 outline-surface-container-low/50">
                     <tr className="bg-surface-container-low/50">
-                      {activeTab === 'Students' && ['Student', 'Roll No.', 'Status', ''].map((h) => (
+                      {activeTab === 'Students' && ['Student', 'Roll No.', 'Status'].map((h) => (
                         <th
                           key={h}
-                          className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest ${h === 'Roll No.' ? 'hidden sm:table-cell' : ''}`}
+                          className={`px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-widest ${h === 'Roll No.' ? 'hidden sm:table-cell' : ''}`}
                         >
                           {h}
                         </th>
@@ -347,7 +360,7 @@ const ClassPerformanceManagement = () => {
                       {activeTab === 'Attendance' && ['Student', 'Present', 'Total Classes', 'Attendance Rate', 'Status', ''].map((h) => (
                         <th
                           key={h}
-                          className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest ${h === 'Present' || h === 'Total Classes' ? 'hidden sm:table-cell' : ''}`}
+                          className={`px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-widest ${h === 'Present' || h === 'Total Classes' ? 'hidden sm:table-cell' : ''}`}
                         >
                           {h}
                         </th>
@@ -355,7 +368,7 @@ const ClassPerformanceManagement = () => {
                       {activeTab === 'Grades' && ['Student', 'Grade', 'Class Average', 'Comparison', 'Actions'].map((h) => (
                         <th
                           key={h}
-                          className={`px-6 py-4 text-xs font-bold text-slate-500 uppercase tracking-widest ${h === 'Class Average' ? 'hidden sm:table-cell' : ''}`}
+                          className={`px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-widest ${h === 'Class Average' ? 'hidden sm:table-cell' : ''}`}
                         >
                           {h}
                         </th>
@@ -374,47 +387,42 @@ const ClassPerformanceManagement = () => {
                           const grade = gradesMap[sId];
 
                           return (
-                            <tr key={student.id} className="hover:bg-slate-50 transition-colors">
+                            <tr key={student.id} className="hover:bg-surface-container-low/30 transition-colors">
                               <td className="px-6 py-4">
                                 <div className="flex items-center gap-3">
-                                  <div className="w-8 h-8 rounded-full bg-blue-100 flex items-center justify-center text-blue-600 font-bold text-xs uppercase shrink-0">
+                                  <div className="w-8 h-8 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-xs uppercase shrink-0">
                                     {student.student_name?.charAt(0)}
                                   </div>
-                                  <span className="font-semibold text-slate-700">{student.student_name}</span>
+                                  <span className="font-semibold text-on-surface">{student.student_name}</span>
                                 </div>
                               </td>
                               {activeTab === 'Students' && (
                                 <>
-                                  <td className="px-6 py-4 font-mono text-sm text-slate-500 hidden sm:table-cell">
+                                  <td className="px-6 py-4 font-mono text-sm text-on-surface-variant hidden sm:table-cell">
                                     {student.student_enrollment_no || `Roll ${student.roll_number}`}
                                   </td>
                                   <td className="px-6 py-4">
-                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                    <span className="inline-flex items-center px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300">
                                       Enrolled
                                     </span>
-                                  </td>
-                                  <td className="px-6 py-4 text-right">
-                                    <button className="material-symbols-outlined text-slate-300 hover:text-primary transition-colors outline-none cursor-pointer">
-                                      more_vert
-                                    </button>
                                   </td>
                                 </>
                               )}
                               {activeTab === 'Attendance' && (
                                 <>
-                                  <td className="px-6 py-4 text-sm text-slate-700 hidden sm:table-cell">
+                                  <td className="px-6 py-4 text-sm text-on-surface hidden sm:table-cell">
                                     {att ? `${att.present} Days` : '0 Days'}
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-slate-700 hidden sm:table-cell">
+                                  <td className="px-6 py-4 text-sm text-on-surface hidden sm:table-cell">
                                     {att ? `${att.total} Days` : '0 Days'}
                                   </td>
                                   <td className="px-6 py-4">
                                     <div className="flex flex-col sm:flex-row sm:items-center gap-2">
-                                      <span className="text-sm font-semibold text-slate-700">
+                                      <span className="text-sm font-semibold text-on-surface">
                                         {attPercentage !== null ? `${attPercentage}%` : 'N/A'}
                                       </span>
                                       {attPercentage !== null && (
-                                        <div className="w-12 h-1 bg-slate-100 rounded-full overflow-hidden shrink-0 hidden sm:block">
+                                        <div className="w-12 h-1 bg-surface-container rounded-full overflow-hidden shrink-0 hidden sm:block">
                                           <div
                                             className={`h-full ${attPercentage >= 85 ? 'bg-green-500' : attPercentage >= 60 ? 'bg-orange-500' : 'bg-red-500'}`}
                                             style={{ width: `${attPercentage}%` }}
@@ -426,14 +434,14 @@ const ClassPerformanceManagement = () => {
                                   <td className="px-6 py-4">
                                     {attPercentage !== null ? (
                                       <span className={`inline-flex px-2 py-0.5 rounded-full text-xs font-bold ${
-                                        attPercentage >= 85 ? 'bg-green-100 text-green-700' :
-                                        attPercentage >= 60 ? 'bg-orange-100 text-orange-700' :
-                                        'bg-red-100 text-red-700'
+                                        attPercentage >= 85 ? 'bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300' :
+                                        attPercentage >= 60 ? 'bg-orange-100 dark:bg-orange-950/40 text-orange-700 dark:text-orange-300' :
+                                        'bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300'
                                       }`}>
                                         {attPercentage >= 85 ? 'Good' : attPercentage >= 60 ? 'Warning' : 'Critical'}
                                       </span>
                                     ) : (
-                                      <span className="text-xs text-slate-400">N/A</span>
+                                      <span className="text-xs text-on-surface-variant">N/A</span>
                                     )}
                                   </td>
                                   <td className="px-6 py-4 text-right">
@@ -449,11 +457,11 @@ const ClassPerformanceManagement = () => {
                               {activeTab === 'Grades' && (
                                 <>
                                   <td className="px-6 py-4">
-                                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${grade ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-slate-50 text-slate-700 border border-slate-200'}`}>
+                                    <span className={`inline-flex px-2 py-1 rounded-md text-xs font-bold ${grade ? 'bg-primary/10 text-primary border border-primary/20' : 'bg-surface-container text-on-surface border border-outline-variant/10'}`}>
                                       {grade ? `${parseFloat(grade.marks_obtained).toFixed(1)} / ${parseFloat(grade.max_marks).toFixed(1)}` : 'N/A'}
                                     </span>
                                   </td>
-                                  <td className="px-6 py-4 text-sm text-slate-700 hidden sm:table-cell">
+                                  <td className="px-6 py-4 text-sm text-on-surface hidden sm:table-cell">
                                     {avgPerformance ? `${avgPerformance} / 100` : 'N/A'}
                                   </td>
                                   <td className="px-6 py-4">
@@ -463,19 +471,19 @@ const ClassPerformanceManagement = () => {
                                         const avg = parseFloat(avgPerformance);
                                         if (score > avg) {
                                           return (
-                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 text-green-700">
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-green-100 dark:bg-green-950/40 text-green-700 dark:text-green-300">
                                               Above Average
                                             </span>
                                           );
                                         } else if (score < avg) {
                                           return (
-                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 text-red-700">
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-red-100 dark:bg-red-950/40 text-red-700 dark:text-red-300">
                                               Below Average
                                             </span>
                                           );
                                         } else {
                                           return (
-                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-slate-100 text-slate-700">
+                                            <span className="inline-flex px-2 py-0.5 rounded-full text-xs font-bold bg-surface-container text-on-surface">
                                               Average
                                             </span>
                                           );
@@ -525,7 +533,7 @@ const ClassPerformanceManagement = () => {
 
             {/* Side Panels */}
             <div className="space-y-6">
-              <Card className="p-6 border border-outline-variant/10 shadow-sm">
+              {/* <Card className="p-6 border border-outline-variant/10 shadow-sm">
                 <h3 className="font-display font-bold text-on-surface mb-6">Recent Submissions</h3>
                 <div className="space-y-5">
                   {[
@@ -556,7 +564,7 @@ const ClassPerformanceManagement = () => {
                 <button className="w-full mt-6 py-3 border border-slate-200 rounded-md text-xs font-bold text-slate-600 hover:bg-slate-50 transition-all uppercase tracking-widest outline-none">
                   Open Gradebook
                 </button>
-              </Card>
+              </Card> */}
 
               <div className="bg-primary rounded-lg p-6 text-white overflow-hidden relative group">
                 <h3 className="font-display font-bold text-lg mb-4 relative z-10">Curriculum Progress</h3>

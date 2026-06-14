@@ -1,7 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { useNavigate } from "react-router-dom";
 
-// Importing your real local components!
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Button from "../../components/erp/teacher/Button";
 import Card from "../../components/erp/teacher/Card";
@@ -10,71 +9,218 @@ import Select from "../../components/erp/teacher/Select";
 import { getMyProfile, getTeacherClasses, getSectionEnrollments, getGrades } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
 import { RevalidatingBar, SkeletonCard } from "../../components/erp/teacher/LoadingPrimitives";
+import { useTheme } from "../../context/ThemeContext";
+
+const FILTER_STATE_KEY = 'teacher:classes:filters';
+const DEBUG_PREFIX = '[MyClassesHub]';
+
+const getId = (value) => (typeof value === 'object' ? value?.id : value);
+
+const normalizeText = (value) => String(value || '').trim().toLowerCase();
+
+const getClassLevelLabel = (classLevelName) => {
+  const raw = String(classLevelName || '').trim();
+  const numberMatch = raw.match(/\d+/);
+  if (numberMatch) return numberMatch[0];
+  return raw.replace(/^(grade|class|standard|std)\s*/i, '').trim() || 'Class';
+};
+
+const getInitialFilters = () => {
+  try {
+    const saved = sessionStorage.getItem(FILTER_STATE_KEY);
+    if (saved) {
+      return {
+        search: '',
+        subject: 'all',
+        classLevel: 'all',
+        ...JSON.parse(saved),
+      };
+    }
+  } catch {}
+
+  return { search: '', subject: 'all', classLevel: 'all' };
+};
+
+const getCachedProfile = () => {
+  try {
+    const cachedProfile = localStorage.getItem('user_data');
+    return cachedProfile ? JSON.parse(cachedProfile) : null;
+  } catch {
+    return null;
+  }
+};
+
+const MetricSkeleton = () => (
+  <div className="h-6 w-14 bg-slate-200 dark:bg-slate-700 rounded animate-pulse" />
+);
 
 const MyClassesHub = () => {
+  const { darkMode } = useTheme();
   const navigate = useNavigate();
+  const [filters, setFilters] = useState(getInitialFilters);
 
-  // ─── Fetch profile + classes together, cached ───────────────────────────────
   const {
     data: classesPayload,
     loading,
     revalidating,
     error,
   } = useStaleData('teacher:classes', async () => {
-    const profileData = await getMyProfile();
-    const teacherId = profileData.profiles?.teacher?.id;
+    const startedAt = performance.now();
+    console.groupCollapsed(`${DEBUG_PREFIX} loading teacher classes`);
+
+    let profileData = getCachedProfile();
+    let teacherId = profileData?.profiles?.teacher?.id;
+
+    console.log('cached profile lookup', {
+      found: Boolean(profileData),
+      teacherId,
+      time: `${Math.round(performance.now() - startedAt)}ms`,
+    });
+
+    if (!teacherId) {
+      const profileStartedAt = performance.now();
+      profileData = await getMyProfile();
+      teacherId = profileData.profiles?.teacher?.id;
+      console.log('profile fetched in', `${Math.round(performance.now() - profileStartedAt)}ms`, profileData);
+    } else {
+      console.log('profile API skipped because teacher id was available in localStorage');
+    }
+
+    console.log('profile resolved in', `${Math.round(performance.now() - startedAt)}ms`, profileData);
     if (!teacherId) throw new Error('You are not assigned a teacher profile.');
 
+    const classesStartedAt = performance.now();
     const classesData = await getTeacherClasses(teacherId);
     const classesArray = Array.isArray(classesData) ? classesData : classesData.results || [];
+    console.log('teacher classes fetched in', `${Math.round(performance.now() - classesStartedAt)}ms`, {
+      teacherId,
+      rawPayload: classesData,
+      count: classesArray.length,
+      classes: classesArray,
+    });
+    console.log('class payload total time', `${Math.round(performance.now() - startedAt)}ms`);
+    console.groupEnd();
 
-    // Fetch student counts for each class concurrently
+    return { profile: profileData, classes: classesArray };
+  });
+
+  const classes = useMemo(() => classesPayload?.classes ?? [], [classesPayload]);
+  const metricsKey = useMemo(
+    () => classes.map((cls) => cls.id).filter(Boolean).sort().join(','),
+    [classes],
+  );
+
+  const {
+    data: metricsPayload,
+    loading: metricsLoading,
+    revalidating: metricsRevalidating,
+  } = useStaleData(`teacher:classes:metrics:${metricsKey || 'empty'}`, async () => {
+    const metricsStartedAt = performance.now();
+    console.groupCollapsed(`${DEBUG_PREFIX} loading class metrics`);
+    console.log('metric input classes', {
+      count: classes.length,
+      metricsKey,
+      classes: classes.map((cls) => ({
+        id: cls.id,
+        subject: cls.subject_name,
+        classLevel: cls.class_level_name,
+        section: cls.section_name || cls.section?.name,
+        sectionId: getId(cls.section) || cls.section_id,
+        subjectId: getId(cls.subject) || cls.subject_id,
+      })),
+    });
+
+    const gradesRequestsBySubject = new Map();
+    classes.forEach((cls) => {
+      const subjectId = getId(cls.subject) || cls.subject_id;
+      if (subjectId && !gradesRequestsBySubject.has(subjectId)) {
+        gradesRequestsBySubject.set(subjectId, getGrades(subjectId));
+      }
+    });
+    console.log('shared grade requests', {
+      uniqueSubjects: gradesRequestsBySubject.size,
+      classCount: classes.length,
+    });
+
     const classMetrics = await Promise.all(
-      classesArray.map(async (cls) => {
-        const sectionId = typeof cls.section === 'object' ? cls.section?.id : cls.section || cls.section_id;
-        const academicYearId = typeof cls.academic_year === 'object' ? cls.academic_year?.id : cls.academic_year || cls.academic_year_id;
-        const subjectId = typeof cls.subject === 'object' ? cls.subject?.id : cls.subject || cls.subject_id;
-        
-        if (!sectionId) return { sectionId: null, count: 0, avgPerformance: 'N/A' };
+      classes.map(async (cls) => {
+        const classMetricStartedAt = performance.now();
+        const sectionId = getId(cls.section) || cls.section_id;
+        const academicYearId = getId(cls.academic_year) || cls.academic_year_id;
+        const subjectId = getId(cls.subject) || cls.subject_id;
+
+        if (!sectionId) {
+          console.warn('skipping metrics because section id is missing', cls);
+          return { sectionId: null, count: 0, avgPerformance: 'N/A' };
+        }
+
         try {
+          const enrollmentsStartedAt = performance.now();
           const [enrollmentsData, gradesData] = await Promise.all([
             getSectionEnrollments(sectionId, academicYearId),
-            subjectId ? getGrades(subjectId) : Promise.resolve({ results: [] })
+            subjectId ? gradesRequestsBySubject.get(subjectId) : Promise.resolve({ results: [] }),
           ]);
-          
+
           const students = Array.isArray(enrollmentsData) ? enrollmentsData : enrollmentsData.results || [];
           const grades = Array.isArray(gradesData) ? gradesData : gradesData.results || [];
-          
-          let gradesMap = {};
-          grades.forEach(grade => {
-            const sId = grade.student_id || grade.student;
-            if (!gradesMap[sId] || parseFloat(grade.marks_obtained) > parseFloat(gradesMap[sId].marks_obtained)) {
-              gradesMap[sId] = grade;
+          const fetchedAt = performance.now();
+          const gradesMap = {};
+
+          grades.forEach((grade) => {
+            const studentId = grade.student_id || grade.student;
+            const currentMarks = parseFloat(grade.marks_obtained || 0);
+            const previousMarks = parseFloat(gradesMap[studentId]?.marks_obtained || 0);
+
+            if (!gradesMap[studentId] || currentMarks > previousMarks) {
+              gradesMap[studentId] = grade;
             }
           });
-          
-          let totalMarks = 0;
-          students.forEach(student => {
-            const sId = student.student?.id || student.student || student.student_id;
-            const grade = gradesMap[sId];
-            if (grade) {
-              totalMarks += parseFloat(grade.marks_obtained || 0);
-            }
-          });
-          
+
+          const totalMarks = students.reduce((sum, student) => {
+            const studentId = student.student?.id || student.student || student.student_id;
+            const grade = gradesMap[studentId];
+            return sum + (grade ? parseFloat(grade.marks_obtained || 0) : 0);
+          }, 0);
+
           const avgPerformance = students.length > 0
             ? (totalMarks / students.length).toFixed(1)
             : 'N/A';
 
+          console.log('class metrics calculated', {
+            assignmentId: cls.id,
+            subject: cls.subject_name,
+            classLevel: cls.class_level_name,
+            section: cls.section_name || cls.section?.name,
+            sectionId,
+            academicYearId,
+            subjectId,
+            students: students.length,
+            grades: grades.length,
+            avgPerformance,
+            fetchTime: `${Math.round(fetchedAt - enrollmentsStartedAt)}ms`,
+            totalTime: `${Math.round(performance.now() - classMetricStartedAt)}ms`,
+          });
+
           return { sectionId, count: students.length, avgPerformance };
-        } catch {
+        } catch (metricError) {
+          console.error('class metrics failed', {
+            assignmentId: cls.id,
+            subject: cls.subject_name,
+            classLevel: cls.class_level_name,
+            section: cls.section_name || cls.section?.name,
+            sectionId,
+            subjectId,
+            error: metricError,
+            totalTime: `${Math.round(performance.now() - classMetricStartedAt)}ms`,
+          });
           return { sectionId, count: 0, avgPerformance: 'N/A' };
         }
-      })
+      }),
     );
 
     const studentsMap = {};
     const performanceMap = {};
+
     classMetrics.forEach(({ sectionId, count, avgPerformance }) => {
       if (sectionId) {
         studentsMap[sectionId] = count;
@@ -82,15 +228,143 @@ const MyClassesHub = () => {
       }
     });
 
-    return { profile: profileData, classes: classesArray, studentsMap, performanceMap };
-  });
+    console.log('all metrics finished in', `${Math.round(performance.now() - metricsStartedAt)}ms`, {
+      studentsMap,
+      performanceMap,
+    });
+    console.groupEnd();
 
-  const profile = classesPayload?.profile ?? null;
-  const classes = classesPayload?.classes ?? [];
-  const studentsMap = classesPayload?.studentsMap ?? {};
-  const performanceMap = classesPayload?.performanceMap ?? {};
+    return { studentsMap, performanceMap };
+  }, { skip: loading || classes.length === 0, ttl: 5 * 60_000, deps: metricsKey });
 
-  // Helper to dynamically color code subjects
+  const studentsMap = metricsPayload?.studentsMap ?? {};
+  const performanceMap = metricsPayload?.performanceMap ?? {};
+  const showMetricSkeletons = (metricsLoading || metricsRevalidating) && !metricsPayload;
+
+  useEffect(() => {
+    try {
+      sessionStorage.setItem(FILTER_STATE_KEY, JSON.stringify(filters));
+    } catch {}
+  }, [filters]);
+
+  const subjectOptions = useMemo(() => {
+    const seen = new Set();
+    const options = [{ label: 'All Subjects', value: 'all' }];
+
+    classes.forEach((cls) => {
+      const subjectName = String(cls.subject_name || cls.subject?.name || 'Subject').trim();
+      const subjectId = String(getId(cls.subject) || cls.subject_id || subjectName).trim();
+      if (!subjectId || seen.has(subjectId)) return;
+
+      seen.add(subjectId);
+      options.push({ label: subjectName, value: subjectId });
+    });
+
+    return options;
+  }, [classes]);
+
+  const classOptions = useMemo(() => {
+    const seen = new Set();
+    const options = [{ label: 'All Classes', value: 'all' }];
+
+    classes.forEach((cls) => {
+      const classLabel = getClassLevelLabel(cls.class_level_name || cls.class_level?.name);
+      const classValue = normalizeText(classLabel);
+      if (!classValue || seen.has(classValue)) return;
+
+      seen.add(classValue);
+      options.push({ label: classLabel, value: classValue });
+    });
+
+    return options;
+  }, [classes]);
+
+  const filteredClasses = useMemo(() => {
+    const startedAt = performance.now();
+    const query = normalizeText(filters.search);
+
+    const results = classes.filter((cls) => {
+      const subjectName = String(cls.subject_name || cls.subject?.name || '').trim();
+      const subjectId = String(getId(cls.subject) || cls.subject_id || subjectName).trim();
+      const classLabel = getClassLevelLabel(cls.class_level_name || cls.class_level?.name);
+      const searchable = [
+        subjectName,
+        classLabel,
+        cls.class_level_name,
+        cls.academic_year_name,
+      ].map(normalizeText);
+
+      const matchesSubject = filters.subject === 'all' || subjectId === filters.subject;
+      const matchesClass = filters.classLevel === 'all' || normalizeText(classLabel) === filters.classLevel;
+      const matchesSearch = !query || searchable.some((value) => value.includes(query));
+
+      return matchesSubject && matchesClass && matchesSearch;
+    });
+
+    console.log(`${DEBUG_PREFIX} filtered classes`, {
+      filters,
+      sourceCount: classes.length,
+      resultCount: results.length,
+      time: `${Math.round((performance.now() - startedAt) * 100) / 100}ms`,
+      results: results.map((cls) => ({
+        id: cls.id,
+        subject: cls.subject_name,
+        classLevel: cls.class_level_name,
+        section: cls.section_name || cls.section?.name,
+      })),
+    });
+
+    return results;
+  }, [classes, filters]);
+
+  useEffect(() => {
+    console.log(`${DEBUG_PREFIX} render state`, {
+      loading,
+      revalidating,
+      metricsLoading,
+      metricsRevalidating,
+      hasClassesPayload: Boolean(classesPayload),
+      classesCount: classes.length,
+      filteredClassesCount: filteredClasses.length,
+      hasMetricsPayload: Boolean(metricsPayload),
+      showMetricSkeletons,
+    });
+  }, [
+    loading,
+    revalidating,
+    metricsLoading,
+    metricsRevalidating,
+    classesPayload,
+    classes.length,
+    filteredClasses.length,
+    metricsPayload,
+    showMetricSkeletons,
+  ]);
+
+  useEffect(() => {
+    if (!loading && classes.length > 0) {
+      const insightClass = classes[0];
+      console.log(`${DEBUG_PREFIX} AI insight card source`, {
+        note: 'This card is currently hardcoded UI copy. No AI insight API request is being made here.',
+        selectedClass: {
+          id: insightClass?.id,
+          subject: insightClass?.subject_name,
+          classLevel: insightClass?.class_level_name,
+          section: insightClass?.section_name || insightClass?.section?.name,
+        },
+        displayedInsight: 'Based on historical trends, the upcoming module typically sees a 12% drop in student engagement. We recommend adjusting the lesson plan.',
+      });
+    }
+  }, [loading, classes]);
+
+  const handleFilterChange = (field) => (event) => {
+    setFilters((current) => ({ ...current, [field]: event.target.value }));
+  };
+
+  const handleReset = () => {
+    setFilters({ search: '', subject: 'all', classLevel: 'all' });
+  };
+
   const getSubjectAesthetics = (subjectName) => {
     const name = (subjectName || "").toLowerCase();
     if (name.includes("math") || name.includes("calc")) return { icon: "functions", colorClass: "text-[#0058be]", bgClass: "bg-[#0058be]/10", borderClass: "border-[#0058be]/20" };
@@ -114,61 +388,81 @@ const MyClassesHub = () => {
 
   return (
     <MainLayout title="My Teaching Schedule">
-      <RevalidatingBar show={revalidating} />
+      <RevalidatingBar show={revalidating || metricsRevalidating} />
 
-      {/* Filter Section — always visible, even while loading */}
-      <section className="mb-10 flex flex-col lg:flex-row gap-6 items-end justify-between bg-white p-6 rounded-xl shadow-sm border border-gray-100">
+      <section className={`mb-10 flex flex-col lg:flex-row gap-6 items-end justify-between p-6 rounded-xl shadow-lg border transition-colors duration-300 ${
+        darkMode 
+          ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700' 
+          : 'bg-surface-container-low border-outline-variant/10'
+      }`}>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 w-full lg:w-3/4">
-          <Input label="Search Directory" icon="search" placeholder="Search by class or subject..." />
-          <Select 
-            label="Subject Filter" 
-            options={['All Subjects', ...Array.from(new Set(classes.map(c => c.subject_name)))]} 
+          <Input
+            label="Search Directory"
+            icon="search"
+            placeholder="Search by class or subject..."
+            value={filters.search}
+            onChange={handleFilterChange('search')}
+            dark={darkMode}
           />
-          <Select 
-            label="Class/Section Filter" 
-            options={['All Sections', ...Array.from(new Set(classes.map(c => c.class_level_name)))]} 
+          <Select
+            label="Subject Filter"
+            options={subjectOptions}
+            value={filters.subject}
+            onChange={handleFilterChange('subject')}
+            dark={darkMode}
+          />
+          <Select
+            label="Class Filter"
+            options={classOptions}
+            value={filters.classLevel}
+            onChange={handleFilterChange('classLevel')}
+            dark={darkMode}
           />
         </div>
         <div className="flex gap-3 w-full lg:w-auto">
-          <Button variant="secondary" className="w-full lg:w-auto justify-center">Reset</Button>
-          <Button variant="primary" className="w-full lg:w-auto justify-center">
-            <span className="material-symbols-outlined text-[18px]">filter_alt</span>
-            Apply
+          <Button
+            variant="secondary"
+            className={`w-full lg:w-auto justify-center border font-bold transition-colors ${
+              darkMode 
+                ? 'bg-slate-700 hover:bg-slate-600 text-white border-slate-600' 
+                : 'bg-white hover:bg-slate-100 text-slate-900 border-slate-200'
+            }`}
+            onClick={handleReset}
+          >
+            Reset
           </Button>
         </div>
       </section>
 
-      {/* Classes Bento Grid */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-8">
         {loading ? (
-          // First-ever load: show skeleton cards
           Array.from({ length: 3 }).map((_, i) => <SkeletonCard key={i} />)
-        ) : classes.length > 0 ? (
-          classes.map((cls) => {
-            const sectionId = typeof cls.section === 'object' ? cls.section?.id : cls.section || cls.section_id;
+        ) : filteredClasses.length > 0 ? (
+          filteredClasses.map((cls) => {
+            const sectionId = getId(cls.section) || cls.section_id;
             const studentCount = studentsMap[sectionId] ?? 0;
             const avgPerformance = performanceMap[sectionId] ?? 'N/A';
             const subjectName = cls.subject_name || 'Subject';
-            const levelClean = cls.class_level_name?.replace('Grade ', '') || '';
-            const className = `${subjectName} ${levelClean}-${cls.section_name || ''}`;
+            const levelClean = getClassLevelLabel(cls.class_level_name);
+            const sectionName = cls.section_name || cls.section?.name;
+            const className = `${subjectName} ${levelClean}${sectionName ? `-${sectionName}` : ''}`;
             const description = cls.is_class_teacher
-              ? `Class Teacher • ${cls.academic_year_name}`
+              ? `Class Teacher - ${cls.academic_year_name}`
               : `${cls.academic_year_name}`;
-            
             const aes = getSubjectAesthetics(subjectName);
 
             return (
-              <Card key={cls.id} hoverable>
+              <Card key={cls.id} hoverable className={`border shadow-lg hover:shadow-2xl transition-all duration-300 ${darkMode ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700' : 'bg-surface-container-lowest border-outline-variant/10'}`}>
                 <div className="flex justify-between items-start mb-6">
-                  <div className={`${aes.bgClass} p-3 rounded-xl`}>
+                  <div className={`${aes.bgClass} p-3 rounded-xl shadow-sm`}>
                     <span className={`material-symbols-outlined ${aes.colorClass} text-3xl`}>{aes.icon}</span>
                   </div>
                   <div className="flex flex-col items-end gap-2">
-                    <div className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${aes.borderClass} ${aes.colorClass} bg-white shadow-sm`}>
+                    <div className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-widest uppercase border ${aes.borderClass} ${aes.colorClass} bg-white dark:bg-slate-800 shadow-sm`}>
                       Active
                     </div>
                     {cls.is_class_teacher && (
-                      <span className="text-[10px] font-bold text-amber-600 bg-amber-50 px-2 py-0.5 rounded border border-amber-200 flex items-center gap-1">
+                      <span className={`text-[10px] font-bold px-2 py-0.5 rounded border flex items-center gap-1 ${darkMode ? 'text-amber-400 bg-amber-900/30 border-amber-600/30' : 'text-blue-700 bg-blue-50 border-blue-200'}`}>
                         <span className="material-symbols-outlined text-[12px]">star</span>
                         Class Teacher
                       </span>
@@ -176,28 +470,38 @@ const MyClassesHub = () => {
                   </div>
                 </div>
                 <div className="mb-8">
-                  <h2 className="font-display text-xl font-bold text-on-surface mb-1">{className}</h2>
-                  <p className="text-on-surface-variant text-sm font-medium">{description}</p>
+                  <h2 className={`font-display text-xl font-bold mb-1 ${darkMode ? 'text-white' : 'text-on-surface'}`}>{className}</h2>
+                  <p className={`${darkMode ? 'text-slate-400' : 'text-on-surface-variant'} text-sm font-medium`}>{description}</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4 mb-8">
-                  <div className="bg-surface-container-low p-4 rounded-md">
-                    <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Students</p>
+                  <div className={`p-4 rounded-md border transition-colors ${darkMode ? 'bg-slate-700/50 border-slate-600' : 'bg-surface-container/50 border-outline-variant/20'}`}>
+                    <p className={`text-[10px] uppercase font-bold tracking-wider mb-1 ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>Students</p>
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-primary">groups</span>
-                      <span className="text-lg font-bold font-display">{studentCount}</span>
+                      <span className="material-symbols-outlined text-sm text-primary dark:text-blue-400">groups</span>
+                      {showMetricSkeletons ? (
+                        <MetricSkeleton />
+                      ) : (
+                        <span className={`text-lg font-bold font-display ${darkMode ? 'text-white' : 'text-on-surface'}`}>{studentCount}</span>
+                      )}
                     </div>
                   </div>
-                  <div className="bg-surface-container-low p-4 rounded-md">
-                    <p className="text-[10px] uppercase font-bold text-outline tracking-wider mb-1">Avg. Performance</p>
+                  <div className={`p-4 rounded-md border transition-colors ${darkMode ? 'bg-slate-700/50 border-slate-600' : 'bg-surface-container/50 border-outline-variant/20'}`}>
+                    <p className={`text-[10px] uppercase font-bold tracking-wider mb-1 ${darkMode ? 'text-slate-400' : 'text-on-surface-variant'}`}>Avg. Performance</p>
                     <div className="flex items-center gap-2">
-                      <span className="material-symbols-outlined text-sm text-black">horizontal_rule</span>
-                      <span className="text-lg font-bold text-black font-display">{avgPerformance !== 'N/A' ? `${avgPerformance}%` : 'N/A'}</span>
+                      <span className="material-symbols-outlined text-sm text-primary dark:text-white">horizontal_rule</span>
+                      {showMetricSkeletons ? (
+                        <MetricSkeleton />
+                      ) : (
+                        <span className={`text-lg font-bold font-display ${darkMode ? 'text-white' : 'text-on-surface'}`}>
+                          {avgPerformance !== 'N/A' ? `${avgPerformance}%` : 'N/A'}
+                        </span>
+                      )}
                     </div>
                   </div>
                 </div>
                 <button
                   onClick={() => navigate(`/teacher/classes/${cls.id}/performance`)}
-                  className="mt-auto flex items-center justify-center gap-2 w-full py-3 bg-surface-container-high text-primary font-bold rounded-md hover:bg-primary hover:text-white transition-all duration-200"
+                  className="mt-auto flex items-center justify-center gap-2 w-full py-3 bg-blue-600 text-white font-bold rounded-md hover:bg-blue-500 transition-all duration-200 shadow-md"
                 >
                   View Class Details
                   <span className="material-symbols-outlined text-sm">arrow_forward</span>
@@ -210,19 +514,32 @@ const MyClassesHub = () => {
             <div className="w-16 h-16 bg-[#eff4ff] rounded-full flex items-center justify-center text-[#0058be] mb-4 shadow-sm">
               <span className="material-symbols-outlined text-3xl">event_busy</span>
             </div>
-            <h3 className="text-xl font-bold text-slate-800 mb-2">No Classes Assigned</h3>
+            <h3 className="text-xl font-bold text-slate-800 mb-2">
+              {classes.length > 0 ? 'No Matching Classes' : 'No Classes Assigned'}
+            </h3>
             <p className="text-gray-500 max-w-sm text-sm mb-6">
-              You currently have no active teacher assignments in the database for this academic year.
+              {classes.length > 0
+                ? 'Try adjusting the subject, class, or search filters.'
+                : 'You currently have no active teacher assignments in the database for this academic year.'}
             </p>
-            <button className="bg-white border border-gray-200 text-slate-700 font-semibold px-8 py-3 rounded-md hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2">
-              <span className="material-symbols-outlined text-[18px]">mail</span>
-              Contact Administrator
-            </button>
+            {classes.length > 0 ? (
+              <button
+                onClick={handleReset}
+                className="bg-white border border-gray-200 text-slate-700 font-semibold px-8 py-3 rounded-md hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2"
+              >
+                <span className="material-symbols-outlined text-[18px]">restart_alt</span>
+                Reset Filters
+              </button>
+            ) : (
+              <button className="bg-white border border-gray-200 text-slate-700 font-semibold px-8 py-3 rounded-md hover:bg-gray-50 transition-all shadow-sm flex items-center gap-2">
+                <span className="material-symbols-outlined text-[18px]">mail</span>
+                Contact Administrator
+              </button>
+            )}
           </div>
         )}
       </div>
 
-      {/* AI Insight Card - only shown if there are classes */}
       {!loading && classes.length > 0 && (
         <div className="mt-8">
           <Card className="bg-gradient-to-br from-[#0b1c30] to-[#1e3450] text-white border-transparent" hoverable>
@@ -235,19 +552,22 @@ const MyClassesHub = () => {
                 AI Insight Generated
               </div>
             </div>
-            
+
             <div className="mb-6">
-              <h2 className="text-xl font-bold mb-1">{classes[0]?.subject_name} ({classes[0]?.class_level_name})</h2>
+              <h2 className="text-xl font-bold mb-1">
+                {classes[0]?.subject_name} ({getClassLevelLabel(classes[0]?.class_level_name)}
+                {classes[0]?.section_name || classes[0]?.section?.name ? `-${classes[0]?.section_name || classes[0]?.section?.name}` : ''})
+              </h2>
               <p className="text-blue-200 text-sm font-medium">Predictive Engagement Model</p>
             </div>
-            
+
             <div className="mb-8 p-4 bg-black/20 rounded-lg border border-white/10 flex items-start gap-3">
               <span className="material-symbols-outlined text-amber-400 shrink-0">warning</span>
               <p className="text-sm text-slate-200 leading-relaxed">
                 Based on historical trends, the upcoming module typically sees a <strong className="text-amber-400">12% drop in student engagement</strong>. We recommend adjusting the lesson plan.
               </p>
             </div>
-            
+
             <button
               onClick={() => navigate("/teacher/analytics")}
               className="mt-auto flex items-center justify-center gap-2 w-full py-3 bg-white text-[#0b1c30] font-bold rounded-md hover:bg-gray-100 transition-all duration-200 shadow-md"

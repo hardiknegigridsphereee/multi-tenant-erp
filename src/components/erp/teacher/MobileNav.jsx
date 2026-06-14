@@ -33,18 +33,18 @@ return (
 
 <div className="fixed inset-0 z-[60] bg-slate-900/60 backdrop-blur-sm">
 
-<div className="absolute bottom-0 left-0 right-0 bg-white rounded-t-3xl p-6 pb-12 shadow-2xl">
+<div className="absolute bottom-0 left-0 right-0 bg-white dark:bg-slate-900 rounded-t-3xl p-6 pb-12 shadow-2xl">
 
 <div className="flex justify-between items-center mb-8">
 
-<h3 className="text-lg font-bold text-gray-800">
+<h3 className="text-lg font-bold text-gray-800 dark:text-white">
 Main Menu
 </h3>
 
 
 <button
 onClick={() => setIsMenuOpen(false)}
-className="w-9 h-9 rounded-full bg-gray-100 flex items-center justify-center"
+className="w-9 h-9 rounded-full bg-gray-100 dark:bg-slate-800 text-gray-700 dark:text-slate-300 flex items-center justify-center"
 >
 
 <span className="material-symbols-outlined">
@@ -77,7 +77,7 @@ className="flex flex-col items-center gap-2"
 className={`w-14 h-14 rounded-xl flex items-center justify-center transition ${
 isActive
 ? "bg-blue-600 text-white shadow-lg"
-: "bg-gray-100 text-gray-500"
+: "bg-gray-100 dark:bg-slate-800 text-gray-500 dark:text-slate-400"
 }`}
 >
 
@@ -90,7 +90,7 @@ isActive
 
 <span
 className={`text-[11px] font-semibold text-center ${
-isActive ? "text-blue-600" : "text-gray-500"
+isActive ? "text-blue-600" : "text-gray-500 dark:text-slate-400"
 }`}
 >
 
@@ -116,7 +116,7 @@ isActive ? "text-blue-600" : "text-gray-500"
 
 {/* Bottom Mobile Bar */}
 
-<nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white border-t flex justify-around items-center py-2 shadow">
+<nav className="md:hidden fixed bottom-0 left-0 right-0 bg-white dark:bg-slate-900 border-t border-slate-100 dark:border-slate-800 flex justify-around items-center py-2 shadow">
 
 {quickLinks.map((item) => {
 
@@ -131,7 +131,7 @@ to={item.path}
 className={`flex flex-col items-center text-xs transition ${
 isActive
 ? "text-blue-600"
-: "text-gray-400"
+: "text-gray-400 dark:text-slate-400"
 }`}
 >
 
@@ -158,7 +158,7 @@ isActive
 
 <button
 onClick={() => setIsMenuOpen(true)}
-className="flex flex-col items-center text-gray-400"
+className="flex flex-col items-center text-gray-400 dark:text-slate-400"
 >
 
 <span className="material-symbols-outlined text-xl">

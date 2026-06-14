@@ -1,7 +1,25 @@
-import React from 'react';
+import React, { useState } from 'react';
 import MainLayout from "../../components/erp/teacher/MainLayout";
+import { useTheme } from '../../context/ThemeContext';
 
 const TeacherSystemSettings = () => {
+  const { darkMode, toggleDarkMode } = useTheme();
+  const [isSaving, setIsSaving] = useState(false);
+
+  const handleSave = async () => {
+    setIsSaving(true);
+    try {
+      // Simulate saving
+      await new Promise(resolve => setTimeout(resolve, 500));
+      alert("Settings saved successfully!");
+    } catch (error) {
+      console.error("Failed to save settings:", error);
+      alert("Failed to save changes. Please try again.");
+    } finally {
+      setIsSaving(false);
+    }
+  };
+
   return (
     <MainLayout title="Settings">
       <div className="p-4 md:p-8 max-w-4xl mx-auto pb-28 md:pb-24 space-y-12 w-full">
@@ -35,14 +53,25 @@ const TeacherSystemSettings = () => {
               <span className="material-symbols-outlined text-[#6b38d4] block">palette</span>
               <h2 className="text-lg font-bold font-display text-on-surface">Appearance Settings</h2>
             </div>
-            <div className="flex gap-4">
-              <button className="flex-1 p-3 rounded-xl border-2 border-primary bg-primary/10 flex flex-col items-center gap-2 hover:bg-primary/20 transition-colors outline-none cursor-pointer">
-                <span className="material-symbols-outlined text-primary block">light_mode</span>
-                <span className="text-xs font-bold text-primary">Light</span>
-              </button>
-              <button className="flex-1 p-3 rounded-xl border-2 border-transparent bg-slate-100 flex flex-col items-center gap-2 hover:bg-slate-200 transition-colors outline-none cursor-pointer text-slate-500">
-                <span className="material-symbols-outlined block">dark_mode</span>
-                <span className="text-xs font-bold">Dark</span>
+            <div className="flex items-center justify-between p-4 bg-surface-container-low rounded-md">
+              <div className="flex items-center gap-3">
+                <span className="material-symbols-outlined text-on-surface-variant">
+                  {darkMode ? 'dark_mode' : 'light_mode'}
+                </span>
+                <span className="font-semibold text-on-surface">Dark Mode</span>
+              </div>
+              {/* toggleDarkMode — global context update */}
+              <button
+                onClick={toggleDarkMode}
+                className={`relative inline-flex h-6 w-11 items-center rounded-full transition-colors focus:outline-none ${
+                  darkMode ? 'bg-primary' : 'bg-surface-container-highest'
+                }`}
+              >
+                <span
+                  className={`inline-block h-4 w-4 transform rounded-full bg-white transition-transform duration-300 ${
+                    darkMode ? 'translate-x-6' : 'translate-x-1'
+                  }`}
+                />
               </button>
             </div>
           </section>
@@ -146,8 +175,12 @@ const TeacherSystemSettings = () => {
         <button className="px-6 py-2.5 text-sm font-bold text-slate-500 hover:bg-slate-100 rounded-md transition-colors outline-none border-none cursor-pointer bg-transparent">
           Reset Defaults
         </button>
-        <button className="px-8 py-2.5 text-sm font-bold text-white bg-gradient-to-br from-primary to-primary-container rounded-md shadow-lg shadow-primary/20 active:scale-95 transition-all outline-none border-none cursor-pointer">
-          Save Settings
+        <button 
+          onClick={handleSave}
+          disabled={isSaving}
+          className="px-8 py-2.5 text-sm font-bold text-white bg-gradient-to-br from-primary to-primary-container rounded-md shadow-lg shadow-primary/20 active:scale-95 transition-all outline-none border-none cursor-pointer disabled:opacity-70 disabled:cursor-not-allowed"
+        >
+          {isSaving ? 'Saving...' : 'Save Settings'}
         </button>
       </div>
     </MainLayout>

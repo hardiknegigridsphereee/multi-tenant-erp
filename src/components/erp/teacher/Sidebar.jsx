@@ -3,6 +3,7 @@ import { Link, useLocation, useNavigate } from 'react-router-dom';
 import { useStaleData } from "../../../hooks/useStaleData";
 import { getMyProfile } from "../../../services/api";
 import { navItems, secondaryNavItems } from "./navigation";
+import { useTheme } from "../../../context/ThemeContext";
 
 const handleLogout = (navigate) => {
   localStorage.removeItem('access_token');
@@ -15,6 +16,7 @@ const handleLogout = (navigate) => {
 const Sidebar = () => {
   const location = useLocation();
   const navigate = useNavigate();
+  const { darkMode } = useTheme();
   const { data: profile } = useStaleData("profile:me", getMyProfile);
 
   const identity = profile?.identity;
@@ -25,59 +27,89 @@ const Sidebar = () => {
   const subtitle = teacherProfile?.qualification || profile?.roles?.[0] || "Current User";
 
   return (
-    <aside className="hidden md:flex fixed left-0 top-0 h-full w-72 bg-slate-50 flex-col p-4 gap-2 border-r border-slate-100 z-50 overflow-x-hidden">
-      <div className="flex items-center gap-3 px-3 py-6 mb-4 group cursor-pointer hover:bg-white rounded-2xl transition-all duration-300 shadow-transparent hover:shadow-slate-200/50">
-        <div className="w-12 h-12 rounded-xl bg-primary-container text-white flex items-center justify-center shadow-sm group-hover:scale-110 transition-transform duration-500">
-          <span className="material-symbols-outlined text-[24px]">person</span>
+    <aside className={`hidden md:flex h-full w-64 flex-col p-4 gap-1.5 border-r overflow-hidden shadow-xl transition-colors duration-300 ${
+      darkMode 
+        ? 'bg-gradient-to-br from-slate-800 to-slate-900 border-slate-700' 
+        : 'bg-slate-50 border-slate-100'
+    }`}>
+      <div className={`flex items-center gap-3 px-3 py-3 mb-2 group cursor-pointer rounded-xl transition-all duration-300 shadow-transparent flex-shrink-0 ${
+        darkMode 
+          ? 'hover:bg-slate-700/50 hover:shadow-slate-900/50' 
+          : 'hover:bg-white hover:shadow-slate-200/50'
+      }`}>
+        <div className={`w-9 h-9 rounded-lg flex items-center justify-center shadow-sm group-hover:scale-105 transition-transform duration-500 ${
+          darkMode ? 'bg-blue-600 text-white' : 'bg-primary-container text-white'
+        }`}>
+          <span className="material-symbols-outlined text-lg">person</span>
         </div>
         <div>
-          <h3 className="font-body text-sm font-extrabold tracking-tight text-slate-800 group-hover:text-primary transition-colors">{fullName}</h3>
-          <p className="text-[11px] font-medium text-slate-400">{subtitle}</p>
+          <h3 className={`font-body text-xs font-extrabold tracking-tight transition-colors ${
+            darkMode 
+              ? 'text-white group-hover:text-blue-300' 
+              : 'text-slate-800 group-hover:text-primary'
+          }`}>{fullName}</h3>
+          <p className="text-[10px] font-medium text-slate-400">{subtitle}</p>
         </div>
       </div>
-      <nav className="flex flex-col gap-1 overflow-y-auto overflow-x-hidden pr-2">
+      <nav className="flex flex-col gap-0.5 overflow-hidden pr-2 flex-1">
         {navItems.map((item) => {
           const isActive = location.pathname.startsWith(item.path);
           return (
             <Link
               key={item.label}
-              className={`flex items-center gap-3 px-4 py-3.5 rounded-2xl transition-all duration-300 group ${
-                isActive
-                  ? 'bg-primary text-white shadow-lg shadow-primary/25 translate-x-1'
-                  : 'text-slate-500 hover:text-primary hover:bg-white hover:shadow-sm hover:translate-x-1'
+              className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all duration-300 group ${
+                darkMode
+                  ? isActive
+                    ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/25 translate-x-1'
+                    : 'text-slate-300 hover:text-white hover:bg-slate-700 hover:shadow-sm hover:translate-x-1'
+                  : isActive
+                    ? 'bg-primary text-white shadow-lg shadow-primary/25 translate-x-1'
+                    : 'text-slate-500 hover:text-primary hover:bg-white hover:shadow-sm hover:translate-x-1'
               }`}
               to={item.path}
             >
-              <span className={`material-symbols-outlined transition-transform duration-300 ${!isActive && 'group-hover:scale-110'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
-              <span className="font-body text-sm font-bold tracking-tight">{item.label}</span>
+              <span className={`material-symbols-outlined text-lg transition-transform duration-300 ${!isActive && 'group-hover:scale-110'}`} style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
+              <span className="font-body text-[11px] font-bold tracking-tight">{item.label}</span>
             </Link>
           );
         })}
-        <div className="mt-8 pt-4 flex flex-col gap-1 border-t border-slate-200">
-          <p className="px-4 text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] mb-2">Account</p>
+        <div className={`mt-4 pt-3 flex flex-col gap-0.5 border-t flex-shrink-0 ${
+          darkMode ? 'border-slate-700' : 'border-slate-200'
+        }`}>
+          <p className={`px-3 text-[9px] font-bold uppercase tracking-[0.2em] mb-1 ${
+            darkMode ? 'text-slate-500' : 'text-slate-400'
+          }`}>Account</p>
           {secondaryNavItems.map((item) => {
             const isActive = location.pathname.startsWith(item.path);
             return (
               <Link
                 key={item.label}
-                className={`flex items-center gap-3 px-4 py-3 rounded-xl transition-all ${
-                  isActive
-                    ? 'bg-white text-blue-700 shadow-sm translate-x-1 duration-200'
-                    : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
+                className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all ${
+                  darkMode
+                    ? isActive
+                      ? 'bg-slate-700 text-blue-300 shadow-sm translate-x-1 duration-200'
+                      : 'text-slate-400 hover:text-white hover:bg-slate-700'
+                    : isActive
+                      ? 'bg-white text-blue-700 shadow-sm translate-x-1 duration-200'
+                      : 'text-slate-600 hover:text-blue-600 hover:bg-slate-100'
                 }`}
                 to={item.path}
               >
-                <span className="material-symbols-outlined" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
-                <span className="font-body text-sm font-semibold tracking-wide">{item.label}</span>
+              <span className="material-symbols-outlined text-lg" style={{ fontVariationSettings: isActive ? "'FILL' 1" : "'FILL' 0" }}>{item.icon}</span>
+                <span className="font-body text-[11px] font-semibold tracking-wide">{item.label}</span>
               </Link>
             );
           })}
           <button
             onClick={() => handleLogout(navigate)}
-            className="flex items-center gap-3 px-4 py-3 rounded-xl transition-all text-red-500 hover:text-red-600 hover:bg-red-50 w-full text-left mt-1"
+            className={`flex items-center gap-2.5 px-3 py-2 rounded-xl transition-all w-full text-left ${
+              darkMode
+                ? 'text-red-400 hover:text-red-300 hover:bg-red-900/20'
+                : 'text-red-500 hover:text-red-600 hover:bg-red-50'
+            }`}
           >
-            <span className="material-symbols-outlined">logout</span>
-            <span className="font-body text-sm font-semibold tracking-wide">Log Out</span>
+            <span className="material-symbols-outlined text-lg">logout</span>
+            <span className="font-body text-[11px] font-semibold tracking-wide">Log Out</span>
           </button>
         </div>
       </nav>

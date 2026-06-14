@@ -1,6 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 
 const cache = new Map(); // in-memory for instant within-session access
+const inFlight = new Map(); // de-dupe identical fetches during React dev double effects
 const STORAGE_PREFIX = "swr_cache_";
 
 function readFromStorage(key) {
@@ -94,7 +95,13 @@ export function useStaleData(
     }
 
     try {
-      const fresh = await fetcherRef.current();
+      let request = inFlight.get(cacheKey);
+      if (!request) {
+        request = fetcherRef.current();
+        inFlight.set(cacheKey, request);
+      }
+
+      const fresh = await request;
       const stored = readFromStorage(cacheKey);
       // Only update state if data actually changed (shallow JSON compare)
       if (!stored || JSON.stringify(stored.data) !== JSON.stringify(fresh)) {
@@ -106,6 +113,7 @@ export function useStaleData(
     } catch (err) {
       setError(err);
     } finally {
+      inFlight.delete(cacheKey);
       setLoading(false);
       setRevalidating(false);
     }

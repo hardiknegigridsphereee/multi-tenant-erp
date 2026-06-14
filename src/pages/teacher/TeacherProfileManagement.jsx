@@ -1,99 +1,111 @@
 import React, { useEffect, useState } from 'react';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import { getMyProfile, getTeacherProfile } from "../../services/api";
+import { useStaleData } from "../../hooks/useStaleData";
+import { RevalidatingBar, SkeletonBlock } from "../../components/erp/teacher/LoadingPrimitives";
+
+const TeacherProfileSkeleton = () => (
+  <div className="max-w-4xl mx-auto space-y-8 pb-24 md:pb-8">
+    <div className="mb-6 pl-4 md:pl-0 space-y-3">
+      <SkeletonBlock className="h-4 w-40" />
+      <SkeletonBlock className="h-10 w-52" />
+    </div>
+
+    <section className="bg-surface-container-lowest dark:bg-slate-900/80 rounded-xl p-8 flex flex-col md:flex-row gap-8 items-start shadow-sm border border-gray-100 dark:border-slate-800">
+      <SkeletonBlock className="w-32 h-32 md:w-40 md:h-40 rounded-xl mx-auto md:mx-0 shrink-0" />
+      <div className="flex-1 w-full space-y-6">
+        <div className="flex flex-col sm:flex-row justify-between gap-4">
+          <div className="space-y-3">
+            <SkeletonBlock className="h-8 w-56" />
+            <SkeletonBlock className="h-4 w-36" />
+          </div>
+          <SkeletonBlock className="h-8 w-32 rounded-full" />
+        </div>
+        <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12">
+          {Array.from({ length: 4 }).map((_, index) => (
+            <div key={index} className="flex items-center gap-3">
+              <SkeletonBlock className="w-10 h-10 rounded-lg shrink-0" />
+              <div className="space-y-2 flex-1">
+                <SkeletonBlock className="h-3 w-28" />
+                <SkeletonBlock className="h-4 w-36" />
+              </div>
+            </div>
+          ))}
+        </div>
+        <div className="pt-6 border-t border-gray-100 dark:border-slate-800 space-y-3">
+          <SkeletonBlock className="h-3 w-40" />
+          <div className="flex gap-2">
+            <SkeletonBlock className="h-7 w-24 rounded-md" />
+            <SkeletonBlock className="h-7 w-28 rounded-md" />
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <section className="bg-surface-container-lowest dark:bg-slate-900/80 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-slate-800">
+      <div className="flex items-center gap-3 mb-8">
+        <SkeletonBlock className="h-6 w-6" />
+        <SkeletonBlock className="h-6 w-60" />
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+        {Array.from({ length: 4 }).map((_, index) => (
+          <div key={index} className="space-y-2">
+            <SkeletonBlock className="h-4 w-28 ml-1" />
+            <SkeletonBlock className="h-12 w-full rounded-md" />
+          </div>
+        ))}
+      </div>
+      <div className="flex justify-end gap-4 mt-12 pt-8 border-t border-gray-100 dark:border-slate-800">
+        <SkeletonBlock className="h-12 w-32 rounded-md" />
+        <SkeletonBlock className="h-12 w-44 rounded-md" />
+      </div>
+    </section>
+  </div>
+);
 
 const TeacherProfileManagement = () => {
-  const [profileData, setProfileData] = useState(() => {
-    try {
-      const local = localStorage.getItem("user_data");
-      return local ? JSON.parse(local) : null;
-    } catch {
-      return null;
-    }
-  });
-  const [teacherProfile, setTeacherProfile] = useState(null);
-  
-  // Form State
-  const [firstName, setFirstName] = useState("");
-  const [lastName, setLastName] = useState("");
-  const [phone, setPhone] = useState("");
+  const { data: profileData, mutate: mutateProfile } = useStaleData("profile:me", getMyProfile);
+  const teacherId = profileData?.profiles?.teacher?.id || profileData?.identity?.id;
+
+  const { data: teacherProfile, loading: profileLoading, revalidating, mutate: mutateTeacher } = useStaleData(
+    teacherId ? `profile:teacher:${teacherId}` : null,
+    () => getTeacherProfile(teacherId),
+    { skip: !teacherId }
+  );
+
+  // Form State initialized from sessionStorage or profile data
+  const [firstName, setFirstName] = useState(() => sessionStorage.getItem("edit_profile_first_name") || "");
+  const [lastName, setLastName] = useState(() => sessionStorage.getItem("edit_profile_last_name") || "");
+  const [phone, setPhone] = useState(() => sessionStorage.getItem("edit_profile_phone") || "");
   const [password, setPassword] = useState("");
   
   // UI State
-  const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState(null);
   const [success, setSuccess] = useState(null);
 
+  // Sync profile data to form state fields when first loaded
   useEffect(() => {
-    let isMounted = true;
-
-    const loadTeacherProfile = async () => {
-      setLoading(true);
-      setError(null);
-      
-      // 1. Get initial teacherId if profileData is pre-populated
-      let teacherId = profileData?.profiles?.teacher?.id || profileData?.identity?.id;
-
-      // Define a helper to load the detailed teacher profile
-      const fetchTeacherDetails = async (id) => {
-        if (!id) return;
-        try {
-          const teacherData = await getTeacherProfile(id);
-          if (isMounted) {
-            setTeacherProfile(teacherData);
-            // Pre-fill form fields
-            setFirstName(teacherData.first_name || profileData?.identity?.first_name || "");
-            setLastName(teacherData.last_name || profileData?.identity?.last_name || "");
-            setPhone(teacherData.phone_number || "");
-            console.log("[TeacherProfileManagement] Teacher profile data:", teacherData);
-          }
-        } catch (error) {
-          console.error("[TeacherProfileManagement] Failed to load teacher details:", error);
-          if (isMounted) {
-            setError("Failed to load teacher profile details. Please refresh the page.");
-          }
-        }
-      };
-
-      // 2. Start fetching teacher details immediately if we already have the ID
-      if (teacherId) {
-        await fetchTeacherDetails(teacherId);
+    if (teacherProfile) {
+      if (!sessionStorage.getItem("edit_profile_first_name")) {
+        const val = teacherProfile.first_name || profileData?.identity?.first_name || "";
+        setFirstName(val);
+        sessionStorage.setItem("edit_profile_first_name", val);
       }
-
-      // 3. Fetch/revalidate the latest user profile in the background
-      try {
-        const currentUserProfile = await getMyProfile();
-        if (isMounted) {
-          setProfileData(currentUserProfile);
-          localStorage.setItem('user_data', JSON.stringify(currentUserProfile));
-          console.log("[TeacherProfileManagement] Revalidated current user profile:", currentUserProfile);
-        }
-
-        const newTeacherId = currentUserProfile?.profiles?.teacher?.id || currentUserProfile?.identity?.id;
-        // If the teacher ID changed or wasn't loaded initially, fetch teacher details
-        if (newTeacherId && newTeacherId !== teacherId) {
-          await fetchTeacherDetails(newTeacherId);
-        }
-      } catch (error) {
-        console.error("[TeacherProfileManagement] Failed to load current user profile:", error);
-        if (isMounted && !teacherProfile) {
-          setError("Failed to load user profile. Please check your connection.");
-        }
-      } finally {
-        if (isMounted) {
-          setLoading(false);
-        }
+      if (!sessionStorage.getItem("edit_profile_last_name")) {
+        const val = teacherProfile.last_name || profileData?.identity?.last_name || "";
+        setLastName(val);
+        sessionStorage.setItem("edit_profile_last_name", val);
       }
-    };
+      if (!sessionStorage.getItem("edit_profile_phone")) {
+        const val = teacherProfile.phone_number || "";
+        setPhone(val);
+        sessionStorage.setItem("edit_profile_phone", val);
+      }
+    }
+  }, [teacherProfile, profileData]);
 
-    loadTeacherProfile();
-
-    return () => {
-      isMounted = false;
-    };
-    // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, []);
+  const loading = profileLoading && !teacherProfile;
 
   const handleSave = async (e) => {
     e.preventDefault();
@@ -111,7 +123,7 @@ const TeacherProfileManagement = () => {
 
       const updatePromises = [];
       const identity = profileData?.identity;
-      const teacherId = teacherProfile?.id;
+      const currentTeacherId = teacherProfile?.id || teacherId;
 
       // 1. Update Core Identity (User) if available
       if (identity?.id) {
@@ -130,7 +142,7 @@ const TeacherProfileManagement = () => {
       }
 
       // 2. Update Teacher Profile if available
-      if (teacherId) {
+      if (currentTeacherId) {
         const profilePayload = {
           first_name: firstName,
           last_name: lastName,
@@ -138,7 +150,7 @@ const TeacherProfileManagement = () => {
         };
 
         updatePromises.push(
-          fetch(`${baseUrl}/api/v1/profiles/teachers/${teacherId}/`, {
+          fetch(`${baseUrl}/api/v1/profiles/teachers/${currentTeacherId}/`, {
             method: 'PATCH',
             headers,
             body: JSON.stringify(profilePayload)
@@ -157,28 +169,33 @@ const TeacherProfileManagement = () => {
         throw new Error("Failed to fully synchronize profile changes. Please try again.");
       }
 
+      sessionStorage.removeItem("edit_profile_first_name");
+      sessionStorage.removeItem("edit_profile_last_name");
+      sessionStorage.removeItem("edit_profile_phone");
+
+      // Mutate cache to reflect the new data immediately without showing loader
+      const updatedTeacher = {
+        ...teacherProfile,
+        first_name: firstName,
+        last_name: lastName,
+        phone_number: phone
+      };
+      const updatedProfile = {
+        ...profileData,
+        identity: {
+          ...profileData?.identity,
+          first_name: firstName,
+          last_name: lastName
+        }
+      };
+
+      mutateTeacher(updatedTeacher);
+      mutateProfile(updatedProfile);
+
+      localStorage.setItem('user_data', JSON.stringify(updatedProfile));
+
       setSuccess("Profile updated and synchronized successfully!");
       setPassword(""); // Clear password field after save
-
-      // Update local state to reflect changes
-      if (teacherProfile) {
-        setTeacherProfile(prev => ({ 
-          ...prev, 
-          first_name: firstName, 
-          last_name: lastName, 
-          phone_number: phone 
-        }));
-      }
-      if (profileData?.identity) {
-        setProfileData(prev => ({
-          ...prev,
-          identity: { ...prev.identity, first_name: firstName, last_name: lastName }
-        }));
-        localStorage.setItem('user_data', JSON.stringify({
-          ...profileData,
-          identity: { ...profileData.identity, first_name: firstName, last_name: lastName }
-        }));
-      }
 
     } catch (err) {
       console.error(err);
@@ -211,12 +228,7 @@ const TeacherProfileManagement = () => {
   if (loading) {
     return (
       <MainLayout title="Teacher Profile">
-        <div className="flex items-center justify-center min-h-[60vh]">
-          <div className="flex flex-col items-center gap-3 text-[#0058be]">
-            <span className="material-symbols-outlined animate-spin text-4xl">progress_activity</span>
-            <p className="font-semibold tracking-wide">Loading Profile Data...</p>
-          </div>
-        </div>
+        <TeacherProfileSkeleton />
       </MainLayout>
     );
   }
@@ -235,12 +247,14 @@ const TeacherProfileManagement = () => {
 
   return (
     <MainLayout title="Teacher Profile">
+      <RevalidatingBar show={revalidating} />
+
       <div className="max-w-4xl mx-auto space-y-8 pb-24 md:pb-8">
         
         {/* Page Title */}
         <div className="mb-6 pl-4 md:pl-0">
-          <p className="text-[#0058be] font-bold text-sm tracking-widest uppercase mb-1">Account Management</p>
-          <h2 className="text-4xl font-extrabold font-display tracking-tight text-slate-800">My Profile</h2>
+          <p className="text-[#0058be] dark:text-blue-400 font-bold text-sm tracking-widest uppercase mb-1">Account Management</p>
+          <h2 className="text-4xl font-extrabold font-display tracking-tight text-slate-800 dark:text-white">My Profile</h2>
         </div>
 
         {error && (
@@ -264,12 +278,12 @@ const TeacherProfileManagement = () => {
         )}
 
         {/* Profile Identity Card */}
-        <section className="bg-white rounded-xl p-8 flex flex-col md:flex-row gap-8 items-start relative overflow-hidden shadow-sm border border-gray-100">
+        <section className="bg-surface-container-lowest dark:bg-slate-900/80 rounded-xl p-8 flex flex-col md:flex-row gap-8 items-start relative overflow-hidden shadow-sm border border-gray-100 dark:border-slate-800">
           {/* Subtle Background Texture */}
           <div className="absolute top-0 right-0 w-64 h-64 bg-[#0058be]/5 rounded-full -mr-20 -mt-20 blur-3xl"></div>
           
           <div className="relative group mx-auto md:mx-0">
-            <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl overflow-hidden shadow-lg border-4 border-white bg-blue-50 flex items-center justify-center text-[#0058be]">
+            <div className="w-32 h-32 md:w-40 md:h-40 rounded-xl overflow-hidden shadow-lg border-4 border-white dark:border-slate-900 bg-blue-50 dark:bg-blue-900/20 flex items-center justify-center text-[#0058be] dark:text-blue-400">
               {profileImage && profileImage !== "https://via.placeholder.com/400x400.png?text=Teacher+Profile" ? (
                 <img alt={fullName} className="w-full h-full object-cover" src={profileImage} />
               ) : (
@@ -284,65 +298,65 @@ const TeacherProfileManagement = () => {
           <div className="flex-1 z-10 w-full">
             <div className="flex flex-col sm:flex-row justify-between items-start gap-4 mb-4">
               <div>
-                <h3 className="text-3xl font-bold font-display text-slate-800 mb-1">{fullName}</h3>
-                <p className="text-[#0058be] font-semibold flex items-center gap-2">
+                <h3 className="text-3xl font-bold font-display text-slate-800 dark:text-white mb-1">{fullName}</h3>
+                <p className="text-[#0058be] dark:text-blue-400 font-semibold flex items-center gap-2">
                   <span className="material-symbols-outlined text-sm block">verified</span>
                   {qualification}
                 </p>
               </div>
-              <span className="bg-[#eff4ff] border border-blue-100 px-4 py-1.5 rounded-full text-xs font-bold text-[#0058be] uppercase tracking-wider shadow-sm">Active Status</span>
+              <span className="bg-[#eff4ff] dark:bg-blue-950/30 border border-blue-100 dark:border-blue-800/40 px-4 py-1.5 rounded-full text-xs font-bold text-[#0058be] dark:text-blue-300 uppercase tracking-wider shadow-sm">Active Status</span>
             </div>
             
             <div className="grid grid-cols-1 md:grid-cols-2 gap-y-4 gap-x-12 mt-6">
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-[#0058be] shrink-0 border border-gray-100">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-slate-800 flex items-center justify-center text-[#0058be] dark:text-blue-400 shrink-0 border border-gray-100 dark:border-slate-700">
                   <span className="material-symbols-outlined block">mail</span>
                 </div>
                 <div className="overflow-hidden">
-                  <p className="text-xs text-gray-500 font-medium">Institutional Email</p>
-                  <p className="text-sm font-semibold text-slate-800 truncate">{email || "Not provided"}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">Institutional Email</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white truncate">{email || "Not provided"}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-[#0058be] shrink-0 border border-gray-100">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-slate-800 flex items-center justify-center text-[#0058be] dark:text-blue-400 shrink-0 border border-gray-100 dark:border-slate-700">
                   <span className="material-symbols-outlined block">call</span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Contact Number</p>
-                  <p className="text-sm font-semibold text-slate-800">{phoneDisplay}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">Contact Number</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white">{phoneDisplay}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-[#0058be] shrink-0 border border-gray-100">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-slate-800 flex items-center justify-center text-[#0058be] dark:text-blue-400 shrink-0 border border-gray-100 dark:border-slate-700">
                   <span className="material-symbols-outlined block">badge</span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">Employee ID</p>
-                  <p className="text-sm font-semibold text-slate-800 font-mono">{employeeId}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">Employee ID</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white font-mono">{employeeId}</p>
                 </div>
               </div>
               <div className="flex items-center gap-3">
-                <div className="w-10 h-10 rounded-lg bg-gray-50 flex items-center justify-center text-[#0058be] shrink-0 border border-gray-100">
+                <div className="w-10 h-10 rounded-lg bg-gray-50 dark:bg-slate-800 flex items-center justify-center text-[#0058be] dark:text-blue-400 shrink-0 border border-gray-100 dark:border-slate-700">
                   <span className="material-symbols-outlined block">school</span>
                 </div>
                 <div>
-                  <p className="text-xs text-gray-500 font-medium">School</p>
-                  <p className="text-sm font-semibold text-slate-800">{schoolName}</p>
+                  <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">School</p>
+                  <p className="text-sm font-semibold text-slate-800 dark:text-white">{schoolName}</p>
                 </div>
               </div>
             </div>
             
-            <div className="mt-8 pt-6 border-t border-gray-100">
-              <p className="text-xs font-bold text-gray-500 uppercase tracking-widest mb-3">Core Specializations</p>
+            <div className="mt-8 pt-6 border-t border-gray-100 dark:border-slate-800">
+              <p className="text-xs font-bold text-gray-500 dark:text-slate-400 uppercase tracking-widest mb-3">Core Specializations</p>
               <div className="flex flex-wrap gap-2">
                 {specializations.length > 0 ? (
                   specializations.map((item) => (
-                    <span key={item} className="px-3 py-1 bg-gray-50 rounded-md text-xs font-semibold text-[#0058be] border border-gray-100">
+                    <span key={item} className="px-3 py-1 bg-gray-50 dark:bg-slate-800 rounded-md text-xs font-semibold text-[#0058be] dark:text-blue-400 border border-gray-100 dark:border-slate-700">
                       {item}
                     </span>
                   ))
                 ) : (
-                  <span className="px-3 py-1 bg-gray-50 rounded-md text-xs font-semibold text-gray-500 border border-gray-100">
+                  <span className="px-3 py-1 bg-gray-50 dark:bg-slate-800 rounded-md text-xs font-semibold text-gray-500 dark:text-slate-400 border border-gray-100 dark:border-slate-700">
                     No specialization added
                   </span>
                 )}
@@ -352,24 +366,27 @@ const TeacherProfileManagement = () => {
         </section>
 
         {/* Edit Profile Section */}
-        <section className="bg-white rounded-xl p-8 shadow-sm border border-gray-100">
+        <section className="bg-surface-container-lowest dark:bg-slate-900/80 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-slate-800">
           <div className="flex items-center gap-3 mb-8">
-            <span className="material-symbols-outlined text-[#0058be] block">edit_note</span>
-            <h4 className="text-xl font-bold font-display text-slate-800">Update Profile Information</h4>
+            <span className="material-symbols-outlined text-[#0058be] dark:text-blue-400 block">edit_note</span>
+            <h4 className="text-xl font-bold font-display text-slate-800 dark:text-white">Update Profile Information</h4>
           </div>
           
           <form onSubmit={handleSave} className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
               
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-600 ml-1">First Name</label>
+                <label className="text-sm font-bold text-gray-600 dark:text-slate-300 ml-1">First Name</label>
                 <div className="relative group">
                   <input 
-                    className="w-full bg-[#f8f9ff] border border-transparent rounded-md px-4 py-3.5 text-slate-700 font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white transition-all outline-none" 
+                    className="w-full bg-[#f8f9ff] dark:bg-slate-800 border border-transparent dark:border-slate-700 rounded-md px-4 py-3.5 text-slate-700 dark:text-white font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white dark:focus:bg-slate-900 transition-all outline-none" 
                     placeholder="Enter first name" 
                     type="text" 
                     value={firstName}
-                    onChange={(e) => setFirstName(e.target.value)}
+                    onChange={(e) => {
+                      setFirstName(e.target.value);
+                      sessionStorage.setItem("edit_profile_first_name", e.target.value);
+                    }}
                     required
                   />
                   <span className="absolute right-4 top-3.5 text-gray-400 group-focus-within:text-[#0058be] material-symbols-outlined text-sm block">person</span>
@@ -377,14 +394,17 @@ const TeacherProfileManagement = () => {
               </div>
 
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-600 ml-1">Last Name</label>
+                <label className="text-sm font-bold text-gray-600 dark:text-slate-300 ml-1">Last Name</label>
                 <div className="relative group">
                   <input 
-                    className="w-full bg-[#f8f9ff] border border-transparent rounded-md px-4 py-3.5 text-slate-700 font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white transition-all outline-none" 
+                    className="w-full bg-[#f8f9ff] dark:bg-slate-800 border border-transparent dark:border-slate-700 rounded-md px-4 py-3.5 text-slate-700 dark:text-white font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white dark:focus:bg-slate-900 transition-all outline-none" 
                     placeholder="Enter last name" 
                     type="text" 
                     value={lastName}
-                    onChange={(e) => setLastName(e.target.value)}
+                    onChange={(e) => {
+                      setLastName(e.target.value);
+                      sessionStorage.setItem("edit_profile_last_name", e.target.value);
+                    }}
                     required
                   />
                   <span className="absolute right-4 top-3.5 text-gray-400 group-focus-within:text-[#0058be] material-symbols-outlined text-sm block">person</span>
@@ -392,24 +412,27 @@ const TeacherProfileManagement = () => {
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-600 ml-1">Verified Contact Phone</label>
+                <label className="text-sm font-bold text-gray-600 dark:text-slate-300 ml-1">Verified Contact Phone</label>
                 <div className="relative group">
                   <input 
-                    className="w-full bg-[#f8f9ff] border border-transparent rounded-md px-4 py-3.5 text-slate-700 font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white transition-all outline-none" 
+                    className="w-full bg-[#f8f9ff] dark:bg-slate-800 border border-transparent dark:border-slate-700 rounded-md px-4 py-3.5 text-slate-700 dark:text-white font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white dark:focus:bg-slate-900 transition-all outline-none" 
                     placeholder="Enter phone number" 
                     type="tel" 
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
+                    onChange={(e) => {
+                      setPhone(e.target.value);
+                      sessionStorage.setItem("edit_profile_phone", e.target.value);
+                    }}
                   />
                   <span className="absolute right-4 top-3.5 text-gray-400 group-focus-within:text-[#0058be] material-symbols-outlined text-sm block">call</span>
                 </div>
               </div>
               
               <div className="space-y-2">
-                <label className="text-sm font-bold text-gray-600 ml-1">Update Password</label>
+                <label className="text-sm font-bold text-gray-600 dark:text-slate-300 ml-1">Update Password</label>
                 <div className="relative group">
                   <input 
-                    className="w-full bg-[#f8f9ff] border border-transparent rounded-md px-4 py-3.5 text-slate-700 font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white transition-all outline-none" 
+                    className="w-full bg-[#f8f9ff] dark:bg-slate-800 border border-transparent dark:border-slate-700 rounded-md px-4 py-3.5 text-slate-700 dark:text-white font-medium focus:ring-2 focus:ring-[#0058be]/20 focus:border-[#0058be]/40 focus:bg-white dark:focus:bg-slate-900 transition-all outline-none" 
                     placeholder="Enter new password (optional)" 
                     type="password" 
                     value={password}
@@ -417,23 +440,23 @@ const TeacherProfileManagement = () => {
                   />
                   <span className="absolute right-4 top-3.5 text-gray-400 group-focus-within:text-[#0058be] material-symbols-outlined text-sm block">lock</span>
                 </div>
-                <p className="text-[10px] text-gray-500 ml-1 font-medium">Leave blank if you do not wish to change your password.</p>
+                <p className="text-[10px] text-gray-500 dark:text-slate-400 ml-1 font-medium">Leave blank if you do not wish to change your password.</p>
               </div>
               
-              <div className="bg-amber-50 p-4 rounded-xl flex items-start gap-3 border border-amber-100 md:col-span-2">
+              <div className="bg-amber-50 dark:bg-amber-950/20 p-4 rounded-xl flex items-start gap-3 border border-amber-100 dark:border-amber-900/30 md:col-span-2">
                 <span className="material-symbols-outlined text-[#924700] text-xl block">auto_awesome</span>
                 <div>
                   <p className="text-xs font-bold text-[#924700] uppercase">AI Security Insight</p>
-                  <p className="text-xs text-amber-900 mt-1">Profile data is loaded from your current teacher account. Update password details only after confirming with your admin policy.</p>
+                  <p className="text-xs text-amber-900 dark:text-amber-200 mt-1">Profile data is loaded from your current teacher account. Update password details only after confirming with your admin policy.</p>
                 </div>
               </div>
 
             </div>
             
             {/* Action Buttons */}
-            <div className="flex flex-col-reverse sm:flex-row items-center sm:justify-end gap-4 mt-12 pt-8 border-t border-gray-100">
+            <div className="flex flex-col-reverse sm:flex-row items-center sm:justify-end gap-4 mt-12 pt-8 border-t border-gray-100 dark:border-slate-800">
               <button 
-                className="w-full sm:w-auto px-8 py-3.5 rounded-md text-sm font-bold text-gray-500 hover:bg-gray-50 hover:text-slate-800 transition-colors outline-none border border-transparent cursor-pointer" 
+                className="w-full sm:w-auto px-8 py-3.5 rounded-md text-sm font-bold text-gray-500 dark:text-slate-400 hover:bg-gray-50 dark:hover:bg-slate-800 hover:text-slate-800 dark:hover:text-white transition-colors outline-none border border-transparent cursor-pointer" 
                 type="button"
                 onClick={() => {
                   setFirstName(teacherProfile?.first_name || identity?.first_name || "");
@@ -442,6 +465,9 @@ const TeacherProfileManagement = () => {
                   setPassword("");
                   setError(null);
                   setSuccess(null);
+                  sessionStorage.removeItem("edit_profile_first_name");
+                  sessionStorage.removeItem("edit_profile_last_name");
+                  sessionStorage.removeItem("edit_profile_phone");
                 }}
               >
                 Reset Changes
@@ -460,12 +486,12 @@ const TeacherProfileManagement = () => {
 
         {/* Footnote Information */}
         <div className="flex justify-center items-center gap-6 py-4 flex-wrap">
-          <p className="text-xs text-gray-500 font-medium flex items-center gap-2">
+          <p className="text-xs text-gray-500 dark:text-slate-400 font-medium flex items-center gap-2">
             <span className="material-symbols-outlined text-sm block">verified_user</span>
             Data encrypted with AES-256
           </p>
-          <div className="hidden sm:block h-1 w-1 bg-gray-300 rounded-full"></div>
-          <p className="text-xs text-gray-500 font-medium">Teacher profile ID: {teacherProfile?.id || identity?.id || "Loading..."}</p>
+          <div className="hidden sm:block h-1 w-1 bg-gray-300 dark:bg-slate-700 rounded-full"></div>
+          <p className="text-xs text-gray-500 dark:text-slate-400 font-medium">Teacher profile ID: {teacherProfile?.id || identity?.id || "Loading..."}</p>
         </div>
 
       </div>

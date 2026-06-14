@@ -1,48 +1,40 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { Link } from 'react-router-dom';
 import MainLayout from "../../components/erp/teacher/MainLayout";
 import Card from "../../components/erp/teacher/Card";
 import { getExams, getMyProfile, getTeacherClasses, getSectionEnrollments } from "../../services/api";
 import { useStaleData } from "../../hooks/useStaleData";
+import { RevalidatingBar, SkeletonBlock, SkeletonRow } from "../../components/erp/teacher/LoadingPrimitives";
 
 const GradesAssessmentOverview = () => {
-  const { data: payload, loading: examsLoading } = useStaleData('teacher:exams', async () => {
+  const { data: payload, loading: examsLoading, revalidating: examsRevalidating } = useStaleData('teacher:exams', async () => {
     const response = await getExams();
     const exams = Array.isArray(response) ? response : response.results || [];
     return { exams };
   });
 
-  const rawExams = payload?.exams || [];
-  const [totalStudents, setTotalStudents] = useState(0);
+  const rawExams = useMemo(() => payload?.exams || [], [payload?.exams]);
+  const { data: profile } = useStaleData("profile:me", getMyProfile);
+  const teacherId = profile?.profiles?.teacher?.id || profile?.identity?.id;
+
+  const { data: studentsCountData, loading: studentsCountLoading, revalidating: studentsCountRevalidating, error: studentsCountError } = useStaleData(
+    teacherId ? `teacher:students_count:${teacherId}` : null,
+    async () => {
+      const classesRes = await getTeacherClasses(teacherId);
+      const classes = classesRes?.results || [];
+      const sectionIds = [...new Set(classes.map(c => c.section?.id || c.section).filter(Boolean))];
+      let total = 0;
+      await Promise.all(sectionIds.map(async (sid) => {
+        const enrollRes = await getSectionEnrollments(sid);
+        total += enrollRes?.count || enrollRes?.results?.length || 0;
+      }));
+      return total;
+    },
+    { skip: !teacherId }
+  );
+
+  const totalStudents = studentsCountData || 0;
   const [assessmentsData, setAssessmentsData] = useState([]);
-  const [error, setError] = useState(null);
-
-  useEffect(() => {
-    const fetchStudentsCount = async () => {
-      try {
-        const profileRes = await getMyProfile();
-        const teacherId = profileRes?.profiles?.teacher?.id || profileRes?.identity?.id;
-        if (!teacherId) return;
-
-        const classesRes = await getTeacherClasses(teacherId);
-        const classes = classesRes?.results || [];
-        
-        // Fetch enrollments for all unique sections
-        const sectionIds = [...new Set(classes.map(c => c.section?.id || c.section).filter(Boolean))];
-        let total = 0;
-        await Promise.all(sectionIds.map(async (sid) => {
-          const enrollRes = await getSectionEnrollments(sid);
-          total += enrollRes?.count || enrollRes?.results?.length || 0;
-        }));
-        
-        setTotalStudents(total);
-      } catch (err) {
-        console.error("Failed to fetch student count:", err);
-        setError("Failed to load student statistics");
-      }
-    };
-    fetchStudentsCount();
-  }, []);
   
   // Transform API data to match the UI requirements
   useEffect(() => {
@@ -87,19 +79,13 @@ const GradesAssessmentOverview = () => {
     return "calculate";
   };
 
-  const getSubjectColor = (subjectName) => {
-    const name = (subjectName || "").toLowerCase();
-    if (name.includes("math")) return "primary";
-    if (name.includes("phys") || name.includes("sci")) return "purple";
-    if (name.includes("hist") || name.includes("lit")) return "amber";
-    return "primary";
-  };
-
   const completedCount = assessmentsData.filter(a => a.status === 'Completed').length;
   const pendingCount = assessmentsData.filter(a => a.status !== 'Completed').length;
 
   return (
     <MainLayout title="Grades & Assessment">
+      <RevalidatingBar show={examsRevalidating || studentsCountRevalidating} />
+
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Page Title & Quick Actions */}
@@ -123,12 +109,12 @@ const GradesAssessmentOverview = () => {
           </div>
         </div>
 
-        {error && (
+        {studentsCountError && (
           <div className="p-4 bg-red-50 text-red-700 rounded-md border border-red-200 flex gap-3 shadow-sm">
             <span className="material-symbols-outlined">error</span>
             <div>
               <p className="font-bold text-sm">Error</p>
-              <p className="text-sm mt-1">{error}</p>
+              <p className="text-sm mt-1">{studentsCountError?.message || "Failed to load student statistics"}</p>
             </div>
           </div>
         )}
@@ -212,9 +198,7 @@ const GradesAssessmentOverview = () => {
               </thead>
               <tbody className="divide-y divide-surface-container-low">
                 {examsLoading && rawExams.length === 0 ? (
-                  <tr>
-                    <td colSpan="5" className="px-6 py-5 text-center text-slate-500">Loading assessments...</td>
-                  </tr>
+                  Array.from({ length: 5 }).map((_, index) => <SkeletonRow key={index} cols={5} />)
                 ) : assessmentsData.length === 0 ? (
                   <tr>
                     <td colSpan="5" className="px-6 py-5 text-center text-slate-500">No assessments found.</td>
@@ -314,40 +298,52 @@ const GradesAssessmentOverview = () => {
 
         {/* Bottom Stats Grid */}
         <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-6">
-          <Card className="shadow-sm space-y-3">
+          <Card className="shadow-lg space-y-3 bg-gradient-to-br from-blue-600 to-blue-700 border-none">
             <div className="flex justify-between items-start">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Total Students</span>
-              <div className="w-8 h-8 rounded-full bg-primary/5 text-primary flex items-center justify-center">
+              <span className="text-[10px] font-bold text-blue-200 uppercase tracking-widest block">Total Students</span>
+              <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center">
                 <span className="material-symbols-outlined text-lg block">groups</span>
               </div>
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-on-surface">{totalStudents || '--'}</p>
-              <p className="text-[10px] text-green-600 font-bold mt-1">Across all classes</p>
+              {studentsCountLoading && !studentsCountData ? (
+                <SkeletonBlock className="h-8 w-14 bg-white/25" />
+              ) : (
+                <p className="text-2xl font-bold font-display text-white">{totalStudents || '--'}</p>
+              )}
+              <p className="text-[10px] text-blue-200 font-bold mt-1">Across all classes</p>
             </div>
           </Card>
-          <Card className="shadow-sm space-y-3">
+          <Card className="shadow-lg space-y-3 bg-gradient-to-br from-purple-600 to-purple-700 border-none">
             <div className="flex justify-between items-start">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Completed Assessments</span>
-              <div className="w-8 h-8 rounded-full bg-purple-50 text-[#6b38d4] flex items-center justify-center">
+              <span className="text-[10px] font-bold text-purple-200 uppercase tracking-widest block">Completed Assessments</span>
+              <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center">
                 <span className="material-symbols-outlined text-lg block">task_alt</span>
               </div>
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-on-surface">{completedCount}</p>
-              <p className="text-[10px] text-slate-500 font-bold mt-1">Graded so far</p>
+              {examsLoading && rawExams.length === 0 ? (
+                <SkeletonBlock className="h-8 w-12 bg-white/25" />
+              ) : (
+                <p className="text-2xl font-bold font-display text-white">{completedCount}</p>
+              )}
+              <p className="text-[10px] text-purple-200 font-bold mt-1">Graded so far</p>
             </div>
           </Card>
-          <Card className="shadow-sm space-y-3 sm:col-span-2 md:col-span-1">
+          <Card className="shadow-lg space-y-3 sm:col-span-2 md:col-span-1 bg-gradient-to-br from-amber-600 to-amber-700 border-none">
             <div className="flex justify-between items-start">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest block">Pending Assessments</span>
-              <div className="w-8 h-8 rounded-full bg-amber-50 text-[#924700] flex items-center justify-center">
+              <span className="text-[10px] font-bold text-amber-200 uppercase tracking-widest block">Pending Assessments</span>
+              <div className="w-8 h-8 rounded-full bg-white/20 text-white flex items-center justify-center">
                 <span className="material-symbols-outlined text-lg block">timer</span>
               </div>
             </div>
             <div>
-              <p className="text-2xl font-bold font-display text-on-surface">{pendingCount}</p>
-              <p className="text-[10px] text-primary font-bold mt-1">Need your attention</p>
+              {examsLoading && rawExams.length === 0 ? (
+                <SkeletonBlock className="h-8 w-12 bg-white/25" />
+              ) : (
+                <p className="text-2xl font-bold font-display text-white">{pendingCount}</p>
+              )}
+              <p className="text-[10px] text-amber-200 font-bold mt-1">Need your attention</p>
             </div>
           </Card>
         </div>
