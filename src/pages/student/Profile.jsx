@@ -105,8 +105,9 @@ function ProfileSkeleton() {
                     <Skeleton className="w-48 h-5" />
                   </div>
                 </div>
-              </div>
-            </section>
+               </div>
+            </div>
+          </section>
           ))}
         </div>
       </div>
