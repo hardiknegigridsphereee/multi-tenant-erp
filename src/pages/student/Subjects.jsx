@@ -60,13 +60,12 @@ function SubjectsSkeleton() {
   );
 }
 
-// Returns bar color + status label based on percentage
 function getPerformanceMeta(percentage) {
-  if (percentage === 0) return { barColor: "bg-gray-300",   label: "No data",      labelColor: "bg-gray-100   text-gray-500"   };
-  if (percentage >= 80)  return { barColor: "bg-green-500", label: "Excellent",    labelColor: "bg-green-100  text-green-700"  };
-  if (percentage >= 65)  return { barColor: "bg-blue-500",  label: "Good",         labelColor: "bg-blue-100   text-blue-700"   };
-  if (percentage >= 50)  return { barColor: "bg-yellow-400",label: "Average",      labelColor: "bg-yellow-100 text-yellow-700" };
-  return                        { barColor: "bg-red-400",   label: "Needs work",   labelColor: "bg-red-100    text-red-700"    };
+  if (percentage === 0) return { barColor: "bg-gray-300",    label: "No data",    labelColor: "bg-gray-100   text-gray-500"   };
+  if (percentage >= 80)  return { barColor: "bg-green-500",  label: "Excellent",  labelColor: "bg-green-100  text-green-700"  };
+  if (percentage >= 65)  return { barColor: "bg-blue-500",   label: "Good",       labelColor: "bg-blue-100   text-blue-700"   };
+  if (percentage >= 50)  return { barColor: "bg-yellow-400", label: "Average",    labelColor: "bg-yellow-100 text-yellow-700" };
+  return                        { barColor: "bg-red-400",    label: "Needs work", labelColor: "bg-red-100    text-red-700"    };
 }
 
 export default function Subjects() {
@@ -88,11 +87,41 @@ export default function Subjects() {
 
   if (loading) return <SubjectsSkeleton />;
 
-  const subjects = (academic?.subs || []).filter(
-    (subject) => subject.class_levels?.includes(classLevelId)
-  );
-  const grades = dashboard?.grades?.results || [];
+  const subjects     = (academic?.subs || []).filter(s => s.class_levels?.includes(classLevelId));
+  const grades       = dashboard?.grades?.results || [];
   const academicYears = academic?.years || [];
+
+  // ── Smart stats for blue box ──
+  const gradedSubjects = subjects.filter(s => grades.find(g => g.subject === s.id));
+
+  const subjectsWithPct = gradedSubjects.map(s => {
+    const g   = grades.find(gr => gr.subject === s.id);
+    const pct = Math.round((g.marks_obtained / g.max_marks) * 100);
+    return { name: s.name, pct };
+  });
+
+  const overallPct = subjectsWithPct.length > 0
+    ? Math.round(subjectsWithPct.reduce((sum, s) => sum + s.pct, 0) / subjectsWithPct.length)
+    : 0;
+
+  const topSubject  = subjectsWithPct.sort((a, b) => b.pct - a.pct)[0];
+  const weakSubject = [...subjectsWithPct].sort((a, b) => a.pct - b.pct)[0];
+  const excellentCount = subjectsWithPct.filter(s => s.pct >= 80).length;
+
+  // Dynamic message based on overall %
+  const getInsightMessage = () => {
+    if (overallPct >= 80) return "Outstanding! You're performing excellently across all subjects. Keep this momentum going!";
+    if (overallPct >= 65) return "Good progress! A little more focus on weaker subjects will push you to the top tier.";
+    if (overallPct >= 50) return "You're on the right track. Consistent study sessions can significantly improve your scores.";
+    return "There's room to grow! Consider reaching out to your teachers for extra support and guidance.";
+  };
+
+  const getEmoji = () => {
+    if (overallPct >= 80) return "emoji_events";
+    if (overallPct >= 65) return "trending_up";
+    if (overallPct >= 50) return "auto_awesome";
+    return "support_agent";
+  };
 
   return (
     <MainLayout title="The Academic Architect">
@@ -101,12 +130,8 @@ export default function Subjects() {
         {/* Header */}
         <div className="flex flex-col md:flex-row md:items-end justify-between mb-10 gap-6">
           <div>
-            <h2 className="text-3xl font-headline font-extrabold text-on-surface tracking-tight">
-              My Subjects
-            </h2>
-            <p className="text-on-surface-variant mt-1 font-medium">
-              Manage your academic curriculum and performance
-            </p>
+            <h2 className="text-3xl font-headline font-extrabold text-on-surface tracking-tight">My Subjects</h2>
+            <p className="text-on-surface-variant mt-1 font-medium">Manage your academic curriculum and performance</p>
           </div>
           <div className="flex items-center gap-3">
             <select className="bg-surface-container-lowest border-none rounded-md px-4 py-2 text-sm font-semibold shadow-sm focus:ring-primary">
@@ -126,9 +151,7 @@ export default function Subjects() {
                 <th className="px-6 py-4 text-xs font-bold text-outline uppercase tracking-wider">Marks</th>
                 <th className="px-6 py-4 text-xs font-bold text-outline uppercase tracking-wider">
                   Performance
-                  <span className="ml-1 text-[9px] normal-case font-medium text-outline/60 tracking-normal">
-                    (% of max marks)
-                  </span>
+                  <span className="ml-1 text-[9px] normal-case font-medium text-outline/60 tracking-normal">(% of max marks)</span>
                 </th>
                 <th className="px-6 py-4 text-xs font-bold text-outline uppercase tracking-wider">Status</th>
               </tr>
@@ -142,44 +165,34 @@ export default function Subjects() {
                 </tr>
               )}
               {subjects.map((subject) => {
-                const gradeInfo   = grades.find(g => g.subject === subject.id);
-                const percentage  = gradeInfo
+                const gradeInfo  = grades.find(g => g.subject === subject.id);
+                const percentage = gradeInfo
                   ? Math.round((gradeInfo.marks_obtained / gradeInfo.max_marks) * 100)
                   : 0;
                 const { barColor, label, labelColor } = getPerformanceMeta(percentage);
 
                 return (
                   <tr key={subject.id} className="hover:bg-surface-container-low/30 transition-colors">
-                    {/* Subject name */}
                     <td className="px-6 py-5">
                       <p className="font-bold text-on-surface">{subject.name}</p>
                       <p className="text-xs text-outline mt-0.5">{subject.code}</p>
                     </td>
-
-                    {/* Marks */}
                     <td className="px-6 py-5 font-bold text-on-surface">
                       {gradeInfo
                         ? <span>{gradeInfo.marks_obtained}<span className="text-outline font-normal text-xs"> / {gradeInfo.max_marks}</span></span>
                         : <span className="text-outline font-normal text-sm">N/A</span>
                       }
                     </td>
-
-                    {/* Performance bar with % label */}
                     <td className="px-6 py-5">
                       <div className="flex items-center gap-3">
                         <div className="w-32 h-2 bg-surface-container-high rounded-full overflow-hidden flex-shrink-0">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${barColor}`}
-                            style={{ width: `${percentage}%` }}
-                          />
+                          <div className={`h-full rounded-full transition-all duration-500 ${barColor}`} style={{ width: `${percentage}%` }} />
                         </div>
                         <span className="text-xs font-semibold text-on-surface-variant w-8 flex-shrink-0">
                           {gradeInfo ? `${percentage}%` : "—"}
                         </span>
                       </div>
                     </td>
-
-                    {/* Status badge */}
                     <td className="px-6 py-5">
                       <span className={`inline-flex items-center px-2.5 py-1 rounded-full text-[11px] font-bold ${labelColor}`}>
                         {label}
@@ -194,16 +207,50 @@ export default function Subjects() {
 
         {/* Bottom cards */}
         <div className="mt-12 grid grid-cols-1 md:grid-cols-3 gap-6">
+
+          {/* ── Dynamic Blue Box ── */}
           <div className="md:col-span-2 bg-primary-container text-on-primary-container p-8 rounded-lg relative overflow-hidden flex flex-col justify-between min-h-[240px]">
             <div className="relative z-10">
-              <span className="material-symbols-outlined text-4xl mb-4">auto_awesome</span>
-              <h3 className="text-2xl font-headline font-extrabold leading-tight">
-                Your semester performance is <br />up by 12% from last year.
+              <span className="material-symbols-outlined text-4xl mb-3">{getEmoji()}</span>
+              <h3 className="text-2xl font-headline font-extrabold leading-tight mb-2">
+                Overall Performance: {overallPct}%
               </h3>
-              <p className="mt-2 text-primary-fixed opacity-90 text-sm max-w-md">
-                Great job! You&apos;re showing significant improvement in STEM subjects. Your current GPA projection is 3.85.
+              <p className="text-primary-fixed opacity-90 text-sm max-w-md mb-4">
+                {getInsightMessage()}
               </p>
+
+              {/* Stats row */}
+              <div className="flex flex-wrap gap-4 mt-2">
+                {topSubject && (
+                  <div className="bg-white/20 backdrop-blur-md rounded-lg px-4 py-2.5 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">star</span>
+                    <div>
+                      <p className="text-[10px] opacity-75 uppercase tracking-wider font-bold">Top Subject</p>
+                      <p className="text-sm font-extrabold">{topSubject.name} — {topSubject.pct}%</p>
+                    </div>
+                  </div>
+                )}
+                {weakSubject && weakSubject.pct < 65 && (
+                  <div className="bg-white/20 backdrop-blur-md rounded-lg px-4 py-2.5 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">priority_high</span>
+                    <div>
+                      <p className="text-[10px] opacity-75 uppercase tracking-wider font-bold">Focus On</p>
+                      <p className="text-sm font-extrabold">{weakSubject.name} — {weakSubject.pct}%</p>
+                    </div>
+                  </div>
+                )}
+                {excellentCount > 0 && (
+                  <div className="bg-white/20 backdrop-blur-md rounded-lg px-4 py-2.5 flex items-center gap-2">
+                    <span className="material-symbols-outlined text-base">verified</span>
+                    <div>
+                      <p className="text-[10px] opacity-75 uppercase tracking-wider font-bold">Excellent in</p>
+                      <p className="text-sm font-extrabold">{excellentCount} Subject{excellentCount > 1 ? "s" : ""}</p>
+                    </div>
+                  </div>
+                )}
+              </div>
             </div>
+
             <div className="relative z-10 mt-6">
               <button className="bg-white/20 backdrop-blur-md text-white px-6 py-3 rounded-md text-sm font-bold hover:bg-white/30 transition-all">
                 View Detailed Analysis
@@ -212,6 +259,7 @@ export default function Subjects() {
             <div className="absolute -right-12 -bottom-12 w-64 h-64 bg-white/10 rounded-full blur-3xl" />
           </div>
 
+          {/* Upcoming tasks */}
           <div className="bg-surface-container-low p-6 rounded-lg border-l-4 border-tertiary">
             <h4 className="text-xs font-bold text-tertiary uppercase tracking-widest mb-4">Upcoming Subject Tasks</h4>
             <ul className="space-y-4">
@@ -235,8 +283,8 @@ export default function Subjects() {
               </li>
             </ul>
           </div>
-        </div>
 
+        </div>
       </div>
     </MainLayout>
   );

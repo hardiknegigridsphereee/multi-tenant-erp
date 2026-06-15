@@ -6,7 +6,8 @@ import remarkGfm from 'remark-gfm';
 import React, { useState, useEffect, useRef, useCallback } from 'react';
 import MainLayout from '../../layouts/MainLayout';
 
-const API_BASE = (import.meta.env.VITE_API_URL) + '/api/v1';
+// const API_BASE = (import.meta.env.VITE_API_URL) + '/api/v1';
+const API_BASE = (import.meta.env.VITE_API_URL || 'http://localhost:8000') + '/api/v1';
 
 function getToken() {
   return localStorage.getItem('access_token') || '';
