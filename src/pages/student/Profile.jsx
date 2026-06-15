@@ -1,8 +1,8 @@
+import React from "react";
 import MainLayout from "../../layouts/MainLayout";
 import { useStudent } from "../../context/StudentProvider";
-import { calculateAttendance, calculateGPA } from "../../utils/calculations";
+import { calculateAttendance } from "../../utils/calculations";
 
-// Skeleton Components
 function Skeleton({ className = "" }) {
   return <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />;
 }
@@ -28,24 +28,16 @@ function ProfileSkeleton() {
               </div>
             </div>
           </div>
-
-          {/* Right Stats Cards Skeleton */}
           <div className="md:col-span-4 grid grid-cols-1 gap-6">
-            <div className="bg-white rounded-xl p-6 flex items-center justify-between shadow-sm">
-              <div>
-                <Skeleton className="w-20 h-3 mb-2" />
-                <Skeleton className="w-16 h-9" />
+            {[1, 2].map(i => (
+              <div key={i} className="bg-white rounded-xl p-6 flex items-center justify-between shadow-sm">
+                <div>
+                  <Skeleton className="w-20 h-3 mb-2" />
+                  <Skeleton className="w-16 h-9" />
+                </div>
+                <Skeleton className="w-12 h-12 rounded-lg" />
               </div>
-              <Skeleton className="w-12 h-12 rounded-lg" />
-            </div>
-
-            <div className="bg-white rounded-xl p-6 flex items-center justify-between shadow-sm">
-              <div>
-                <Skeleton className="w-24 h-3 mb-2" />
-                <Skeleton className="w-16 h-9" />
-              </div>
-              <Skeleton className="w-12 h-12 rounded-lg" />
-            </div>
+            ))}
           </div>
         </div>
 
@@ -114,8 +106,8 @@ function ProfileSkeleton() {
                   </div>
                 </div>
               </div>
-            </div>
-          </section>
+            </section>
+          ))}
         </div>
       </div>
     </MainLayout>
@@ -131,7 +123,6 @@ export default function Profile() {
     loading,
   } = useStudent();
 
-  // Show skeleton while loading
   if (loading) return <ProfileSkeleton />;
 
   if (!student)
@@ -141,10 +132,14 @@ export default function Profile() {
       </MainLayout>
     );
 
-  const attendance = studentData?.attendance?.results || [];
+  const attendance     = studentData?.attendance?.results || [];
   const attendanceRate = calculateAttendance(attendance);
-  const grades = studentData?.grades?.results || [];
-  const gpa = calculateGPA(grades);
+  const grades         = studentData?.grades?.results || [];
+
+  // ── Overall Percentage ──
+  const totalMarks = grades.reduce((sum, g) => sum + parseFloat(g.marks_obtained || 0), 0);
+  const totalMax   = grades.reduce((sum, g) => sum + parseFloat(g.max_marks || 1), 0);
+  const percentage = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : "0.0";
 
   return (
     <MainLayout title="Student Profile">
@@ -155,11 +150,7 @@ export default function Profile() {
             <div className="relative group flex-shrink-0">
               <div className="w-32 h-32 sm:w-40 sm:h-40 md:w-48 md:h-48 rounded-2xl bg-blue-100 flex items-center justify-center text-blue-50 shadow-xl overflow-hidden">
                 {student.profile_picture ? (
-                  <img
-                    src={student.profile_picture}
-                    alt="Profile"
-                    className="w-full h-full object-cover"
-                  />
+                  <img src={student.profile_picture} alt="Profile" className="w-full h-full object-cover" />
                 ) : (
                   <span className="material-symbols-outlined text-5xl sm:text-6xl">
                     person
@@ -209,10 +200,10 @@ export default function Profile() {
             <div className="bg-surface-container-lowest rounded-xl p-6 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
-                  GPA Score
+                  Overall Score
                 </p>
                 <p className="text-3xl font-black text-on-surface font-headline">
-                  {gpa}
+                  {percentage}<span className="text-lg font-semibold">%</span>
                 </p>
               </div>
 
@@ -226,13 +217,14 @@ export default function Profile() {
               </div>
             </div>
 
+            {/* Attendance */}
             <div className="bg-surface-container-lowest rounded-xl p-6 flex items-center justify-between shadow-sm">
               <div>
                 <p className="text-xs font-bold text-on-surface-variant uppercase tracking-widest mb-1">
                   Attendance
                 </p>
                 <p className="text-3xl font-black text-on-surface font-headline">
-                  {attendanceRate}%
+                  {attendanceRate}<span className="text-lg font-semibold">%</span>
                 </p>
               </div>
 
@@ -245,6 +237,7 @@ export default function Profile() {
                 </span>
               </div>
             </div>
+
           </div>
         </div>
 
@@ -302,7 +295,7 @@ export default function Profile() {
             </div>
           </section>
 
-          {/* Personal Contact Section */}
+          {/* Personal Contact */}
           <section className="space-y-6">
             <div className="flex items-center gap-3 px-2">
               <span
@@ -335,7 +328,6 @@ export default function Profile() {
                     </p>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center flex-shrink-0">
                     <span
@@ -354,7 +346,6 @@ export default function Profile() {
                     </p>
                   </div>
                 </div>
-
                 <div className="flex items-center gap-4">
                   <div className="w-10 h-10 rounded-full bg-surface-container-low flex items-center justify-center flex-shrink-0">
                     <span
@@ -378,6 +369,7 @@ export default function Profile() {
               </div>
             </div>
           </section>
+
         </div>
       </div>
     </MainLayout>

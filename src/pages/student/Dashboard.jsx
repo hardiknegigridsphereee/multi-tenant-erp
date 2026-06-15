@@ -3,7 +3,6 @@ import { Link } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
 import {
   calculateAttendance,
-  calculateGPA,
   getMonthName,
 } from "../../utils/calculations";
 import { useStudent } from "../../context/StudentProvider";
@@ -143,7 +142,7 @@ export default function Dashboard() {
     });
     return uniqueSubjects
       .map((sub) => ({
-        subject:   sub,
+        subject: sub,
         gradeInfo:
           grades.find((g) => g.subject === sub.id) ||
           grades.find(
@@ -173,8 +172,22 @@ export default function Dashboard() {
 
   const allAttendance  = studentData?.attendance?.results || [];
   const attendanceRate = Number(calculateAttendance(allAttendance));
-  const grades         = studentData?.grades?.results     || [];
-  const gpa            = calculateGPA(grades);
+  const grades         = studentData?.grades?.results || [];
+
+  // ── Overall Percentage (replaces GPA) ──
+  const totalMarks = grades.reduce((sum, g) => sum + parseFloat(g.marks_obtained || 0), 0);
+  const totalMax   = grades.reduce((sum, g) => sum + parseFloat(g.max_marks || 1), 0);
+  const percentage = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : "0.0";
+
+  // ── Percentage status label ──
+  const percentageStatus =
+    parseFloat(percentage) >= 75
+      ? { label: "EXCELLENT",    className: "text-green-800 bg-green-100"  }
+      : parseFloat(percentage) >= 60
+      ? { label: "GOOD",         className: "text-blue-800  bg-blue-100"   }
+      : parseFloat(percentage) >= 45
+      ? { label: "SATISFACTORY", className: "text-amber-800 bg-amber-100"  }
+      : { label: "AT RISK",      className: "text-red-800   bg-red-100"    };
 
   const attendanceStatus =
     attendanceRate >= 80
@@ -236,9 +249,7 @@ export default function Dashboard() {
           <div className="absolute -right-20 -top-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
           {/* Hide decorative icon on small screens — it overflows */}
           <div className="absolute right-12 bottom-0 hidden lg:block">
-            <span className="material-symbols-outlined text-[160px] opacity-10">
-              auto_awesome
-            </span>
+            <span className="material-symbols-outlined text-[160px] opacity-10">auto_awesome</span>
           </div>
         </section>
 
@@ -266,21 +277,21 @@ export default function Dashboard() {
             </span>
           </div>
 
-          {/* GPA */}
+          {/* ── PERCENTAGE (was GPA) ── */}
           <div className="bg-surface-container-lowest px-4 py-3 rounded-xl custom-shadow flex items-center justify-between border border-outline-variant/10 hover:scale-[1.01] transition-all">
             <div className="flex items-center gap-3">
               <span className="p-2 rounded-md bg-secondary-fixed text-secondary flex-shrink-0">
                 <span className="material-symbols-outlined text-xl">grade</span>
               </span>
               <div>
-                <p className="text-xs font-medium text-on-surface-variant">Current GPA</p>
+                <p className="text-xs font-medium text-on-surface-variant">Overall Percentage</p>
                 <p className="text-xl font-bold font-headline text-on-surface leading-tight">
-                  {gpa}<span className="text-sm font-semibold">/4.0</span>
+                  {percentage}<span className="text-sm font-semibold">%</span>
                 </p>
               </div>
             </div>
-            <span className="text-[10px] font-bold text-secondary bg-secondary-fixed px-2 py-1 rounded-full">
-              EXCELLENT
+            <span className={`text-[10px] font-bold px-2 py-1 rounded-full ${percentageStatus.className}`}>
+              {percentageStatus.label}
             </span>
           </div>
 
@@ -384,7 +395,9 @@ export default function Dashboard() {
                 ) : (
                   top4Subjects.map(({ subject, gradeInfo }) => {
                     const { icon, bg } = getSubjectIcon(subject.name);
-                    const percentage   = gradeInfo ? Math.round((gradeInfo.marks_obtained / gradeInfo.max_marks) * 100) : 0;
+                    const subPct = gradeInfo
+                      ? ((parseFloat(gradeInfo.marks_obtained) / parseFloat(gradeInfo.max_marks)) * 100).toFixed(1)
+                      : null;
                     const grade = gradeInfo ? getGradeLetter(gradeInfo.marks_obtained, gradeInfo.max_marks) : null;
                     return (
                       <div key={subject.id} className="flex items-center gap-2 sm:gap-3 px-3 sm:px-4 py-3 sm:py-4 hover:bg-surface-container-low/40 transition-colors">
@@ -402,7 +415,7 @@ export default function Dashboard() {
                             )}
                           </div>
                           <div className="w-full bg-surface-container-high rounded-full h-1 overflow-hidden">
-                            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${percentage}%` }} />
+                            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${subPct || 0}%` }} />
                           </div>
                         </div>
                         {grade ? (

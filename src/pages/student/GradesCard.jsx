@@ -89,11 +89,12 @@ export default function GradeCard() {
   const exams = dashboard?.exams?.results || [];
   const subjects = academic?.subs || [];
 
-  let gpa = 0.0;
+  // ── Calculate overall percentage directly from marks ──
+  let overallPercentage = 0;
   if (grades.length > 0) {
     const totalMarks = grades.reduce((sum, g) => sum + parseFloat(g.marks_obtained), 0);
-    const totalMax = grades.reduce((sum, g) => sum + parseFloat(g.max_marks), 0);
-    gpa = totalMarks > 0 ? ((totalMarks / totalMax) * 4.0).toFixed(2) : 0.0;
+    const totalMax   = grades.reduce((sum, g) => sum + parseFloat(g.max_marks), 0);
+    overallPercentage = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0;
   }
 
   const pastExams = exams
@@ -102,21 +103,21 @@ export default function GradeCard() {
   const latestExam = pastExams.length > 0 ? pastExams[0] : null;
 
   const getGradeDetails = (obtained, max) => {
-    const percentage = (obtained / max) * 100;
-    if (percentage >= 90) return { letter: "A+", color: "bg-green-100 text-green-700" };
-    if (percentage >= 80) return { letter: "A",  color: "bg-blue-100 text-blue-700" };
-    if (percentage >= 70) return { letter: "B+", color: "bg-yellow-100 text-yellow-700" };
-    if (percentage >= 60) return { letter: "B",  color: "bg-orange-100 text-orange-700" };
-    return                       { letter: "C",  color: "bg-red-100 text-red-700" };
+    const pct = (obtained / max) * 100;
+    if (pct >= 90) return { letter: "A+", color: "bg-green-100 text-green-700" };
+    if (pct >= 80) return { letter: "A",  color: "bg-blue-100 text-blue-700" };
+    if (pct >= 70) return { letter: "B+", color: "bg-yellow-100 text-yellow-700" };
+    if (pct >= 60) return { letter: "B",  color: "bg-orange-100 text-orange-700" };
+    return               { letter: "C",  color: "bg-red-100 text-red-700" };
   };
 
   const getSubjectIcon = (name) => {
     const n = name?.toLowerCase();
-    if (n?.includes("math"))                       return { icon: "calculate",     bg: "bg-blue-50 text-blue-600" };
-    if (n?.includes("phys"))                       return { icon: "rocket_launch", bg: "bg-purple-50 text-purple-600" };
+    if (n?.includes("math"))                        return { icon: "calculate",     bg: "bg-blue-50 text-blue-600" };
+    if (n?.includes("phys"))                        return { icon: "rocket_launch", bg: "bg-purple-50 text-purple-600" };
     if (n?.includes("comp") || n?.includes("code")) return { icon: "code",          bg: "bg-orange-50 text-orange-600" };
     if (n?.includes("eng")  || n?.includes("lit"))  return { icon: "history_edu",   bg: "bg-indigo-50 text-indigo-600" };
-    return                                                { icon: "menu_book",      bg: "bg-slate-100 text-slate-600" };
+    return                                                 { icon: "menu_book",      bg: "bg-slate-100 text-slate-600" };
   };
 
   const filteredGrades = grades.filter((grade) => {
@@ -125,22 +126,15 @@ export default function GradeCard() {
     return matchesSubject && matchesExam;
   });
 
-  // Calculate percentage from GPA
-  const percentage = (parseFloat(gpa) / 4.0) * 100;
-
-  // Download Report Card as PDF
+  // ── Download PDF Report ──
   const downloadReportCard = () => {
     setDownloading(true);
-    
-    // Create a new window for printing
     const printWindow = window.open('', '_blank');
-    
-    const studentName = `${profile?.first_name || 'Student'} ${profile?.last_name || ''}`;
-    const enrollmentNo = profile?.enrollment_number || 'N/A';
-    const className = academic?.current_class?.name || 'N/A';
-    const section = academic?.current_section?.name || 'N/A';
-    
-    // Generate HTML for the report card
+    const studentName   = `${profile?.first_name || 'Student'} ${profile?.last_name || ''}`;
+    const enrollmentNo  = profile?.enrollment_number || 'N/A';
+    const className     = academic?.current_class?.name || 'N/A';
+    const section       = academic?.current_section?.name || 'N/A';
+
     const reportHTML = `
       <!DOCTYPE html>
       <html>
@@ -333,120 +327,91 @@ export default function GradeCard() {
             <h2>${className} - ${section}</h2>
             <p>Academic Year ${new Date().getFullYear()}</p>
           </div>
-          
           <div class="student-info">
             <div class="info-item"><span class="info-label">Student Name:</span><span class="info-value">${studentName}</span></div>
             <div class="info-item"><span class="info-label">Enrollment No:</span><span class="info-value">${enrollmentNo}</span></div>
             <div class="info-item"><span class="info-label">Roll Number:</span><span class="info-value">${academic?.roll_number || 'N/A'}</span></div>
             <div class="info-item"><span class="info-label">Issue Date:</span><span class="info-value">${new Date().toLocaleDateString()}</span></div>
           </div>
-          
           <div class="summary">
             <div class="summary-card">
-              <h4>GPA (4.0 Scale)</h4>
-              <div class="value">${gpa}</div>
-              <div class="sub">Percentage: ${percentage.toFixed(1)}%</div>
+              <h4>Overall Percentage</h4>
+              <div class="value">${overallPercentage}%</div>
+              <div class="sub">${filteredGrades.length} subjects evaluated</div>
             </div>
-            <div class="summary-card" style="background: linear-gradient(135deg, #10b981, #059669);">
+            <div class="summary-card" style="background:linear-gradient(135deg,#10b981,#059669);">
               <h4>Subjects Passed</h4>
               <div class="value">${filteredGrades.filter(g => parseFloat(g.marks_obtained) >= parseFloat(g.max_marks) * 0.4).length}</div>
               <div class="sub">Out of ${filteredGrades.length}</div>
             </div>
-            <div class="summary-card" style="background: linear-gradient(135deg, #8b5cf6, #7c3aed);">
-              <h4>${latestExam?.name || 'Latest Exam'}</h4>
-              <div class="value" style="font-size: 18px;">${latestExam?.name || 'N/A'}</div>
+            <div class="summary-card" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);">
+              <h4>Latest Exam</h4>
+              <div class="value" style="font-size:18px;">${latestExam?.name || 'N/A'}</div>
               <div class="sub">${latestExam ? new Date(latestExam.end_date).toLocaleDateString() : ''}</div>
             </div>
           </div>
-          
           <table class="grades-table">
             <thead>
-              <tr><th>Subject</th><th>Exam Type</th><th>Marks Obtained</th><th>Max Marks</th><th>Grade</th><th>Remarks</th></tr>
+              <tr><th>Subject</th><th>Exam Type</th><th>Marks Obtained</th><th>Max Marks</th><th>Percentage</th><th>Grade</th><th>Remarks</th></tr>
             </thead>
             <tbody>
               ${filteredGrades.map(grade => {
+                const pct = ((parseFloat(grade.marks_obtained) / parseFloat(grade.max_marks)) * 100).toFixed(1);
                 const gradeDetails = getGradeDetails(parseFloat(grade.marks_obtained), parseFloat(grade.max_marks));
-                let gradeClass = '';
-                if (gradeDetails.letter === 'A+') gradeClass = 'grade-Aplus';
-                else if (gradeDetails.letter === 'A') gradeClass = 'grade-A';
-                else if (gradeDetails.letter === 'B+') gradeClass = 'grade-Bplus';
-                else if (gradeDetails.letter === 'B') gradeClass = 'grade-B';
-                else gradeClass = 'grade-C';
-                
+                const gradeClass = gradeDetails.letter === 'A+' ? 'grade-Aplus'
+                  : gradeDetails.letter === 'A'  ? 'grade-A'
+                  : gradeDetails.letter === 'B+' ? 'grade-Bplus'
+                  : gradeDetails.letter === 'B'  ? 'grade-B' : 'grade-C';
                 return `<tr>
                   <td><strong>${grade.subject_name}</strong></td>
                   <td>${grade.exam_name}</td>
                   <td>${grade.marks_obtained}</td>
                   <td>${grade.max_marks}</td>
+                  <td><strong>${pct}%</strong></td>
                   <td><span class="grade-badge ${gradeClass}">${gradeDetails.letter}</span></td>
-                  <td style="font-style: italic; color: #64748b;">${grade.remarks || 'No remarks'}</td>
+                  <td style="font-style:italic;color:#64748b;">${grade.remarks || 'No remarks'}</td>
                 </tr>`;
               }).join('')}
             </tbody>
           </table>
-          
           <div class="signature">
             <div class="sign-line"><div class="line"></div><div>Class Teacher</div></div>
             <div class="sign-line"><div class="line"></div><div>Principal</div></div>
             <div class="sign-line"><div class="line"></div><div>Parent Signature</div></div>
           </div>
-          
           <div class="footer">
             <p>This is a system-generated report card. Generated on ${new Date().toLocaleString()}</p>
             <p>ScholarFlow Academic Management System</p>
           </div>
         </div>
-        <script>
-          window.print();
-          setTimeout(() => { window.close(); }, 500);
-        </script>
+        <script>window.print(); setTimeout(() => { window.close(); }, 500);</script>
       </body>
       </html>
     `;
-    
+
     printWindow.document.write(reportHTML);
     printWindow.document.close();
-    
-    setTimeout(() => {
-      setDownloading(false);
-    }, 1000);
+    setTimeout(() => setDownloading(false), 1000);
   };
 
-  // Download CSV Report
+  // ── Download CSV ──
   const downloadCSVReport = () => {
-    // CSV headers
     const headers = ['Subject', 'Exam Type', 'Marks Obtained', 'Max Marks', 'Percentage', 'Grade', 'Remarks'];
-    
-    // CSV rows
     const rows = filteredGrades.map(grade => {
-      const percentage = ((grade.marks_obtained / grade.max_marks) * 100).toFixed(2);
-      const gradeDetails = getGradeDetails(grade.marks_obtained, grade.max_marks);
-      return [
-        grade.subject_name,
-        grade.exam_name,
-        grade.marks_obtained,
-        grade.max_marks,
-        `${percentage}%`,
-        gradeDetails.letter,
-        grade.remarks || 'No remarks'
-      ];
+      const pct = ((parseFloat(grade.marks_obtained) / parseFloat(grade.max_marks)) * 100).toFixed(1);
+      const gradeDetails = getGradeDetails(parseFloat(grade.marks_obtained), parseFloat(grade.max_marks));
+      return [grade.subject_name, grade.exam_name, grade.marks_obtained, grade.max_marks, `${pct}%`, gradeDetails.letter, grade.remarks || 'No remarks'];
     });
-    
-    // Combine headers and rows
-    const csvContent = [headers, ...rows].map(row => row.join(',')).join('\n');
-    
-    // Create download link
+    const csvContent = [headers, ...rows].map(r => r.join(',')).join('\n');
     const blob = new Blob([csvContent], { type: 'text/csv' });
-    const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
+    const url  = URL.createObjectURL(blob);
+    const a    = document.createElement('a');
+    a.href     = url;
     a.download = `Report_Card_${profile?.first_name || 'Student'}_${new Date().toLocaleDateString()}.csv`;
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
     URL.revokeObjectURL(url);
-    
-    alert('CSV report downloaded successfully!');
   };
 
   return (
@@ -526,6 +491,7 @@ export default function GradeCard() {
                   <th className="px-8 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Subject</th>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Exam Type</th>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Marks Obtained</th>
+                  <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Percentage</th>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Grade</th>
                   <th className="px-6 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider">Teacher Remarks</th>
                   <th className="px-8 py-4 text-xs font-bold text-on-surface-variant uppercase tracking-wider text-right">Action</th>
@@ -533,8 +499,9 @@ export default function GradeCard() {
               </thead>
               <tbody className="divide-y divide-surface-container">
                 {filteredGrades.map((grade) => {
-                  const gradeDetails = getGradeDetails(grade.marks_obtained, grade.max_marks);
+                  const gradeDetails = getGradeDetails(parseFloat(grade.marks_obtained), parseFloat(grade.max_marks));
                   const iconDetails  = getSubjectIcon(grade.subject_name);
+                  const pct = ((parseFloat(grade.marks_obtained) / parseFloat(grade.max_marks)) * 100).toFixed(1);
                   return (
                     <tr key={grade.id} className="hover:bg-surface-container-low/30 transition-colors group">
                       <td className="px-8 py-6">
@@ -546,11 +513,21 @@ export default function GradeCard() {
                         </div>
                       </td>
                       <td className="px-6 py-6 text-sm text-on-surface-variant font-medium">{grade.exam_name}</td>
-                      <td className="px-6 py-6"><span className="text-sm font-bold text-on-surface">{grade.marks_obtained} / {grade.max_marks}</span></td>
                       <td className="px-6 py-6">
-                        <span className={`px-3 py-1 rounded-md font-bold text-xs uppercase tracking-widest ${gradeDetails.color}`}>{gradeDetails.letter}</span>
+                        <span className="text-sm font-bold text-on-surface">{grade.marks_obtained} / {grade.max_marks}</span>
                       </td>
-                      <td className="px-6 py-6 text-sm text-on-surface-variant italic leading-relaxed max-w-xs">&quot;{grade.remarks || "No remarks provided."}&quot;</td>
+                      {/* ── PERCENTAGE column ── */}
+                      <td className="px-6 py-6">
+                        <span className="text-sm font-bold text-primary">{pct}%</span>
+                      </td>
+                      <td className="px-6 py-6">
+                        <span className={`px-3 py-1 rounded-md font-bold text-xs uppercase tracking-widest ${gradeDetails.color}`}>
+                          {gradeDetails.letter}
+                        </span>
+                      </td>
+                      <td className="px-6 py-6 text-sm text-on-surface-variant italic leading-relaxed max-w-xs">
+                        &quot;{grade.remarks || "No remarks provided."}&quot;
+                      </td>
                       <td className="px-6 py-6 text-right">
                         <button className="text-blue-700 hover:text-blue-900 font-semibold text-sm hover:underline transition-all whitespace-nowrap">View detailed feedback</button>
                       </td>
@@ -559,7 +536,9 @@ export default function GradeCard() {
                 })}
                 {filteredGrades.length === 0 && (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-on-surface-variant">No grades found for the selected filters.</td>
+                    <td colSpan="7" className="px-6 py-12 text-center text-on-surface-variant">
+                      No grades found for the selected filters.
+                    </td>
                   </tr>
                 )}
               </tbody>
@@ -579,26 +558,6 @@ export default function GradeCard() {
           </div>
         </div>
       </section>
-
-      {/* <footer className="px-9 pb-12">
-        <div className="flex flex-col md:flex-row gap-6 items-center bg-blue-50/50 p-6 rounded-2xl border border-blue-100/30">
-          <div className="flex-1">
-            <h4 className="font-headline font-bold text-on-surface">Request Academic Counseling</h4>
-            <p className="text-sm text-on-surface-variant">Not satisfied with your results? Schedule a 15-min call with your academic advisor to discuss a roadmap.</p>
-          </div>
-          <div className="flex gap-4">
-            <button className="px-6 py-3 bg-white text-blue-700 font-bold rounded-lg shadow-sm hover:bg-blue-100 transition-all border border-blue-100">Schedule Meeting</button>
-            <button 
-              onClick={downloadReportCard}
-              disabled={downloading}
-              className="px-6 py-3 primary-gradient text-white font-bold rounded-lg shadow-md hover:scale-[1.02] transition-all disabled:opacity-50 flex items-center gap-2"
-            >
-              <span className="material-symbols-outlined">download</span>
-              {downloading ? 'Preparing...' : 'Download Full PDF Report'}
-            </button>
-          </div>
-        </div>
-      </footer> */}
     </MainLayout>
   );
 }
