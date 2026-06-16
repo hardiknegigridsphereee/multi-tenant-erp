@@ -6,33 +6,37 @@ import {
   getStudentEnrollment,
   getAcademicYear,
   getStudentAttendanceRecords,
+  getStudentGrades,
 } from "../services/parentAPIs";
 
 const ParentContext = createContext();
 
 export const ParentProvider = ({ children }) => {
   const [contextData, setContextData] = useState({
-    mapping: null,           // the raw parent-student-mapping record (relationship, permissions, etc.)
-    student: null,           // student_id (uuid)
-    profile: null,           // student profile
-    dashboard: null,         // { attendance, grades, exams }
-    enrollment: null,        // current class/section
+    mapping: null,
+    student: null,
+    profile: null,
+    dashboard: null,          // { attendance, grades, exams }
+    enrollment: null,
     academic: { years: [], subs: [] },
     attendanceRecords: [],
-    children: [],            // full list of mapped children (in case parent has >1 kid)
+    grades: [],               // flat grades array for GradesAssessmentHub
+    children: [],
   });
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
   const loadForStudent = useCallback(async (studentId, mappingRecord) => {
     try {
-      const [profile, dashboard, enrollment, academic, attendanceRecords] = await Promise.all([
-        getStudentProfile(studentId),
-        getParentDashboardData(studentId),
-        getStudentEnrollment(studentId),
-        getAcademicYear(),
-        getStudentAttendanceRecords(studentId),
-      ]);
+      const [profile, dashboard, enrollment, academic, attendanceRecords, grades] =
+        await Promise.all([
+          getStudentProfile(studentId),
+          getParentDashboardData(studentId),
+          getStudentEnrollment(studentId),
+          getAcademicYear(),
+          getStudentAttendanceRecords(studentId),
+          getStudentGrades(studentId),
+        ]);
 
       setContextData((prev) => ({
         ...prev,
@@ -43,6 +47,7 @@ export const ParentProvider = ({ children }) => {
         enrollment,
         academic,
         attendanceRecords,
+        grades,
       }));
     } catch (err) {
       console.error("Failed to load student data for parent", err);
@@ -59,7 +64,6 @@ export const ParentProvider = ({ children }) => {
           throw new Error("No children mapped to this parent account.");
         }
 
-        // Support multiple children: store full list, default to the first one.
         setContextData((prev) => ({ ...prev, children: mappings }));
 
         const primary = mappings.find((m) => m.is_primary_contact) || mappings[0];
@@ -74,16 +78,31 @@ export const ParentProvider = ({ children }) => {
     init();
   }, [loadForStudent]);
 
-  // Allows a "child switcher" UI to call this when parent has multiple kids
-  const switchChild = useCallback(async (studentId) => {
-    setLoading(true);
-    const mappingRecord = contextData.children.find((m) => m.student === studentId) || null;
-    await loadForStudent(studentId, mappingRecord);
-    setLoading(false);
-  }, [contextData.children, loadForStudent]);
+  const switchChild = useCallback(
+    async (studentId) => {
+      setLoading(true);
+      const mappingRecord =
+        contextData.children.find((m) => m.student === studentId) || null;
+      await loadForStudent(studentId, mappingRecord);
+      setLoading(false);
+    },
+    [contextData.children, loadForStudent]
+  );
+
+  // Refresh grades with optional filters (e.g. after tab switch)
+  const refreshGrades = useCallback(
+    async (filters = {}) => {
+      if (!contextData.student) return;
+      const grades = await getStudentGrades(contextData.student, filters);
+      setContextData((prev) => ({ ...prev, grades }));
+    },
+    [contextData.student]
+  );
 
   return (
-    <ParentContext.Provider value={{ ...contextData, loading, error, switchChild }}>
+    <ParentContext.Provider
+      value={{ ...contextData, loading, error, switchChild, refreshGrades }}
+    >
       {children}
     </ParentContext.Provider>
   );
