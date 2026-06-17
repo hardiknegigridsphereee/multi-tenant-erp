@@ -5,7 +5,6 @@ const StudentHeader = () => {
   const { profile, enrollment, dashboard, loading } = useParent();
   const [downloading, setDownloading] = useState(false);
 
-  // ── Derived values ────────────────────────────────────────────────────────
   const displayName = (() => {
     if (profile?.user?.first_name)
       return `${profile.user.first_name} ${profile.user.last_name || ""}`.trim();
@@ -31,7 +30,6 @@ const StudentHeader = () => {
     enrollment?.teacher_email ||
     null;
 
-  // ── Grade-letter helper (same scale as student GradeCard) ────────────────
   const getGradeDetails = (obtained, max) => {
     const pct = max > 0 ? (obtained / max) * 100 : 0;
     if (pct >= 90) return { letter: "A+", cls: "grade-Aplus" };
@@ -41,7 +39,6 @@ const StudentHeader = () => {
     return                { letter: "C",  cls: "grade-C" };
   };
 
-  // ── Download Report Card (mirrors student GradeCard.downloadReportCard) ──
   const downloadReportCard = () => {
     setDownloading(true);
 
@@ -178,50 +175,48 @@ const StudentHeader = () => {
     setTimeout(() => setDownloading(false), 1000);
   };
 
-  // ── Skeleton ──────────────────────────────────────────────────────────────
   if (loading) {
     return (
       <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center animate-pulse">
         <div className="md:col-span-2 space-y-3">
-          <div className="h-8 bg-surface-container-low rounded w-56" />
+          <div className="h-8 bg-surface-container-low dark:bg-slate-700 rounded w-56" />
           <div className="flex gap-4">
-            <div className="h-4 bg-surface-container-low rounded w-28" />
-            <div className="h-4 bg-surface-container-low rounded w-20" />
-            <div className="h-4 bg-surface-container-low rounded w-32" />
+            <div className="h-4 bg-surface-container-low dark:bg-slate-700 rounded w-28" />
+            <div className="h-4 bg-surface-container-low dark:bg-slate-700 rounded w-20" />
+            <div className="h-4 bg-surface-container-low dark:bg-slate-700 rounded w-32" />
           </div>
         </div>
         <div className="flex md:justify-end gap-3">
-          <div className="h-10 w-36 bg-surface-container-low rounded-md" />
-          <div className="h-10 w-36 bg-surface-container-low rounded-md" />
+          <div className="h-10 w-36 bg-surface-container-low dark:bg-slate-700 rounded-md" />
+          <div className="h-10 w-36 bg-surface-container-low dark:bg-slate-700 rounded-md" />
         </div>
       </section>
     );
   }
 
-  // ── Render ────────────────────────────────────────────────────────────────
   return (
     <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
       <div className="md:col-span-2 space-y-2">
-        <h2 className="text-3xl font-extrabold text-on-surface font-headline tracking-tight">
+        <h2 className="text-3xl font-extrabold text-on-surface dark:text-white font-headline tracking-tight">
           Parent Dashboard
         </h2>
-        <div className="flex flex-wrap items-center gap-4 text-on-surface-variant">
+        <div className="flex flex-wrap items-center gap-4 text-on-surface-variant dark:text-slate-200">
 
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-lg">person</span>
-            <span className="font-semibold">{displayName}</span>
+            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-lg">person</span>
+            <span className="font-semibold text-on-surface dark:text-white">{displayName}</span>
           </div>
 
-          <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/50" />
+          <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/50 dark:bg-slate-500" />
 
           <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary text-lg">school</span>
-            <span>{classSection}</span>
+            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-lg">school</span>
+            <span className="dark:text-slate-200">{classSection}</span>
           </div>
 
-          <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/50" />
+          <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/50 dark:bg-slate-500" />
 
-          <div className="flex items-center gap-2 text-primary font-medium">
+          <div className="flex items-center gap-2 text-primary dark:text-blue-300 font-medium">
             <span>{schoolName}</span>
           </div>
 
@@ -232,7 +227,7 @@ const StudentHeader = () => {
         <button
           onClick={downloadReportCard}
           disabled={downloading}
-          className="bg-surface-container-high text-primary px-5 py-2.5 rounded-md font-semibold text-sm hover:bg-surface-variant transition-colors active:scale-95 duration-75 disabled:opacity-50 flex items-center gap-2"
+          className="bg-surface-container-high dark:bg-slate-700 text-primary dark:text-blue-300 px-5 py-2.5 rounded-md font-semibold text-sm hover:bg-surface-variant dark:hover:bg-slate-600 transition-colors active:scale-95 duration-75 disabled:opacity-50 flex items-center gap-2"
         >
           <span className="material-symbols-outlined text-base">
             {downloading ? "hourglass_empty" : "picture_as_pdf"}
