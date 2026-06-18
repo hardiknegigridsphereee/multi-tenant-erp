@@ -1,3 +1,5 @@
+// src/components/erp/parent/StudentHeader.jsx
+
 import React, { useState } from "react";
 import { useParent } from "../../../context/ParentProvider";
 
@@ -20,15 +22,8 @@ const StudentHeader = () => {
       ? `${enrollment.class_name} – ${enrollment.section_name}`
       : enrollment?.class_name || enrollment?.class_level_name || "—";
 
-  const schoolName =
-    enrollment?.school_name ||
-    profile?.school_name ||
-    "School";
-
-  const teacherEmail =
-    enrollment?.class_teacher_email ||
-    enrollment?.teacher_email ||
-    null;
+  const schoolName   = enrollment?.school_name || profile?.school_name || "School";
+  const teacherEmail = enrollment?.class_teacher_email || enrollment?.teacher_email || null;
 
   const getGradeDetails = (obtained, max) => {
     const pct = max > 0 ? (obtained / max) * 100 : 0;
@@ -36,139 +31,62 @@ const StudentHeader = () => {
     if (pct >= 80) return { letter: "A",  cls: "grade-A" };
     if (pct >= 70) return { letter: "B+", cls: "grade-Bplus" };
     if (pct >= 60) return { letter: "B",  cls: "grade-B" };
-    return                { letter: "C",  cls: "grade-C" };
+    return               { letter: "C",  cls: "grade-C" };
   };
 
   const downloadReportCard = () => {
     setDownloading(true);
-
     const grades = dashboard?.grades?.results || [];
     const exams  = dashboard?.exams?.results  || [];
 
     const pastExams = exams
       .filter((e) => new Date(e.end_date) < new Date())
       .sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
-    const latestExam = pastExams.length > 0 ? pastExams[0] : null;
+    const latestExam = pastExams[0] || null;
 
-    let overallPercentage = 0;
-    if (grades.length > 0) {
-      const totalMarks = grades.reduce((sum, g) => sum + parseFloat(g.marks_obtained || 0), 0);
-      const totalMax   = grades.reduce((sum, g) => sum + parseFloat(g.max_marks || 0), 0);
-      overallPercentage = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0;
-    }
-
-    const studentName  = displayName || "Student";
-    const enrollmentNo = profile?.enrollment_number || "N/A";
-    const className    = enrollment?.class_level_name || enrollment?.class_name || "N/A";
-    const section      = enrollment?.section_name || "N/A";
-    const rollNumber   = enrollment?.roll_number || "N/A";
+    const totalMarks = grades.reduce((s, g) => s + parseFloat(g.marks_obtained || 0), 0);
+    const totalMax   = grades.reduce((s, g) => s + parseFloat(g.max_marks || 0), 0);
+    const overallPct = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0;
 
     const printWindow = window.open("", "_blank");
-
-    const reportHTML = `
-      <!DOCTYPE html>
-      <html>
-      <head>
-        <title>Report Card - ${studentName}</title>
-        <meta charset="UTF-8">
-        <style>
-          * { margin:0; padding:0; box-sizing:border-box; }
-          body { font-family:'Segoe UI',Tahoma,Geneva,Verdana,sans-serif; background:#fff; padding:40px; color:#333; }
-          .report-container { max-width:1200px; margin:0 auto; }
-          .header { text-align:center; margin-bottom:30px; border-bottom:3px solid #3b82f6; padding-bottom:20px; }
-          .header h1 { font-size:28px; color:#1e293b; margin-bottom:5px; }
-          .header h2 { font-size:20px; color:#64748b; font-weight:normal; }
-          .header p  { font-size:14px; color:#94a3b8; margin-top:5px; }
-          .student-info { background:#f8fafc; padding:15px 20px; border-radius:12px; margin-bottom:25px; display:flex; justify-content:space-between; flex-wrap:wrap; gap:15px; }
-          .info-item { display:flex; gap:10px; }
-          .info-label { font-weight:600; color:#64748b; font-size:12px; }
-          .info-value { font-weight:700; color:#1e293b; font-size:14px; }
-          .summary { display:grid; grid-template-columns:repeat(3,1fr); gap:20px; margin-bottom:30px; }
-          .summary-card { background:linear-gradient(135deg,#3b82f6,#2563eb); color:white; padding:20px; border-radius:16px; text-align:center; }
-          .summary-card h4 { font-size:12px; opacity:0.9; margin-bottom:8px; }
-          .summary-card .value { font-size:32px; font-weight:bold; }
-          .summary-card .sub { font-size:11px; opacity:0.8; margin-top:5px; }
-          .grades-table { width:100%; border-collapse:collapse; margin-bottom:30px; }
-          .grades-table th { background:#f1f5f9; padding:12px; text-align:left; font-size:12px; font-weight:600; color:#475569; text-transform:uppercase; border-bottom:2px solid #e2e8f0; }
-          .grades-table td { padding:12px; font-size:13px; border-bottom:1px solid #e2e8f0; }
-          .grade-badge { display:inline-block; padding:4px 12px; border-radius:20px; font-weight:bold; font-size:11px; }
-          .grade-Aplus { background:#dcfce7; color:#166534; }
-          .grade-A     { background:#dbeafe; color:#1e40af; }
-          .grade-Bplus { background:#fef3c7; color:#92400e; }
-          .grade-B     { background:#ffedd5; color:#9a3412; }
-          .grade-C     { background:#fee2e2; color:#991b1b; }
-          .footer { margin-top:30px; padding-top:20px; border-top:1px solid #e2e8f0; text-align:center; font-size:11px; color:#94a3b8; }
-          .signature { display:flex; justify-content:space-between; margin-top:40px; padding-top:20px; }
-          .sign-line { text-align:center; width:200px; }
-          .sign-line .line { border-top:1px solid #cbd5e1; margin-bottom:8px; }
-        </style>
-      </head>
-      <body>
-        <div class="report-container">
-          <div class="header">
-            <h1>ACADEMIC REPORT CARD</h1>
-            <h2>${className} - ${section}</h2>
-            <p>Academic Year ${new Date().getFullYear()}</p>
-          </div>
-          <div class="student-info">
-            <div class="info-item"><span class="info-label">Student Name:</span><span class="info-value">${studentName}</span></div>
-            <div class="info-item"><span class="info-label">Enrollment No:</span><span class="info-value">${enrollmentNo}</span></div>
-            <div class="info-item"><span class="info-label">Roll Number:</span><span class="info-value">${rollNumber}</span></div>
-            <div class="info-item"><span class="info-label">Issue Date:</span><span class="info-value">${new Date().toLocaleDateString()}</span></div>
-          </div>
-          <div class="summary">
-            <div class="summary-card">
-              <h4>Overall Percentage</h4>
-              <div class="value">${overallPercentage}%</div>
-              <div class="sub">${grades.length} subjects evaluated</div>
-            </div>
-            <div class="summary-card" style="background:linear-gradient(135deg,#10b981,#059669);">
-              <h4>Subjects Passed</h4>
-              <div class="value">${grades.filter(g => parseFloat(g.marks_obtained) >= parseFloat(g.max_marks) * 0.4).length}</div>
-              <div class="sub">Out of ${grades.length}</div>
-            </div>
-            <div class="summary-card" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed);">
-              <h4>Latest Exam</h4>
-              <div class="value" style="font-size:18px;">${latestExam?.name || 'N/A'}</div>
-              <div class="sub">${latestExam ? new Date(latestExam.end_date).toLocaleDateString() : ''}</div>
-            </div>
-          </div>
-          <table class="grades-table">
-            <thead>
-              <tr><th>Subject</th><th>Exam Type</th><th>Marks Obtained</th><th>Max Marks</th><th>Percentage</th><th>Grade</th><th>Remarks</th></tr>
-            </thead>
-            <tbody>
-              ${grades.map(grade => {
-                const obtained = parseFloat(grade.marks_obtained || 0);
-                const max      = parseFloat(grade.max_marks || 0);
-                const pct      = max > 0 ? ((obtained / max) * 100).toFixed(1) : "0.0";
-                const gradeDetails = getGradeDetails(obtained, max);
-                return `<tr>
-                  <td><strong>${grade.subject_name}</strong></td>
-                  <td>${grade.exam_name}</td>
-                  <td>${grade.marks_obtained}</td>
-                  <td>${grade.max_marks}</td>
-                  <td><strong>${pct}%</strong></td>
-                  <td><span class="grade-badge ${gradeDetails.cls}">${gradeDetails.letter}</span></td>
-                  <td style="font-style:italic;color:#64748b;">${grade.remarks || 'No remarks'}</td>
-                </tr>`;
-              }).join('')}
-            </tbody>
-          </table>
-          <div class="signature">
-            <div class="sign-line"><div class="line"></div><div>Class Teacher</div></div>
-            <div class="sign-line"><div class="line"></div><div>Principal</div></div>
-            <div class="sign-line"><div class="line"></div><div>Parent Signature</div></div>
-          </div>
-          <div class="footer">
-            <p>This is a system-generated report card. Generated on ${new Date().toLocaleString()}</p>
-            <p>ScholarFlow Academic Management System</p>
-          </div>
-        </div>
-        <script>window.print(); setTimeout(() => { window.close(); }, 500);</script>
-      </body>
-      </html>
-    `;
+    const reportHTML = `<!DOCTYPE html><html><head><title>Report Card</title><meta charset="UTF-8">
+    <style>*{margin:0;padding:0;box-sizing:border-box}body{font-family:'Segoe UI',sans-serif;padding:40px;color:#333}
+    .header{text-align:center;margin-bottom:30px;border-bottom:3px solid #3b82f6;padding-bottom:20px}
+    .header h1{font-size:28px;color:#1e293b}.header h2{font-size:20px;color:#64748b;font-weight:normal}
+    .info{background:#f8fafc;padding:15px 20px;border-radius:12px;margin-bottom:25px;display:flex;justify-content:space-between;flex-wrap:wrap;gap:10px}
+    .info-item{display:flex;gap:8px}.info-label{font-weight:600;color:#64748b;font-size:12px}.info-value{font-weight:700;color:#1e293b;font-size:14px}
+    .summary{display:grid;grid-template-columns:repeat(3,1fr);gap:20px;margin-bottom:30px}
+    .card{background:linear-gradient(135deg,#3b82f6,#2563eb);color:white;padding:20px;border-radius:16px;text-align:center}
+    .card h4{font-size:12px;opacity:.9;margin-bottom:8px}.card .value{font-size:32px;font-weight:bold}
+    table{width:100%;border-collapse:collapse;margin-bottom:30px}
+    th{background:#f1f5f9;padding:12px;text-align:left;font-size:12px;font-weight:600;color:#475569;border-bottom:2px solid #e2e8f0}
+    td{padding:12px;font-size:13px;border-bottom:1px solid #e2e8f0}
+    .badge{display:inline-block;padding:4px 12px;border-radius:20px;font-weight:bold;font-size:11px}
+    .grade-Aplus{background:#dcfce7;color:#166534}.grade-A{background:#dbeafe;color:#1e40af}
+    .grade-Bplus{background:#fef3c7;color:#92400e}.grade-B{background:#ffedd5;color:#9a3412}.grade-C{background:#fee2e2;color:#991b1b}
+    .footer{margin-top:30px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
+    </style></head><body>
+    <div class="header"><h1>ACADEMIC REPORT CARD</h1><h2>${classSection}</h2><p>Academic Year ${new Date().getFullYear()}</p></div>
+    <div class="info">
+      <div class="info-item"><span class="info-label">Student:</span><span class="info-value">${displayName}</span></div>
+      <div class="info-item"><span class="info-label">Enroll No:</span><span class="info-value">${profile?.enrollment_number || "N/A"}</span></div>
+      <div class="info-item"><span class="info-label">Roll No:</span><span class="info-value">${enrollment?.roll_number || "N/A"}</span></div>
+      <div class="info-item"><span class="info-label">Date:</span><span class="info-value">${new Date().toLocaleDateString()}</span></div>
+    </div>
+    <div class="summary">
+      <div class="card"><h4>Overall %</h4><div class="value">${overallPct}%</div></div>
+      <div class="card" style="background:linear-gradient(135deg,#10b981,#059669)"><h4>Subjects Passed</h4><div class="value">${grades.filter(g=>parseFloat(g.marks_obtained)>=parseFloat(g.max_marks)*0.4).length}</div></div>
+      <div class="card" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)"><h4>Latest Exam</h4><div class="value" style="font-size:16px">${latestExam?.name||"N/A"}</div></div>
+    </div>
+    <table><thead><tr><th>Subject</th><th>Exam</th><th>Obtained</th><th>Max</th><th>%</th><th>Grade</th><th>Remarks</th></tr></thead>
+    <tbody>${grades.map(g=>{
+      const obt=parseFloat(g.marks_obtained||0),max=parseFloat(g.max_marks||0);
+      const pct=max>0?((obt/max)*100).toFixed(1):"0.0";
+      const gd=getGradeDetails(obt,max);
+      return `<tr><td><strong>${g.subject_name}</strong></td><td>${g.exam_name}</td><td>${g.marks_obtained}</td><td>${g.max_marks}</td><td><strong>${pct}%</strong></td><td><span class="badge ${gd.cls}">${gd.letter}</span></td><td style="font-style:italic;color:#64748b">${g.remarks||"No remarks"}</td></tr>`;
+    }).join("")}</tbody></table>
+    <div class="footer"><p>Generated on ${new Date().toLocaleString()} — Academic Architect</p></div>
+    <script>window.print();setTimeout(()=>window.close(),500)</script></body></html>`;
 
     printWindow.document.write(reportHTML);
     printWindow.document.close();
@@ -177,57 +95,61 @@ const StudentHeader = () => {
 
   if (loading) {
     return (
-      <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center animate-pulse">
-        <div className="md:col-span-2 space-y-3">
-          <div className="h-8 bg-surface-container-low dark:bg-slate-700 rounded w-56" />
-          <div className="flex gap-4">
-            <div className="h-4 bg-surface-container-low dark:bg-slate-700 rounded w-28" />
-            <div className="h-4 bg-surface-container-low dark:bg-slate-700 rounded w-20" />
-            <div className="h-4 bg-surface-container-low dark:bg-slate-700 rounded w-32" />
-          </div>
+      <section className="animate-pulse space-y-3">
+        <div className="h-8 bg-slate-100 dark:bg-slate-700 rounded w-48" />
+        <div className="flex gap-3">
+          <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-24" />
+          <div className="h-4 bg-slate-100 dark:bg-slate-700 rounded w-20" />
         </div>
-        <div className="flex md:justify-end gap-3">
-          <div className="h-10 w-36 bg-surface-container-low dark:bg-slate-700 rounded-md" />
-          <div className="h-10 w-36 bg-surface-container-low dark:bg-slate-700 rounded-md" />
+        <div className="flex gap-3 pt-1">
+          <div className="h-10 bg-slate-100 dark:bg-slate-700 rounded w-36" />
+          <div className="h-10 bg-slate-100 dark:bg-slate-700 rounded w-36" />
         </div>
       </section>
     );
   }
 
   return (
-    <section className="grid grid-cols-1 md:grid-cols-3 gap-6 items-center">
-      <div className="md:col-span-2 space-y-2">
-        <h2 className="text-3xl font-extrabold text-on-surface dark:text-white font-headline tracking-tight">
+    <section className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+
+      {/* Left: name + meta */}
+      <div className="space-y-1.5 min-w-0">
+        <h2 className="text-2xl sm:text-3xl font-extrabold text-on-surface dark:text-white font-headline tracking-tight leading-tight">
           Parent Dashboard
         </h2>
-        <div className="flex flex-wrap items-center gap-4 text-on-surface-variant dark:text-slate-200">
 
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-lg">person</span>
+        {/* Chips row — wraps on mobile */}
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 text-sm text-on-surface-variant dark:text-slate-300">
+          <span className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-base">person</span>
             <span className="font-semibold text-on-surface dark:text-white">{displayName}</span>
-          </div>
+          </span>
 
-          <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/50 dark:bg-slate-500" />
+          <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600" />
 
-          <div className="flex items-center gap-2">
-            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-lg">school</span>
-            <span className="dark:text-slate-200">{classSection}</span>
-          </div>
+          <span className="flex items-center gap-1">
+            <span className="material-symbols-outlined text-primary dark:text-blue-300 text-base">school</span>
+            <span>{classSection}</span>
+          </span>
 
-          <div className="w-1.5 h-1.5 rounded-full bg-outline-variant/50 dark:bg-slate-500" />
+          <span className="w-1 h-1 rounded-full bg-slate-300 dark:bg-slate-600 hidden sm:block" />
 
-          <div className="flex items-center gap-2 text-primary dark:text-blue-300 font-medium">
-            <span>{schoolName}</span>
-          </div>
-
+          <span className="text-primary dark:text-blue-300 font-medium hidden sm:inline">{schoolName}</span>
         </div>
       </div>
 
-      <div className="flex md:justify-end gap-3">
+      {/* Right: action buttons — stack on very small screens */}
+      <div className="flex flex-wrap gap-2 sm:gap-3 sm:flex-nowrap sm:justify-end flex-shrink-0">
         <button
           onClick={downloadReportCard}
           disabled={downloading}
-          className="bg-surface-container-high dark:bg-slate-700 text-primary dark:text-blue-300 px-5 py-2.5 rounded-md font-semibold text-sm hover:bg-surface-variant dark:hover:bg-slate-600 transition-colors active:scale-95 duration-75 disabled:opacity-50 flex items-center gap-2"
+          className="flex items-center gap-1.5
+                     bg-slate-100 dark:bg-slate-700
+                     text-primary dark:text-blue-300
+                     px-4 py-2.5 rounded-lg font-semibold text-sm
+                     hover:bg-slate-200 dark:hover:bg-slate-600
+                     transition-colors active:scale-95 duration-75
+                     disabled:opacity-50 whitespace-nowrap"
         >
           <span className="material-symbols-outlined text-base">
             {downloading ? "hourglass_empty" : "picture_as_pdf"}
@@ -238,16 +160,24 @@ const StudentHeader = () => {
         {teacherEmail ? (
           <a
             href={`mailto:${teacherEmail}`}
-            className="bg-gradient-to-br from-primary to-primary-container text-white px-5 py-2.5 rounded-md font-semibold text-sm shadow-md hover:brightness-110 transition-all active:scale-95 duration-75"
+            className="flex items-center gap-1.5
+                       bg-blue-600 text-white
+                       px-4 py-2.5 rounded-lg font-semibold text-sm
+                       hover:bg-blue-700 transition-colors active:scale-95 duration-75
+                       whitespace-nowrap"
           >
+            <span className="material-symbols-outlined text-base">mail</span>
             Contact Teacher
           </a>
         ) : (
           <button
             disabled
             title="Teacher email not available"
-            className="bg-gradient-to-br from-primary to-primary-container text-white px-5 py-2.5 rounded-md font-semibold text-sm shadow-md opacity-60 cursor-not-allowed"
+            className="flex items-center gap-1.5
+                       bg-blue-600 text-white opacity-60 cursor-not-allowed
+                       px-4 py-2.5 rounded-lg font-semibold text-sm whitespace-nowrap"
           >
+            <span className="material-symbols-outlined text-base">mail</span>
             Contact Teacher
           </button>
         )}
