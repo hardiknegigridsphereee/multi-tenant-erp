@@ -44,18 +44,17 @@ export default function DashboardLayout({ children }) {
         md:ml-72 / md:ml-20  → shift right of sidebar on desktop only.
         On mobile the sidebar is an off-canvas drawer (fixed, translated
         off-screen), so content never needs a left margin there — ml-0.
-        pb-20                 → bottom padding on mobile so content doesn't hide behind BottomNav
       */}
       <div
         className={`flex-1 min-h-screen bg-white dark:bg-slate-950
                     transition-all duration-300
-                    ml-0 pb-20 md:pb-0
+                    ml-0 w-full min-w-0
                     ${sidebarExpanded ? "md:ml-72" : "md:ml-20"}`}
       >
         <Navbar />
 
-        {/* Responsive page padding: tighter on mobile, comfortable on desktop */}
-        <div className="p-4 sm:p-6 md:p-8">
+        {/* Responsive page padding: tighter on very small screens, comfortable on desktop */}
+        <div className="p-3 sm:p-4 md:p-6 lg:p-8 max-w-full overflow-x-hidden">
           {children}
         </div>
       </div>
