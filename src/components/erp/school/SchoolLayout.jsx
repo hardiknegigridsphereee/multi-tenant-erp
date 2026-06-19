@@ -90,7 +90,7 @@ function SchoolLayoutInner({ children, title = "Dashboard" }) {
 
         {/* ── TOPBAR — compact h-12 ── */}
         <header
-          className={`fixed top-0 right-0 z-40 flex items-center justify-between px-5 transition-all duration-300 ease-in-out
+          className={`fixed top-0 right-0 z-40 flex items-center justify-between lg:px-5 px-2 transition-all duration-300 ease-in-out
             ${dk ? "bg-surface-container/90 border-outline-variant/20" : "bg-surface-container-lowest/90 border-outline-variant/10"}`}
           style={{
             height: "3rem",
@@ -221,7 +221,7 @@ function SchoolLayoutInner({ children, title = "Dashboard" }) {
 
         {/* ── PAGE CONTENT — pt-12 to clear 48px topbar ── */}
         <div key={location.pathname}
-          className="pt-12 px-5 pb-5 flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-400">
+          className="pt-12 lg:px-5  pb-5 flex-1 flex flex-col animate-in fade-in slide-in-from-bottom-4 duration-400">
           {children}
         </div>
       </main>

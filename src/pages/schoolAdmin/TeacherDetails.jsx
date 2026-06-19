@@ -23,7 +23,7 @@ function Skeleton({ className = "", style = {} }) {
 
 function TeacherDetailsSkeleton() {
   return (
-    <div className="max-w-4xl px-4 md:px-8 py-6 space-y-6">
+    <div className="px-4 md:px-8 py-6 space-y-6">
       {/* Top Bar */}
       <div className="flex justify-between items-center">
         <Skeleton style={{ width: 140, height: 20 }} />
@@ -253,7 +253,7 @@ export default function TeacherDetails() {
 
   return (
     <SchoolLayout title="Teacher Details">
-      <div className="max-w-4xl px-4 md:px-8 py-6 space-y-6">
+      <div className="px-4 md:px-8 py-6 space-y-6">
 
         {/* Toast */}
         {toast && (

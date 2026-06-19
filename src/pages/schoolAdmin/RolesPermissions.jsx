@@ -25,28 +25,24 @@ function Skeleton({ className = "", style = {} }) {
 // ─────────────────────────────────────────────
 function RolesPermissionsSkeleton() {
   return (
-    <div className="flex flex-col gap-4 px-4 md:px-8 pt-4 pb-12 max-w-7xl">
+    <div className="flex flex-col gap-4 px-4 md:px-8 pt-4 pb-12 max-w-7xl animate-pulse">
       {/* Header */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
         <div>
           <Skeleton style={{ width: 200, height: 28 }} />
           <Skeleton style={{ width: 320, height: 16, marginTop: 4 }} />
         </div>
-        <Skeleton style={{ width: 140, height: 40, borderRadius: 8 }} />
+        <Skeleton style={{ width: 140, height: 40, borderRadius: 8 }} className="w-full sm:w-auto" />
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
-          <div
-            key={i}
-            className="relative overflow-hidden rounded-xl p-4 border border-outline-variant/10 bg-surface-container-lowest"
-            style={{ minHeight: "72px" }}
-          >
+          <div key={i} className="relative overflow-hidden rounded-xl p-4 border border-outline-variant/10 bg-surface-container-lowest" style={{ minHeight: "72px" }}>
             <div className="flex items-start justify-between">
               <Skeleton style={{ width: 28, height: 28, borderRadius: 6 }} />
             </div>
-            <div>
+            <div className="mt-2">
               <Skeleton style={{ width: 70, height: 10 }} />
               <Skeleton style={{ width: 40, height: 20, marginTop: 4 }} />
             </div>
@@ -55,9 +51,9 @@ function RolesPermissionsSkeleton() {
       </div>
 
       {/* Filter Bar */}
-      <div className="flex flex-wrap items-center gap-3 bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/10 shadow-sm">
-        <Skeleton style={{ flex: 1, minWidth: 200, height: 40, borderRadius: 8 }} />
-        <Skeleton style={{ width: 100, height: 20, borderRadius: 4 }} />
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/10 shadow-sm">
+        <Skeleton style={{ flex: 1, height: 40, borderRadius: 8 }} />
+        <Skeleton style={{ width: 100, height: 20, borderRadius: 4 }} className="self-end sm:self-auto" />
       </div>
 
       {/* Table */}
@@ -66,24 +62,24 @@ function RolesPermissionsSkeleton() {
           <table className="w-full text-left">
             <thead className="bg-surface-container-high/30 text-xs font-headline font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/10">
               <tr>
-                <th className="px-6 py-4"><Skeleton style={{ width: 80, height: 12 }} /></th>
-                <th className="px-6 py-4 text-center"><Skeleton style={{ width: 80, height: 12, margin: "0 auto" }} /></th>
-                <th className="px-6 py-4"><Skeleton style={{ width: 80, height: 12 }} /></th>
-                <th className="px-6 py-4 text-right"><Skeleton style={{ width: 60, height: 12, marginLeft: "auto" }} /></th>
+                <th className="px-4 md:px-6 py-4"><Skeleton style={{ width: 80, height: 12 }} /></th>
+                <th className="px-4 md:px-6 py-4 text-center"><Skeleton style={{ width: 80, height: 12, margin: "0 auto" }} /></th>
+                <th className="px-4 md:px-6 py-4 hidden md:table-cell"><Skeleton style={{ width: 80, height: 12 }} /></th>
+                <th className="px-4 md:px-6 py-4 text-right"><Skeleton style={{ width: 60, height: 12, marginLeft: "auto" }} /></th>
               </tr>
             </thead>
             <tbody className="divide-y divide-outline-variant/10">
               {Array.from({ length: 5 }).map((_, i) => (
                 <tr key={i}>
-                  <td className="px-6 py-4">
+                  <td className="px-4 md:px-6 py-4">
                     <div className="flex items-center gap-3">
                       <Skeleton style={{ width: 36, height: 36, borderRadius: 6 }} />
-                      <Skeleton style={{ width: 120, height: 14 }} />
+                      <Skeleton style={{ width: 100, height: 14 }} />
                     </div>
                   </td>
-                  <td className="px-6 py-4 text-center"><Skeleton style={{ width: 60, height: 20, borderRadius: 999, margin: "0 auto" }} /></td>
-                  <td className="px-6 py-4"><Skeleton style={{ width: 140, height: 12 }} /></td>
-                  <td className="px-6 py-4 text-right"><Skeleton style={{ width: 80, height: 28, borderRadius: 6, marginLeft: "auto" }} /></td>
+                  <td className="px-4 md:px-6 py-4 text-center"><Skeleton style={{ width: 60, height: 20, borderRadius: 999, margin: "0 auto" }} /></td>
+                  <td className="px-4 md:px-6 py-4 hidden md:table-cell"><Skeleton style={{ width: 140, height: 12 }} /></td>
+                  <td className="px-4 md:px-6 py-4 text-right"><Skeleton style={{ width: 70, height: 28, borderRadius: 6, marginLeft: "auto" }} /></td>
                 </tr>
               ))}
             </tbody>
@@ -91,7 +87,7 @@ function RolesPermissionsSkeleton() {
         </div>
 
         {/* Pagination skeleton */}
-        <div className="p-4 flex flex-wrap gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
+        <div className="p-4 flex flex-col sm:flex-row gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
           <div className="flex items-center gap-2">
             <Skeleton style={{ width: 80, height: 16 }} />
             <Skeleton style={{ width: 60, height: 28, borderRadius: 4 }} />
@@ -168,8 +164,8 @@ export default function RolesPermissions() {
 
   // Reset page when search or page size changes
   useEffect(() => { setCurrentPage(1); }, [debouncedSearch, pageSize]);
-
-  // Fetch roles when search changes
+  
+ // Fetch roles when search changes
   useEffect(() => {
     fetchAllRoles(debouncedSearch);
   }, [debouncedSearch]);
@@ -236,7 +232,7 @@ export default function RolesPermissions() {
     <SchoolLayout>
       <div className="flex flex-col gap-4 px-4 md:px-8 pt-4 pb-12 max-w-7xl">
 
-        {/* Header */}
+        {/* Responsive Header Block */}
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-end gap-4">
           <div>
             <h2 className="text-2xl font-headline font-extrabold text-on-surface">Roles & Permissions</h2>
@@ -246,7 +242,7 @@ export default function RolesPermissions() {
           </div>
           <button
             onClick={() => navigate("/school-admin/roles/create")}
-            className="bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95 flex items-center gap-2"
+            className="sm:w-auto bg-primary text-white px-5 py-2.5 rounded-lg text-sm font-bold shadow-sm hover:bg-primary/90 transition-all active:scale-95 flex items-center justify-center gap-2"
           >
             <span className="material-symbols-outlined text-[18px]">add</span>
             Create Role
@@ -260,16 +256,16 @@ export default function RolesPermissions() {
           </div>
         )}
 
-        {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        {/* Responsive Stats Grid */}
+        <div className="grid grid-cols-3 gap-3">
           <StatCard icon="shield" label="Total Roles" value={totalRoles} accentColor="var(--color-primary)" />
           <StatCard icon="lock" label="Total Permissions" value={totalPermissions} accentColor="var(--color-secondary)" />
           <StatCard icon="description" label="Roles with Description" value={rolesWithDescription} accentColor="var(--color-tertiary)" />
         </div>
 
-        {/* Filter Bar */}
-        <div className="flex flex-wrap items-center gap-3 bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/10 shadow-sm">
-          <div className="flex-1 min-w-[200px] relative">
+        {/* Responsive Filter Bar */}
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-3 bg-surface-container-lowest p-3 rounded-xl border border-outline-variant/10 shadow-sm">
+          <div className="flex-1 relative">
             <span className="material-symbols-outlined absolute left-3 top-1/2 -translate-y-1/2 text-on-surface-variant text-[18px]">search</span>
             <input
               type="text"
@@ -280,29 +276,29 @@ export default function RolesPermissions() {
               style={{ color: "var(--color-on-surface)" }}
             />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center justify-end gap-2 shrink-0">
             <span className="text-xs font-semibold text-on-surface-variant">
               {totalRoles} {totalRoles === 1 ? "role" : "roles"} found
             </span>
           </div>
         </div>
 
-        {/* Table */}
+        {/* Table Container with Controlled Column Breakdown */}
         <div className="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/10 shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left text-xs md:text-sm">
               <thead className="bg-surface-container-high/30 text-xs font-headline font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/10">
                 <tr>
-                  <th className="px-6 py-4">Role Name</th>
-                  <th className="px-6 py-4 text-center">Permissions</th>
-                  <th className="px-6 py-4">Description</th>
-                  <th className="px-6 py-4 text-right">Action</th>
+                  <th className="px-4 md:px-6 py-4">Role Name</th>
+                  <th className="px-4 md:px-6 py-4 text-center">Permissions</th>
+                  <th className="px-4 md:px-6 py-4 hidden md:table-cell">Description</th>
+                  <th className="px-4 md:px-6 py-4 text-right">Action</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
                 {paginatedRoles.length === 0 ? (
                   <tr>
-                    <td colSpan="4" className="px-6 py-12 text-center text-on-surface-variant">
+                    <td colSpan="4" className="px-4 md:px-6 py-12 text-center text-on-surface-variant">
                       <span className="material-symbols-outlined text-4xl block mb-2 opacity-30">shield</span>
                       <p className="text-sm font-medium">No roles found</p>
                       <p className="text-xs">Try adjusting your search or create a new role.</p>
@@ -319,32 +315,32 @@ export default function RolesPermissions() {
                         style={{ animation: `fadeInUp 0.3s ease ${index * 0.05}s both` }}
                         onClick={() => navigate(`/school-admin/roles/edit/${r.id}`)}
                       >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
-                            <div className={`w-9 h-9 rounded-md flex items-center justify-center ${aes.bg}`}>
-                              <span className={`material-symbols-outlined text-[18px] ${aes.text}`}>{aes.icon}</span>
+                        <td className="px-4 md:px-6 py-3 md:py-4">
+                          <div className="flex items-center gap-2 md:gap-3">
+                            <div className={`w-8 h-8 md:w-9 md:h-9 rounded-md flex items-center justify-center shrink-0 ${aes.bg}`}>
+                              <span className={`material-symbols-outlined text-[16px] md:text-[18px] ${aes.text}`}>{aes.icon}</span>
                             </div>
-                            <p className="font-semibold text-on-surface group-hover:text-primary transition-colors">
+                            <p className="font-semibold text-on-surface group-hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-xs">
                               {r.name}
                             </p>
                           </div>
                         </td>
-                        <td className="px-6 py-4 text-center">
-                          <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-extrabold bg-primary/10 text-primary px-2.5 py-1 rounded-full border border-primary/20">
-                            {permCount} assigned
+                        <td className="px-4 md:px-6 py-3 md:py-4 text-center">
+                          <span className="inline-flex items-center gap-1.5 text-[9px] md:text-[10px] uppercase font-extrabold bg-primary/10 text-primary px-2 md:px-2.5 py-1 rounded-full border border-primary/20 whitespace-nowrap">
+                            {permCount} <span className="hidden sm:inline">assigned</span>
                           </span>
                         </td>
-                        <td className="px-6 py-4">
-                          <p className={`text-xs font-body truncate max-w-xs ${r.description && r.description.trim().length > 0 ? "text-on-surface-variant" : "text-outline italic"}`}>
+                        <td className="px-4 md:px-6 py-3 md:py-4 hidden md:table-cell">
+                          <p className={`text-xs font-body truncate max-w-xs md:max-w-md ${r.description && r.description.trim().length > 0 ? "text-on-surface-variant" : "text-outline italic"}`}>
                             {r.description?.trim() || "No description provided."}
                           </p>
                         </td>
-                        <td className="px-6 py-4 text-right">
+                        <td className="px-4 md:px-6 py-3 md:py-4 text-right">
                           <button
                             onClick={(e) => { e.stopPropagation(); navigate(`/school-admin/roles/edit/${r.id}`); }}
-                            className="px-3 py-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors"
+                            className="px-2.5 py-1.5 text-xs font-bold text-primary bg-primary/10 hover:bg-primary/20 rounded-md transition-colors whitespace-nowrap"
                           >
-                            Edit Details
+                            Edit
                           </button>
                         </td>
                       </tr>
@@ -355,33 +351,35 @@ export default function RolesPermissions() {
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* Responsive Pagination Strip */}
           {totalRoles > 0 && (
-            <div className="p-4 flex flex-wrap gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
-              <div className="flex items-center gap-2 text-xs font-body text-on-surface-variant">
-                <span>Rows per page:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="bg-surface-container-low border border-outline-variant/20 text-xs rounded-md px-2 py-1.5 outline-none focus:border-primary text-on-surface"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-                <span className="ml-2">Showing {rangeStart}-{rangeEnd} of {totalRoles}</span>
+            <div className="p-4 flex flex-col sm:flex-row gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
+              <div className="flex items-center justify-between w-full sm:w-auto gap-2 text-xs font-body text-on-surface-variant">
+                <div className="flex items-center gap-2">
+                  <span>Rows:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="bg-surface-container-low border border-outline-variant/20 text-xs rounded-md px-1.5 py-1 outline-none focus:border-primary text-on-surface"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Showing {rangeStart}-{rangeEnd} of {totalRoles}</span>
               </div>
-              <div className="flex items-center gap-3">
+              <div className="flex items-center justify-between w-full sm:w-auto gap-3">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
                 >Previous</button>
-                <span className="text-xs font-semibold text-on-surface-variant">Page {currentPage} of {totalPages}</span>
+                <span className="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Page {currentPage} of {totalPages}</span>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
                 >Next</button>
               </div>
             </div>

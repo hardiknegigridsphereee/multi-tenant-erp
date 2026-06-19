@@ -23,11 +23,11 @@ function Skeleton({ className = "", style = {} }) {
 
 function MappingSkeleton() {
   return (
-    <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-4xl mx-auto">
+    <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8">
       <Skeleton style={{ width: 120, height: 20 }} />
       <Skeleton style={{ width: 200, height: 32, marginTop: 20 }} />
       <div className="bg-surface-container-lowest p-6 md:p-8 rounded-xl border border-outline-variant/10">
-        <div className="flex flex-col sm:flex-row items-center gap-6 mb-8 pb-8">
+        <div className="flex flex-row items-center gap-6 mb-8 pb-8">
           <div className="flex flex-col items-center">
             <Skeleton style={{ width: 56, height: 56, borderRadius: 999 }} />
             <Skeleton style={{ width: 100, height: 16, marginTop: 8 }} />
@@ -209,7 +209,7 @@ export default function MappingDetail() {
   // ── Render ──
   return (
     <SchoolLayout title="Mapping Details">
-      <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8 max-w-4xl mx-auto">
+      <div className="px-4 sm:px-6 md:px-8 py-6 md:py-8">
 
         {/* Toast */}
         {toast && (
@@ -329,7 +329,7 @@ export default function MappingDetail() {
         <div className="bg-surface-container-lowest p-6 md:p-8 rounded-xl shadow-sm border border-outline-variant/10">
 
           {/* Header section: Parent ↔ Student */}
-          <div className="flex flex-col sm:flex-row items-center gap-6 mb-8 border-b border-outline-variant/10 pb-8">
+          <div className="flex flex-row items-center gap-6 lg:mb-8 border-b border-outline-variant/10 pb-8">
             <div className="flex flex-col items-center text-center">
               <div className="w-14 h-14 mb-2 rounded-full bg-primary/10 text-primary flex items-center justify-center">
                 <span className="material-symbols-outlined text-2xl">escalator_warning</span>
@@ -363,11 +363,6 @@ export default function MappingDetail() {
                   {mapping.relationship || "Linked"}
                 </span>
               )}
-              <div className="w-full h-px bg-outline-variant/30 relative">
-                <span className="absolute right-0 top-1/2 -translate-y-1/2 material-symbols-outlined text-outline text-sm">
-                  arrow_forward
-                </span>
-              </div>
             </div>
 
             <div className="flex flex-col items-center text-center">

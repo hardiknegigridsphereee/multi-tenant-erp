@@ -36,7 +36,7 @@ function ParentsSkeleton() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
@@ -291,7 +291,7 @@ export default function Parents() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <StatCard icon="family_history" label="Total Parents" value={totalParents} accentColor="var(--color-primary)" />
           <StatCard icon="check_circle" label="Active" value={activeParents} accentColor="var(--color-secondary)" />
           <StatCard icon="archive" label="Archived" value={archivedParents} accentColor="var(--color-outline)" />
@@ -332,21 +332,21 @@ export default function Parents() {
         {/* Table */}
         <div className="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/10 shadow-sm">
           <div className="overflow-x-auto">
-            <table className="w-full text-left">
+            <table className="w-full text-left text-xs md:text-sm">
               <thead className="bg-surface-container-high/30 text-xs font-headline font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/10">
                 <tr>
-                  <th className="px-6 py-4">Parent Details</th>
-                  <th className="px-6 py-4">Contact Info</th>
-                  <th className="px-6 py-4">Occupation</th>
-                  <th className="px-6 py-4">Emergency Contact</th>
-                  <th className="px-6 py-4 text-center">Status</th>
-                  <th className="px-6 py-4 text-right"></th>
+                  <th className="px-4 md:px-6 py-4">Parent Details</th>
+                  <th className="px-4 md:px-6 py-4">Contact Info</th>
+                  <th className="px-4 md:px-6 py-4 hidden md:table-cell">Occupation</th>
+                  <th className="px-4 md:px-6 py-4 hidden sm:table-cell">Emergency Contact</th>
+                  <th className="px-4 md:px-6 py-4 text-center">Status</th>
+                  <th className="px-4 md:px-6 py-4 text-right"></th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
                 {paginatedParents.length === 0 ? (
                   <tr>
-                    <td colSpan="6" className="px-6 py-12 text-center text-on-surface-variant">
+                    <td colSpan="6" className="px-4 md:px-6 py-12 text-center text-on-surface-variant">
                       <span className="material-symbols-outlined text-4xl block mb-2 opacity-30">family_history</span>
                       <p className="text-sm font-medium">No parents found</p>
                       <p className="text-xs">Try adjusting your filters or add a new parent.</p>
@@ -369,30 +369,30 @@ export default function Parents() {
                         className="group cursor-pointer transition-all duration-150 hover:bg-surface-container-high/30 hover:shadow-inner"
                         style={{ animation: `fadeInUp 0.3s ease ${index * 0.05}s both` }}
                       >
-                        <td className="px-6 py-4">
-                          <div className="flex items-center gap-3">
+                        <td className="px-4 md:px-6 py-3 md:py-4">
+                          <div className="flex items-center gap-3 min-w-0">
                             {p.profile_picture ? (
-                              <img src={p.profile_picture} alt="Profile" className="w-9 h-9 rounded-full object-cover border border-outline-variant/20" />
+                              <img src={p.profile_picture} alt="Profile" className="w-8 h-8 md:w-9 md:h-9 rounded-full object-cover border border-outline-variant/20 shrink-0" />
                             ) : (
-                              <div className={`w-9 h-9 rounded-full flex items-center justify-center font-bold text-xs border border-outline-variant/20 ${getColorClass(index)}`}>
+                              <div className={`w-8 h-8 md:w-9 md:h-9 rounded-full flex items-center justify-center font-bold text-xs border border-outline-variant/20 shrink-0 ${getColorClass(index)}`}>
                                 {getInitials(fName, lName, emailAddr)}
                               </div>
                             )}
-                            <div>
-                              <p className="font-semibold text-on-surface group-hover:text-primary transition-colors">
+                            <div className="min-w-0">
+                              <p className="font-semibold text-on-surface group-hover:text-primary transition-colors truncate max-w-[120px] sm:max-w-xs">
                                 {fName || lName ? `${fName} ${lName}` : "Pending Name"}
                               </p>
-                              <p className="text-2xs text-outline font-mono mt-0.5">{emailAddr}</p>
+                              <p className="text-[10px] md:text-2xs text-outline font-mono mt-0.5 truncate max-w-[120px] sm:max-w-none">{emailAddr}</p>
                             </div>
                           </div>
                         </td>
-                        <td className="px-6 py-4 font-mono text-xs font-semibold text-on-surface-variant">
+                        <td className="px-4 md:px-6 py-3 md:py-4 font-mono text-xs font-semibold text-on-surface-variant whitespace-nowrap">
                           {phone}
                         </td>
-                        <td className="px-6 py-4 text-xs text-on-surface-variant">
+                        <td className="px-4 md:px-6 py-3 md:py-4 text-xs text-on-surface-variant hidden md:table-cell truncate max-w-[150px]">
                           {occupation}
                         </td>
-                        <td className="px-6 py-4">
+                        <td className="px-4 md:px-6 py-3 md:py-4 hidden sm:table-cell whitespace-nowrap">
                           {emergency ? (
                             <span className="inline-flex items-center gap-1.5 px-2.5 py-1 bg-error/10 text-error rounded-full text-[10px] font-bold border border-error/20">
                               <span className="material-symbols-outlined text-[13px]">emergency</span>
@@ -402,21 +402,21 @@ export default function Parents() {
                             <span className="text-xs text-outline italic">Not setup</span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-center">
+                        <td className="px-4 md:px-6 py-3 md:py-4 text-center">
                           {!isArchived ? (
-                            <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-extrabold bg-success/20 text-success dark:bg-success/30 px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1.5 text-[9px] md:text-[10px] uppercase font-extrabold bg-success/20 text-success dark:bg-success/30 px-2 md:px-2.5 py-1 rounded-full whitespace-nowrap">
                               <span className="w-1.5 h-1.5 rounded-full bg-success animate-pulse" />
                               Active
                             </span>
                           ) : (
-                            <span className="inline-flex items-center gap-1.5 text-[10px] uppercase font-extrabold bg-outline-variant/20 text-outline px-2.5 py-1 rounded-full">
+                            <span className="inline-flex items-center gap-1.5 text-[9px] md:text-[10px] uppercase font-extrabold bg-outline-variant/20 text-outline px-2 md:px-2.5 py-1 rounded-full whitespace-nowrap">
                               <span className="w-1.5 h-1.5 rounded-full bg-outline" />
                               Archived
                             </span>
                           )}
                         </td>
-                        <td className="px-6 py-4 text-right">
-                          <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors">chevron_right</span>
+                        <td className="px-4 md:px-6 py-3 md:py-4 text-right">
+                          <span className="material-symbols-outlined text-outline group-hover:text-primary transition-colors text-base md:text-xl">chevron_right</span>
                         </td>
                       </tr>
                     );
@@ -426,33 +426,36 @@ export default function Parents() {
             </table>
           </div>
 
-          {/* Pagination */}
+          {/* Responsive Footer Controls */}
           {totalFiltered > 0 && (
-            <div className="p-4 flex flex-wrap gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
-              <div className="flex items-center gap-2 text-xs font-body text-on-surface-variant">
-                <span>Rows per page:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="bg-surface-container-low border border-outline-variant/20 text-xs rounded-md px-2 py-1.5 outline-none focus:border-primary text-on-surface"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-                <span className="ml-2">Showing {rangeStart}-{rangeEnd} of {totalFiltered}</span>
+            <div className="p-4 flex flex-col sm:flex-row gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
+              <div className="flex items-center justify-between w-full sm:w-auto gap-2 text-xs font-body text-on-surface-variant">
+                <div className="flex items-center gap-2">
+                  <span>Rows:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="bg-surface-container-low border border-outline-variant/20 text-xs rounded-md px-1.5 py-1 outline-none focus:border-primary text-on-surface"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Showing {rangeStart}-{rangeEnd} of {totalFiltered}</span>
               </div>
-              <div className="flex items-center gap-3">
+              
+              <div className="flex items-center justify-between w-full sm:w-auto gap-3">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors whitespace-nowrap"
                 >Previous</button>
-                <span className="text-xs font-semibold text-on-surface-variant">Page {currentPage} of {totalPages}</span>
+                <span className="text-xs font-semibold text-on-surface-variant whitespace-nowrap">Page {currentPage} of {totalPages}</span>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors whitespace-nowrap"
                 >Next</button>
               </div>
             </div>

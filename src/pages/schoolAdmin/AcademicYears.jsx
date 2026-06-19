@@ -36,7 +36,7 @@ function AcademicYearsSkeleton() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
@@ -199,7 +199,7 @@ export default function AcademicYears() {
         </div>
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <StatCard icon="event_note" label="Total Years" value={total} accentColor="var(--color-primary)" />
           <StatCard icon="check_circle" label="Active" value={active} accentColor="var(--color-secondary)" />
           <StatCard icon="archive" label="Archived" value={archived} accentColor="var(--color-outline)" />

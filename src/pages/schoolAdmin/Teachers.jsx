@@ -36,7 +36,7 @@ function TeachersSkeleton() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+      <div className="grid grid-cols-3 gap-3">
         {Array.from({ length: 3 }).map((_, i) => (
           <div
             key={i}
@@ -274,7 +274,7 @@ export default function Teachers() {
         )}
 
         {/* Stats Cards */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-3">
           <StatCard icon="school" label="Total Teachers" value={totalTeachers} accentColor="var(--color-primary)" />
           <StatCard icon="check_circle" label="Active" value={activeTeachers} accentColor="var(--color-secondary)" />
           <StatCard icon="archive" label="Archived" value={archivedTeachers} accentColor="var(--color-outline)" />
@@ -313,15 +313,15 @@ export default function Teachers() {
         </div>
 
         {/* Table */}
-        <div className="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/10 shadow-sm">
+        <div className="bg-surface-container-lowest rounded-xl overflow-hidden border border-outline-variant/10 shadow-sm text-[12px]">
           <div className="overflow-x-auto">
             <table className="w-full text-left">
               <thead className="bg-surface-container-high/30 text-xs font-headline font-bold uppercase tracking-wider text-on-surface-variant border-b border-outline-variant/10">
                 <tr>
-                  <th className="px-6 py-4">Faculty Profile</th>
-                  <th className="px-6 py-4">Employee ID</th>
-                  <th className="px-6 py-4">Qualification</th>
-                  <th className="px-6 py-4 text-center">Status</th>
+                  <th className="lg:px-6 px-3 py-4">Faculty Profile</th>
+                  <th className="lg:px-6 px-3 py-4">Employee ID</th>
+                  <th className="lg:px-6 px-3 py-4">Qualification</th>
+                  <th className="lg:px-6 px-3 py-4 text-center">Status</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
@@ -389,33 +389,46 @@ export default function Teachers() {
 
           {/* Pagination */}
           {totalTeachers > 0 && (
-            <div className="p-4 flex flex-wrap gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
-              <div className="flex items-center gap-2 text-xs font-body text-on-surface-variant">
-                <span>Rows per page:</span>
-                <select
-                  value={pageSize}
-                  onChange={(e) => setPageSize(Number(e.target.value))}
-                  className="bg-surface-container-low border border-outline-variant/20 text-xs rounded-md px-2 py-1.5 outline-none focus:border-primary text-on-surface"
-                >
-                  {PAGE_SIZE_OPTIONS.map((size) => (
-                    <option key={size} value={size}>{size}</option>
-                  ))}
-                </select>
-                <span className="ml-2">Showing {rangeStart}-{rangeEnd} of {totalTeachers}</span>
+            <div className="p-4 flex flex-col sm:flex-row gap-4 justify-between items-center border-t border-outline-variant/10 bg-surface-container-high/30">
+              
+              {/* Left Side: Row Selection & Status Display */}
+              <div className="flex items-center justify-between w-full sm:w-auto gap-2 text-xs font-body text-on-surface-variant">
+                <div className="flex items-center gap-2">
+                  <span>Rows:</span>
+                  <select
+                    value={pageSize}
+                    onChange={(e) => setPageSize(Number(e.target.value))}
+                    className="bg-surface-container-low border border-outline-variant/20 text-xs rounded-md px-1.5 py-1 outline-none focus:border-primary text-on-surface"
+                  >
+                    {PAGE_SIZE_OPTIONS.map((size) => (
+                      <option key={size} value={size}>{size}</option>
+                    ))}
+                  </select>
+                </div>
+                <span>Showing {rangeStart}-{rangeEnd} of {totalTeachers}</span>
               </div>
-              <div className="flex items-center gap-3">
+
+              {/* Right Side: Page Navigation Buttons */}
+              <div className="flex items-center justify-between w-full sm:w-auto gap-3">
                 <button
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
-                >Previous</button>
-                <span className="text-xs font-semibold text-on-surface-variant">Page {currentPage} of {totalPages}</span>
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors whitespace-nowrap"
+                >
+                  Previous
+                </button>
+                <span className="text-xs font-semibold text-on-surface-variant whitespace-nowrap">
+                  Page {currentPage} of {totalPages}
+                </span>
                 <button
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
-                  className="px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors"
-                >Next</button>
+                  className="flex-1 sm:flex-none px-3 py-1.5 rounded-md text-xs font-semibold border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high transition-colors whitespace-nowrap"
+                >
+                  Next
+                </button>
               </div>
+
             </div>
           )}
         </div>

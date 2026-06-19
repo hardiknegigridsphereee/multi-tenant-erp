@@ -4,18 +4,22 @@ import SchoolLayout from "../../components/erp/school/SchoolLayout";
 import api from "../../services/axiosClient";
 import { schoolAdminApi } from "../../services/schoolAdminApi";
 
-// ── Skeleton shimmer ──
+/* ─────────────────────────────────────────────
+   Skeleton Shimmer Styles Injection
+───────────────────────────────────────────── */
 if (typeof document !== "undefined" && !document.getElementById("skeleton-style")) {
   const s = document.createElement("style");
   s.id = "skeleton-style";
   s.textContent = `@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`;
   document.head.appendChild(s);
 }
+
 const SHIMMER = {
   background: "linear-gradient(90deg,color-mix(in srgb,var(--color-outline-variant) 16%,var(--color-surface-container-lowest)) 25%,color-mix(in srgb,var(--color-outline-variant) 28%,var(--color-surface-container-lowest)) 50%,color-mix(in srgb,var(--color-outline-variant) 16%,var(--color-surface-container-lowest)) 75%)",
   backgroundSize: "200% 100%",
   animation: "skeleton-shimmer 1.4s ease infinite",
 };
+
 function Sk({ w, h, r = 6, style = {} }) {
   return <div style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...SHIMMER, ...style }} />;
 }
@@ -23,91 +27,52 @@ function Sk({ w, h, r = 6, style = {} }) {
 // ── Full‑page Skeleton ──
 function AddMappingSkeleton() {
   return (
-    <SchoolLayout title="Parent-Student Mapping">
-      <div className="max-w-4xl px-4 md:px-8 pt-4 pb-12 space-y-6">
-        {/* Top Bar */}
-        <div className="flex flex-wrap justify-between items-center gap-3">
+    <SchoolLayout>
+      <div className="px-4 md:px-8 pt-4 pb-12 space-y-6 animate-pulse mx-auto">
+        {/* Top Bar Navigation Strip */}
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <Sk w={140} h={20} />
-          <div className="flex gap-2">
-            <Sk w={80} h={36} r={8} />
-            <Sk w={120} h={36} r={8} />
+          <div className="flex gap-2 w-full sm:w-auto">
+            <Sk h={36} className="flex-1 sm:w-20" />
+            <Sk h={36} className="flex-1 sm:w-32" />
           </div>
         </div>
 
-        {/* Entity Selection SectionCard */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Sk w={16} h={16} r={999} />
-            <Sk w={120} h={16} />
-          </div>
-          <div className="p-6">
-            <div className="grid md:grid-cols-2 gap-6">
-              {Array.from({ length: 2 }).map((_, i) => (
-                <div key={i}>
-                  <Sk w={80} h={12} />
-                  <Sk w="100%" h={42} r={6} />
-                </div>
-              ))}
+        {/* Form Components Loading Shimmers */}
+        {Array.from({ length: 3 }).map((_, sIdx) => (
+          <div key={sIdx} className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-outline-variant/10 flex items-center gap-2">
+              <Sk w={16} h={16} r={999} />
+              <Sk w={130} h={16} />
             </div>
-          </div>
-        </div>
-
-        {/* Relationship Designation SectionCard */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Sk w={16} h={16} r={999} />
-            <Sk w={140} h={16} />
-          </div>
-          <div className="p-6">
-            <div className="grid grid-cols-3 gap-4">
-              {Array.from({ length: 3 }).map((_, i) => (
-                <Sk key={i} w="100%" h={44} r={8} />
-              ))}
-            </div>
-          </div>
-        </div>
-
-        {/* Access Permissions SectionCard */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Sk w={16} h={16} r={999} />
-            <Sk w={140} h={16} />
-          </div>
-          <div className="p-6 space-y-2">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-                <div className="flex-1">
-                  <Sk w={120} h={16} />
-                  <Sk w={180} h={12} r={4} style={{ marginTop: 4 }} />
-                </div>
-                <Sk w={40} h={20} r={999} />
+            <div className="p-4 md:p-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <Sk h={38} className="w-full" />
+                <Sk h={38} className="w-full" />
               </div>
-            ))}
+            </div>
           </div>
-        </div>
+        ))}
       </div>
     </SchoolLayout>
   );
 }
 
-// ── Style tokens ──
-const labelClass =
-  "text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block";
-const editFieldClass =
-  "w-full text-sm font-bold text-slate-800 bg-white border border-[#0058be]/30 focus:ring-2 focus:ring-[#0058be]/10 outline-none px-4 py-2 rounded-md";
+/* ─────────────────────────────────────────────
+   Design System Variables & Tokens
+───────────────────────────────────────────── */
+const labelClass = "text-[10px] md:text-xs font-bold uppercase tracking-wider text-on-surface-variant/80 mb-1.5 block";
+const editFieldClass = "w-full text-xs md:text-sm font-semibold text-on-surface bg-surface-container-lowest border border-outline-variant/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none px-3 py-2 rounded-lg transition";
 
-// ── SectionCard ──
 function SectionCard({ title, icon, children }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-        <span className="w-1 h-5 rounded-full bg-blue-400 shrink-0" />
-        <span className="material-symbols-outlined text-[18px] text-gray-400">
-          {icon}
-        </span>
-        <h2 className="text-sm font-bold text-gray-800">{title}</h2>
+    <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm overflow-hidden">
+      <div className="px-4 md:px-6 py-4 border-b border-outline-variant/10 flex items-center gap-2">
+        <span className="w-1 h-5 rounded-full bg-primary shrink-0" />
+        <span className="material-symbols-outlined text-[18px] text-on-surface-variant/60">{icon}</span>
+        <h3 className="text-sm font-headline font-bold text-on-surface">{title}</h3>
       </div>
-      <div className="p-6">{children}</div>
+      <div className="p-4 md:p-6">{children}</div>
     </div>
   );
 }
@@ -115,29 +80,31 @@ function SectionCard({ title, icon, children }) {
 // ── Toggle row for permissions ──
 function ToggleRow({ label, description, checked, onChange }) {
   return (
-    <div className="flex items-center justify-between py-3 border-b border-gray-100 last:border-0">
-      <div>
-        <p className="text-sm font-bold text-slate-800">{label}</p>
+    <div className="flex items-center justify-between py-3.5 border-b border-outline-variant/10 last:border-0 gap-4">
+      <div className="min-w-0">
+        <p className="text-xs md:text-sm font-bold text-on-surface">{label}</p>
         {description && (
-          <p className="text-xs text-gray-400 mt-0.5">{description}</p>
+          <p className="text-[11px] md:text-xs text-on-surface-variant/70 mt-0.5 leading-relaxed">{description}</p>
         )}
       </div>
       <button
         type="button"
         onClick={() => onChange(!checked)}
-        className={`w-10 h-5 rounded-full p-0.5 transition-colors shrink-0 ${checked ? "bg-[#0058be]" : "bg-gray-300"
-          }`}
+        className="w-10 h-5 rounded-full p-0.5 transition-colors shrink-0 outline-none"
+        style={{ backgroundColor: checked ? "var(--color-primary)" : "color-mix(in srgb, var(--color-outline-variant) 40%, transparent)" }}
       >
         <div
-          className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${checked ? "translate-x-5" : "translate-x-0"
-            }`}
+          className="w-4 h-4 bg-surface-container-lowest rounded-full shadow transition-transform"
+          style={{ transform: checked ? "translateX(20px)" : "translateX(0)" }}
         />
       </button>
     </div>
   );
 }
 
-// ── Main Component ──
+/* ─────────────────────────────────────────────
+   Main Link Framework Entry Module
+───────────────────────────────────────────── */
 export default function AddMapping() {
   const navigate = useNavigate();
 
@@ -157,13 +124,13 @@ export default function AddMapping() {
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
 
-  // ── Toast helper ──
+// ── Toast helper ──
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
     setTimeout(() => setToast(null), 3000);
   };
 
-  // ── Fetch dropdowns ──
+// ── Fetch dropdowns ──
   useEffect(() => {
     const fetchDropdownData = async () => {
       try {
@@ -174,7 +141,7 @@ export default function AddMapping() {
         setParents(parentsData.results || parentsData || []);
         setStudents(studentsData.results || studentsData || []);
       } catch (err) {
-        setError("Failed to load Guardians or Students.");
+        setError("Failed to load Guardians or Students parameters.");
       } finally {
         setInitialLoading(false);
       }
@@ -182,11 +149,11 @@ export default function AddMapping() {
     fetchDropdownData();
   }, []);
 
-  // ── Submit ──
+ // ── Submit ──
   const handleSave = async (e) => {
     e.preventDefault();
     if (!selectedParent || !selectedStudent) {
-      setError("Please select both a Guardian and a Student.");
+      setError("Please select both a Guardian and a Student parameter.");
       return;
     }
     setLoading(true);
@@ -206,13 +173,9 @@ export default function AddMapping() {
     } catch (err) {
       if (err.response?.data) {
         const data = err.response.data;
-        setError(
-          Object.entries(data)
-            .map(([f, v]) => `${f}: ${Array.isArray(v) ? v.join(" ") : v}`)
-            .join(" | ")
-        );
+        setError(Object.entries(data).map(([f, v]) => `${f}: ${Array.isArray(v) ? v.join(" ") : v}`).join(" | "));
       } else {
-        setError("Failed to create mapping.");
+        setError("Failed to generate relational link authorization.");
       }
     } finally {
       setLoading(false);
@@ -223,28 +186,22 @@ export default function AddMapping() {
     if (!obj) return "Unknown";
     const f = obj.first_name || obj.user?.first_name || "";
     const l = obj.last_name || obj.user?.last_name || "";
-    return (f || l) ? `${f} ${l}`.trim() : obj.email || "No Name";
+    return (f || l) ? `${f} ${l}`.trim() : obj.email || "No Name Designated";
   };
 
-  // ── Skeleton ──
-  if (initialLoading) {
-    return <AddMappingSkeleton />;
-  }
+  if (initialLoading) return <AddMappingSkeleton />;
 
   // ── Render ──
   return (
-    <SchoolLayout title="Parent-Student Mapping">
-      <form onSubmit={handleSave}>
-        <div className="max-w-4xl px-4 md:px-8 pt-4 pb-12 space-y-6">
+    <SchoolLayout>
+      <form onSubmit={handleSave} className="w-full">
+        <div className="px-4 md:px-8 pt-4 pb-12 space-y-6 mx-auto">
 
-          {/* Toast */}
+          {/* Action Status Toast Notifications */}
           {toast && (
-            <div
-              className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 transition-all duration-300 ${toast.type === "success"
-                ? "bg-green-600 text-white"
-                : "bg-red-600 text-white"
-                }`}
-            >
+            <div className={`fixed top-6 right-4 md:right-6 z-50 px-5 py-3.5 rounded-xl shadow-xl font-bold text-xs md:text-sm flex items-center gap-3 border border-outline-variant/10 transition-all ${
+              toast.type === "success" ? "bg-success text-white" : "bg-error text-white"
+            }`}>
               <span className="material-symbols-outlined text-base">
                 {toast.type === "success" ? "check_circle" : "error"}
               </span>
@@ -252,81 +209,71 @@ export default function AddMapping() {
             </div>
           )}
 
-          {/* ── Top Bar ── */}
-          <div className="flex flex-wrap justify-between items-center gap-3">
+          {/* ── Top Bar Action Navigation Strip ── */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <button
               type="button"
               onClick={() => navigate("/school-admin/mapping")}
-              className="flex items-center gap-1.5 text-[#0058be] text-sm font-semibold hover:underline"
+              className="flex items-center gap-1.5 text-primary text-xs md:text-sm font-bold hover:underline"
             >
-              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              <span className="material-symbols-outlined text-base">arrow_back</span>
               Back to Directory
             </button>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <button
                 type="button"
                 onClick={() => navigate("/school-admin/mapping")}
-                className="px-4 py-2 text-sm text-gray-500 font-bold hover:bg-gray-100 rounded-md"
+                className="px-4 py-2 text-xs md:text-sm text-on-surface-variant font-bold hover:bg-surface-container-high rounded-lg transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-[#0058be] text-white text-sm font-bold rounded-md shadow-sm disabled:opacity-70"
+                className="flex items-center justify-center gap-2 px-5 py-2 bg-primary text-white text-xs md:text-sm font-bold rounded-lg shadow-sm disabled:opacity-60 transition"
               >
-                {loading && (
-                  <span className="material-symbols-outlined animate-spin text-[16px]">
-                    progress_activity
-                  </span>
-                )}
+                {loading && <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>}
                 {loading ? "Saving..." : "Establish Link"}
               </button>
             </div>
           </div>
 
-          {/* Error banner */}
+          {/* Managed System Error Dashboard Banner */}
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 rounded-md border border-red-200 text-sm font-medium flex gap-2">
-              <span className="material-symbols-outlined text-xl shrink-0">error</span>
-              {error}
+            <div className="p-3.5 bg-error/10 text-error rounded-xl border border-error/20 text-xs md:text-sm font-medium flex gap-2.5 items-start">
+              <span className="material-symbols-outlined text-lg shrink-0">error</span>
+              <div className="break-all">{error}</div>
             </div>
           )}
 
-          {/* ── Entity Selection SectionCard ── */}
+          
           <SectionCard title="Entity Selection" icon="link">
-            <div className="grid md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
               <div>
-                <p className={labelClass}>Select Guardian</p>
+                <label className={labelClass}>Select Guardian</label>
                 <select
                   required
                   value={selectedParent}
                   onChange={(e) => setSelectedParent(e.target.value)}
                   className={editFieldClass}
                 >
-                  <option value="">
-                    {initialLoading ? "Loading..." : "Select Guardian..."}
-                  </option>
+                  <option value="">Select Guardian...</option>
                   {parents.map((p) => (
-                    <option key={p.id} value={p.id}>
-                      {getDisplayName(p)}
-                    </option>
+                    <option key={p.id} value={p.id}>{getDisplayName(p)}</option>
                   ))}
                 </select>
               </div>
 
               <div>
-                <p className={labelClass}>Select Student</p>
+                <label className={labelClass}>Select Student</label>
                 <select
                   required
                   value={selectedStudent}
                   onChange={(e) => setSelectedStudent(e.target.value)}
                   className={editFieldClass}
                 >
-                  <option value="">
-                    {initialLoading ? "Loading..." : "Select Student..."}
-                  </option>
+                  <option value="">Select Student...</option>
                   {students.map((s) => (
                     <option key={s.id} value={s.id}>
                       {getDisplayName(s)}{s.enrollment_number ? ` (${s.enrollment_number})` : ""}
@@ -337,45 +284,52 @@ export default function AddMapping() {
             </div>
           </SectionCard>
 
-          {/* ── Relationship Designation SectionCard ── */}
+          {/* ── Relationship Designation Segment ── */}
           <SectionCard title="Relationship Designation" icon="diversity_3">
-            <div className="grid grid-cols-3 gap-4">
-              {["Father", "Mother", "Guardian"].map((rel) => (
-                <button
-                  key={rel}
-                  type="button"
-                  onClick={() => setRelationship(rel)}
-                  className={`py-3 rounded-lg border-2 text-sm font-bold uppercase tracking-wide transition-all ${relationship === rel
-                    ? "border-[#0058be] bg-[#eff4ff] text-[#0058be]"
-                    : "border-gray-200 bg-white text-gray-400 hover:border-gray-300"
-                    }`}
-                >
-                  {rel}
-                </button>
-              ))}
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              {["Father", "Mother", "Guardian"].map((rel) => {
+                const isSelected = relationship === rel;
+                return (
+                  <button
+                    key={rel}
+                    type="button"
+                    onClick={() => setRelationship(rel)}
+                    className="py-2.5 md:py-3 rounded-xl border-2 text-xs md:text-sm font-bold uppercase tracking-wide transition-all outline-none"
+                    style={{
+                      borderColor: isSelected ? "var(--color-primary)" : "color-mix(in srgb, var(--color-outline-variant) 30%, transparent)",
+                      backgroundColor: isSelected ? "color-mix(in srgb, var(--color-primary) 8%, transparent)" : "var(--color-surface-container-lowest)",
+                      color: isSelected ? "var(--color-primary)" : "var(--color-on-surface-variant)",
+                    }}
+                  >
+                    {rel}
+                  </button>
+                );
+              })}
             </div>
           </SectionCard>
 
-          {/* ── Permissions SectionCard ── */}
+          {/* ── Permissions Control Module ── */}
           <SectionCard title="Access Permissions" icon="shield_person">
-            <ToggleRow
-              label="Primary Contact"
-              description="This guardian will be the main point of contact."
-              checked={isPrimaryContact}
-              onChange={setIsPrimaryContact}
-            />
-            <ToggleRow
-              label="Academic Visibility"
-              description="Guardian can view grades, attendance, and reports."
-              checked={canViewAcademics}
-              onChange={setCanViewAcademics}
-            />
-            <ToggleRow
-              label="Financial Authorization"
-              description="Guardian is authorized to pay fees on behalf of the student."
-              checked={canPayFees}
-              onChange={setCanPayFees}
-            />
+            <div className="flex flex-col">
+              <ToggleRow
+                label="Primary Contact"
+                description="This guardian will be configured as the main operational node of contact."
+                checked={isPrimaryContact}
+                onChange={setIsPrimaryContact}
+              />
+              <ToggleRow
+                label="Academic Visibility"
+                description="Guardian token authorized to inspect grading, records, logs, and attendance rosters."
+                checked={canViewAcademics}
+                onChange={setCanViewAcademics}
+              />
+              <ToggleRow
+                label="Financial Authorization"
+                description="Guardian identity clearance granted to execute billing fee items on behalf of student profile."
+                checked={canPayFees}
+                onChange={setCanPayFees}
+              />
+            </div>
           </SectionCard>
 
         </div>

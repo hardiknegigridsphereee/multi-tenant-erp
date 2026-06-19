@@ -46,81 +46,67 @@ function Skeleton({ style = {} }) {
 // ─────────────────────────────────────────────
 function PageSkeleton() {
   return (
-    <div className="max-w-4xl px-4 md:px-8 pt-4 pb-12 space-y-6">
+    <div className="px-4 md:px-8 pt-4 pb-12 space-y-6">
 
       {/* Top bar */}
-      <div className="flex justify-between items-center">
+      <div className="flex flex-wrap justify-between items-center gap-3">
         <Skeleton style={{ width: 160, height: 18 }} />
         <div className="flex gap-2">
           <Skeleton style={{ width: 80, height: 36, borderRadius: 8 }} />
+          <Skeleton style={{ width: 110, height: 36, borderRadius: 8 }} />
           <Skeleton style={{ width: 110, height: 36, borderRadius: 8 }} />
         </div>
       </div>
 
       {/* Identity card */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 12,
-          border: "1px solid #f3f4f6",
-          padding: 24,
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-        }}
-      >
-        <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between", gap: 16 }}>
-          <div style={{ display: "flex", alignItems: "center", gap: 20 }}>
-            <Skeleton style={{ width: 64, height: 64, borderRadius: 14 }} />
-            <div>
-              <Skeleton style={{ width: 100, height: 11, marginBottom: 10 }} />
-              <Skeleton style={{ width: 220, height: 28 }} />
-            </div>
+     <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-4 md:p-6 shadow-sm animate-pulse">
+      <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6">
+        
+        <div className="flex items-center gap-4 md:gap-5 min-w-0 w-full">
+          <div className="hidden sm:flex w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-2xl bg-surface-container-high items-center justify-center border border-outline-variant/10">
+            <Skeleton style={{ width: 24, height: 24, borderRadius: 4 }} />
           </div>
-          <Skeleton style={{ width: 110, height: 36, borderRadius: 8 }} />
+          
+          <div className="flex-1 min-w-0 w-full">            
+            <Skeleton style={{ width: 64, height: 12, marginBottom: 8 }} />            
+            <Skeleton style={{ height: 28 }} className="w-full max-w-[160px] md:max-w-[200px] mt-1" />
+          </div>
+        </div>
+        
+        <div className="shrink-0 flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 border-outline-variant/10 pt-4 sm:pt-0">          
+          <Skeleton style={{ width: 110, height: 12 }} className="sm:hidden" />
+          
+          <div className="flex items-center gap-3">           
+            <Skeleton style={{ width: 40, height: 20, borderRadius: 999 }} className="shrink-0" />
+                        
+            <Skeleton style={{ borderRadius: 8 }} className="w-20 md:w-24 h-[28px] md:h-[36px] shrink-0" />
+          </div>
         </div>
       </div>
+    </div>
 
       {/* Year Configuration card */}
-      <div
-        style={{
-          background: "#fff",
-          borderRadius: 12,
-          border: "1px solid #f3f4f6",
-          boxShadow: "0 1px 3px rgba(0,0,0,0.05)",
-          overflow: "hidden",
-        }}
-      >
-        {/* Card header */}
-        <div
-          style={{
-            padding: "16px 24px",
-            borderBottom: "1px solid #f3f4f6",
-            display: "flex",
-            alignItems: "center",
-            gap: 10,
-          }}
-        >
-          <div style={{ width: 4, height: 20, background: "#60a5fa", borderRadius: 4, flexShrink: 0 }} />
-          <Skeleton style={{ width: 18, height: 18, borderRadius: 4 }} />
-          <Skeleton style={{ width: 130, height: 14 }} />
+      <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-5 md:p-6 shadow-sm animate-pulse">
+          
+        <div className="flex items-center gap-2 border-b border-outline-variant/10 pb-4 mb-5">          
+          <Skeleton style={{ width: 20, height: 20, borderRadius: 4 }} className="shrink-0" />          
+          <Skeleton style={{ width: 140, height: 18 }} />
         </div>
-        {/* Card body – two columns */}
-        <div
-          style={{
-            padding: 24,
-            display: "grid",
-            gridTemplateColumns: "1fr 1fr",
-            gap: 24,
-          }}
-        >
-          {[0, 1].map((i) => (
-            <div key={i}>
-              <Skeleton style={{ width: 80, height: 10, marginBottom: 8 }} />
-              <Skeleton style={{ width: "100%", height: 38, borderRadius: 6 }} />
-            </div>
-          ))}
+        
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+                    
+          <div className="space-y-2">           
+            <Skeleton style={{ width: 65, height: 12 }} />            
+            <Skeleton style={{ height: 40 }} className="w-full rounded-lg" />
+          </div>
+          
+          <div className="space-y-2">            
+            <Skeleton style={{ width: 60, height: 12 }} />            
+            <Skeleton style={{ height: 40 }} className="w-full rounded-lg" />
+          </div>
         </div>
       </div>
-
+      
     </div>
   );
 }
@@ -270,7 +256,7 @@ export default function CreateAcademicYear() {
     <SchoolLayout title="Academic Years">
       <InjectShimmer />
       <form onSubmit={handleSubmit}>
-        <div className="max-w-4xl px-4 md:px-8 pt-4 pb-12 space-y-6">
+        <div className="px-4 md:px-8 pt-4 pb-12 space-y-6">
 
           {/* Toast */}
           {toast && (
@@ -388,48 +374,59 @@ export default function CreateAcademicYear() {
           )}
 
           {/* ── Identity Card ── */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center justify-between gap-4">
-              <div className="flex items-center gap-5">
-                <div className="w-16 h-16 shrink-0 rounded-2xl bg-[#e5eeff] text-[#0058be] flex items-center justify-center border border-blue-100">
-                  <span className="material-symbols-outlined text-[28px]">calendar_month</span>
+          <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-4 md:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-6">
+              
+              {/* Left Block: Icon and Input Element Field */}
+              <div className="flex items-center gap-4 md:gap-5 min-w-0 w-full">
+                {/* Icon badge hidden on mobile views, visible from tablet (sm) breakpoint up */}
+                <div className="hidden sm:flex w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-2xl bg-primary/10 text-primary items-center justify-center border border-primary/20">
+                  <span className="material-symbols-outlined text-[24px] md:text-[28px]">calendar_month</span>
                 </div>
-                <div className="flex-1">
-                  <p className={labelClass}>Year Name</p>
+                
+                <div className="flex-1 min-w-0 w-full">
+                  <label className={labelClass}>Year Name</label>
                   <input
                     type="text"
                     required
                     value={name}
                     onChange={(e) => setName(e.target.value)}
-                    placeholder="e.g. 2024-2025"
-                    className="text-2xl font-bold text-gray-900 bg-transparent border-b-2 border-[#0058be]/30 focus:border-[#0058be] outline-none pb-1 w-full max-w-xs placeholder:text-gray-300 placeholder:font-normal placeholder:text-lg"
+                    placeholder="e.g. 2026-2027"
+                    className="text-lg md:text-2xl font-headline font-black text-on-surface bg-transparent border-b-2 border-outline-variant/30 focus:border-primary outline-none pb-1 w-full max-w-full sm:max-w-xs transition-colors placeholder:text-on-surface-variant/30 placeholder:font-normal"
                   />
                 </div>
               </div>
 
-              <div className="shrink-0 flex items-center gap-3">
-                <button
-                  type="button"
-                  onClick={() => setIsActive(!isActive)}
-                  className={`w-10 h-5 rounded-full p-0.5 transition-colors ${isActive ? "bg-[#0058be]" : "bg-gray-300"
-                    }`}
-                >
-                  <div
-                    className={`w-4 h-4 bg-white rounded-full shadow transition-transform ${isActive ? "translate-x-5" : "translate-x-0"
-                      }`}
-                  />
-                </button>
-                {isActive ? (
-                  <span className="bg-green-50 text-green-700 border border-green-200 px-4 py-2 rounded-lg font-bold text-sm flex items-center gap-2">
-                    <span className="material-symbols-outlined text-[18px]">check_circle</span>
-                    Active
-                  </span>
-                ) : (
-                  <span className="bg-gray-100 text-gray-600 px-4 py-2 rounded-lg font-bold text-sm">
-                    Inactive
-                  </span>
-                )}
+              {/* Right Block: Status Change Action Toggle */}
+              <div className="shrink-0 flex items-center justify-between sm:justify-end gap-3 border-t sm:border-t-0 border-outline-variant/10 pt-4 sm:pt-0">
+                {/* Visible descriptor label displayed only on mobile viewports for enhanced clarity */}
+                <span className="text-xs font-bold uppercase tracking-wider text-on-surface-variant/80 sm:hidden">Institutional Status</span>
+                
+                <div className="flex items-center gap-3">
+                  <button
+                    type="button"
+                    onClick={() => setIsActive(!isActive)}
+                    className="w-10 h-5 rounded-full p-0.5 transition-colors shrink-0 outline-none"
+                    style={{ backgroundColor: isActive ? "var(--color-primary)" : "color-mix(in srgb, var(--color-outline-variant) 40%, transparent)" }}
+                  >
+                    <div
+                      className="w-4 h-4 bg-surface-container-lowest rounded-full shadow transition-transform"
+                      style={{ transform: isActive ? "translateX(20px)" : "translateX(0)" }}
+                    />
+                  </button>
+                  
+                  {isActive ? (
+                    <span className="bg-success/10 text-success border border-success/20 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-extrabold text-xs md:text-sm uppercase tracking-wider whitespace-nowrap">
+                      Active
+                    </span>
+                  ) : (
+                    <span className="bg-outline-variant/20 text-outline border border-outline-variant/30 px-3 py-1.5 md:px-4 md:py-2 rounded-lg font-extrabold text-xs md:text-sm uppercase tracking-wider whitespace-nowrap">
+                      Inactive
+                    </span>
+                  )}
+                </div>
               </div>
+
             </div>
           </div>
 

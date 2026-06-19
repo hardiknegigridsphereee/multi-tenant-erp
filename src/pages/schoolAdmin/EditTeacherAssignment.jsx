@@ -56,7 +56,7 @@ function PageSkeleton() {
   };
 
   return (
-    <div style={{ maxWidth: 896, padding: "16px 32px 48px", display: "flex", flexDirection: "column", gap: 24 }}>
+    <div style={{padding: "16px 32px 48px", display: "flex", flexDirection: "column", gap: 24 }}>
 
       {/* ── Top bar ── */}
       <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center" }}>
@@ -307,7 +307,7 @@ export default function EditTeacherAssignment() {
   return (
     <SchoolLayout title="Assignment Details">
       <InjectShimmer />
-      <div className="max-w-4xl px-4 md:px-8 pt-4 pb-12 space-y-6">
+      <div className="px-4 md:px-8 pt-4 pb-12 space-y-6">
 
         {/* Toast */}
         {toast && (

@@ -23,7 +23,7 @@ function Sk({ w, h, r = 6, style = {} }) {
 function AssignTeacherSkeleton() {
   return (
     <SchoolLayout title="Teacher Assignment">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 md:py-8">
+      <div className="px-4 sm:px-6 py-6 md:py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <Sk w={240} h={32} />
@@ -197,7 +197,7 @@ export default function AssignTeacher() {
   // ── Render ──
   return (
     <SchoolLayout title="Teacher Assignment">
-      <div className="max-w-4xl mx-auto px-4 sm:px-6 py-6 md:py-8">
+      <div className="px-4 sm:px-6 py-6 md:py-8">
         <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-8">
           <div>
             <h1 className="text-2xl font-headline font-extrabold text-on-surface tracking-tight">

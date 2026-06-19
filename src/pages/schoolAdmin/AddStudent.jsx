@@ -4,18 +4,22 @@ import SchoolLayout from "../../components/erp/school/SchoolLayout";
 import { schoolAdminApi } from "../../services/schoolAdminApi";
 import api from "../../services/axiosClient";
 
-// ── Skeleton shimmer (injected once) ──
+/* ─────────────────────────────────────────────
+   Skeleton Shimmer Styles Injection
+───────────────────────────────────────────── */
 if (typeof document !== "undefined" && !document.getElementById("skeleton-style")) {
   const s = document.createElement("style");
   s.id = "skeleton-style";
   s.textContent = `@keyframes skeleton-shimmer{0%{background-position:200% 0}100%{background-position:-200% 0}}`;
   document.head.appendChild(s);
 }
+
 const SHIMMER = {
   background: "linear-gradient(90deg,color-mix(in srgb,var(--color-outline-variant) 16%,var(--color-surface-container-lowest)) 25%,color-mix(in srgb,var(--color-outline-variant) 28%,var(--color-surface-container-lowest)) 50%,color-mix(in srgb,var(--color-outline-variant) 16%,var(--color-surface-container-lowest)) 75%)",
   backgroundSize: "200% 100%",
   animation: "skeleton-shimmer 1.4s ease infinite",
 };
+
 function Sk({ w, h, r = 6, style = {} }) {
   return <div style={{ width: w, height: h, borderRadius: r, flexShrink: 0, ...SHIMMER, ...style }} />;
 }
@@ -23,105 +27,66 @@ function Sk({ w, h, r = 6, style = {} }) {
 // ── Full‑page Skeleton ──
 function AddStudentSkeleton() {
   return (
-    <SchoolLayout title="Student Registration">
-      <div className="max-w-4xl px-4 md:px-8 pt-4 pb-12 space-y-6">
-        {/* Top Bar */}
-        <div className="flex flex-wrap justify-between items-center gap-3">
+    <SchoolLayout>
+      <div className="px-4 md:px-8 pt-4 pb-12 space-y-6 animate-pulse">
+        <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-3">
           <Sk w={140} h={20} />
-          <div className="flex gap-2">
-            <Sk w={80} h={36} r={8} />
-            <Sk w={120} h={36} r={8} />
-          </div>
+          <div className="flex gap-2 w-full sm:w-auto"><Sk h={36} className="flex-1 sm:w-20" /><Sk h={36} className="flex-1 sm:w-32" /></div>
         </div>
 
-        {/* Identity Card */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-          <div className="flex items-center gap-5">
+        <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 p-4 md:p-6">
+          <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6">
             <Sk w={64} h={64} r={16} />
-            <div className="flex-1 space-y-3">
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Sk w={80} h={12} />
-                  <Sk w="100%" h={42} r={6} />
-                </div>
-                <div className="flex-1">
-                  <Sk w={80} h={12} />
-                  <Sk w="100%" h={42} r={6} />
-                </div>
-              </div>
-              <div className="flex gap-3">
-                <div className="flex-1">
-                  <Sk w={80} h={12} />
-                  <Sk w="100%" h={42} r={6} />
-                </div>
-                <div className="flex-1">
-                  <Sk w={80} h={12} />
-                  <Sk w="100%" h={42} r={6} />
-                </div>
+            <div className="flex-1 w-full space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {Array.from({ length: 4 }).map((_, i) => (
+                  <div key={i} className="space-y-1.5"><Sk w={70} h={10} /><Sk h={38} className="w-full" /></div>
+                ))}
               </div>
             </div>
           </div>
         </div>
 
-        {/* Academic Profile SectionCard */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Sk w={16} h={16} r={999} />
-            <Sk w={100} h={16} />
+        {Array.from({ length: 2 }).map((_, sIdx) => (
+          <div key={sIdx} className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 overflow-hidden">
+            <div className="px-4 md:px-6 py-4 border-b border-outline-variant/10 flex items-center gap-2">
+              <Sk w={16} h={16} r={999} />
+              <Sk w={120} h={16} />
+            </div>
+            <div className="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
+              {Array.from({ length: 4 }).map((_, i) => (
+                <div key={i} className="space-y-1.5"><Sk w={80} h={10} /><Sk h={38} className="w-full" /></div>
+              ))}
+            </div>
           </div>
-          <div className="p-6 grid md:grid-cols-2 gap-6">
-            {Array.from({ length: 5 }).map((_, i) => (
-              <div key={i} className={i === 4 ? "md:col-span-2" : ""}>
-                <Sk w={80} h={12} />
-                <Sk w="100%" h={42} r={6} />
-              </div>
-            ))}
-          </div>
-        </div>
-
-        {/* Class Enrollment SectionCard */}
-        <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-          <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-            <Sk w={16} h={16} r={999} />
-            <Sk w={100} h={16} />
-          </div>
-          <div className="p-6 grid md:grid-cols-2 gap-6">
-            {Array.from({ length: 3 }).map((_, i) => (
-              <div key={i} className={i === 2 ? "md:col-span-2" : ""}>
-                <Sk w={80} h={12} />
-                <Sk w="100%" h={42} r={6} />
-              </div>
-            ))}
-          </div>
-        </div>
+        ))}
       </div>
     </SchoolLayout>
   );
 }
 
-// ── Style tokens ──
-const labelClass =
-  "text-[10px] font-bold uppercase tracking-wider text-gray-400 mb-1.5 block";
-const editFieldClass =
-  "w-full text-sm font-bold text-slate-800 bg-white border border-[#0058be]/30 focus:ring-2 focus:ring-[#0058be]/10 outline-none px-4 py-2 rounded-md";
+/* ─────────────────────────────────────────────
+   Unified Design System Specifications
+───────────────────────────────────────────── */
+const labelClass = "text-[10px] md:text-xs font-bold uppercase tracking-wider text-on-surface-variant/80 mb-1.5 block";
+const editFieldClass = "w-full text-xs md:text-sm font-semibold text-on-surface bg-surface-container-lowest border border-outline-variant/30 focus:border-primary focus:ring-1 focus:ring-primary outline-none px-3 py-2 rounded-lg transition";
 
-// ── SectionCard ──
 function SectionCard({ title, icon, children }) {
   return (
-    <div className="bg-white rounded-xl shadow-sm border border-gray-100 overflow-hidden">
-      <div className="px-6 py-4 border-b border-gray-100 flex items-center gap-2">
-        <span className="w-1 h-5 rounded-full bg-blue-400 shrink-0" />
-        <span className="material-symbols-outlined text-[18px] text-gray-400">
-          {icon}
-        </span>
-        <h2 className="text-sm font-bold text-gray-800">{title}</h2>
+    <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm overflow-hidden">
+      <div className="px-4 md:px-6 py-4 border-b border-outline-variant/10 flex items-center gap-2">
+        <span className="w-1 h-5 rounded-full bg-primary shrink-0" />
+        <span className="material-symbols-outlined text-[18px] text-on-surface-variant/60">{icon}</span>
+        <h3 className="text-sm font-headline font-bold text-on-surface">{title}</h3>
       </div>
-      <div className="p-6 grid md:grid-cols-2 gap-6">{children}</div>
+      <div className="p-4 md:p-6 grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">{children}</div>
     </div>
   );
 }
 
-// ── Main Component ──
+/* ─────────────────────────────────────────────
+   Main Entry Component Architecture
+───────────────────────────────────────────── */
 export default function AddStudent() {
   const navigate = useNavigate();
   const location = useLocation();
@@ -152,7 +117,7 @@ export default function AddStudent() {
   const [academicYears, setAcademicYears] = useState([]);
 
   const [loading, setLoading] = useState(false);
-  const [loadingOptions, setLoadingOptions] = useState(true); // ← new
+  const [loadingOptions, setLoadingOptions] = useState(true);
   const [toast, setToast] = useState(null);
   const [error, setError] = useState(null);
 
@@ -176,7 +141,7 @@ export default function AddStudent() {
         setSections(Array.isArray(secRes.results ?? secRes) ? (secRes.results ?? secRes) : []);
         setAcademicYears(Array.isArray(yearRes.results ?? yearRes) ? (yearRes.results ?? yearRes) : []);
       } catch (err) {
-        console.error("Failed to fetch options:", err);
+        console.error("Failed to load dependency elements:", err);
       } finally {
         setLoadingOptions(false);
       }
@@ -189,9 +154,7 @@ export default function AddStudent() {
     if (classLevel) {
       setFilteredSections(
         sections.filter(
-          (s) =>
-            String(s.class_level) === String(classLevel) ||
-            String(s.class_level?.id) === String(classLevel)
+          (s) => String(s.class_level) === String(classLevel) || String(s.class_level?.id) === String(classLevel)
         )
       );
     } else {
@@ -200,13 +163,9 @@ export default function AddStudent() {
     setSection("");
   }, [classLevel, sections]);
 
-  // Derived initials for avatar preview
-  const initials =
-    firstName && lastName
-      ? `${firstName[0]}${lastName[0]}`.toUpperCase()
-      : firstName
-        ? firstName.slice(0, 2).toUpperCase()
-        : "ST";
+  const initials = firstName && lastName
+    ? `${firstName[0]}${lastName[0]}`.toUpperCase()
+    : firstName ? firstName.slice(0, 2).toUpperCase() : "ST";
 
   // ── Submit ──
   const handleSave = async (e) => {
@@ -215,20 +174,11 @@ export default function AddStudent() {
     setError(null);
 
     try {
-      const userPayload = {
-        email,
-        password,
-        first_name: firstName,
-        last_name: lastName,
-      };
+      const userPayload = { email, password, first_name: firstName, last_name: lastName };
       const userData = await schoolAdminApi.createUser(userPayload);
 
       if (userData.id) {
-        const profilePayload = {
-          user: userData.id,
-          enrollment_number: enrollmentNumber,
-          is_archived: false,
-        };
+        const profilePayload = { user: userData.id, enrollment_number: enrollmentNumber, is_archived: false };
         if (dateOfBirth) profilePayload.date_of_birth = dateOfBirth;
         if (phoneNumber) profilePayload.phone_number = phoneNumber;
         if (bloodGroup) profilePayload.blood_group = bloodGroup;
@@ -252,13 +202,9 @@ export default function AddStudent() {
       if (err.response?.data) {
         const data = err.response.data;
         if (typeof data === "string" && data.includes("<!DOCTYPE")) {
-          setError("Server Error (500). Please check Django terminal.");
+          setError("Server Error (500). Please check framework stack.");
         } else {
-          setError(
-            Object.entries(data)
-              .map(([k, v]) => `${k}: ${v}`)
-              .join(" | ")
-          );
+          setError(Object.entries(data).map(([k, v]) => `${k}: ${v}`).join(" | "));
         }
       } else {
         setError(err.message);
@@ -269,27 +215,19 @@ export default function AddStudent() {
     }
   };
 
-  // ── Render Skeleton if options are loading ──
-  if (loadingOptions) {
-    return <AddStudentSkeleton />;
-  }
+  if (loadingOptions) return <AddStudentSkeleton />;
 
   // ── Main render ──
   return (
-    <SchoolLayout title="Student Registration">
-      <form onSubmit={handleSave}>
-        <div className="max-w-4xl px-4 md:px-8 pt-4 pb-12 space-y-6">
+    <SchoolLayout>
+      <form onSubmit={handleSave} className="w-full">
+        <div className="px-4 md:px-8 pt-4 pb-12 space-y-6 mx-auto">
 
-          {/* Toast */}
+          {/* Action Status Toast Notifications */}
           {toast && (
-            <div
-              className={`fixed top-6 right-6 z-50 px-6 py-4 rounded-xl shadow-2xl font-bold text-sm flex items-center gap-3 transition-all duration-300 ${toast.type === "success"
-                ? "bg-green-600 text-white"
-                : toast.type === "error"
-                  ? "bg-red-600 text-white"
-                  : "bg-gray-100 text-gray-800"
-                }`}
-            >
+            <div className={`fixed top-6 right-4 md:right-6 z-50 px-5 py-3.5 rounded-xl shadow-xl font-bold text-xs md:text-sm flex items-center gap-3 border border-outline-variant/10 transition-all ${
+              toast.type === "success" ? "bg-success text-white" : "bg-error text-white"
+            }`}>
               <span className="material-symbols-outlined text-base">
                 {toast.type === "success" ? "check_circle" : "error"}
               </span>
@@ -297,65 +235,58 @@ export default function AddStudent() {
             </div>
           )}
 
-          {/* ── Top Bar ── */}
-          <div className="flex flex-wrap justify-between items-center gap-3">
+          {/* ── Action Navigation Bar Strip ── */}
+          <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
             <button
               type="button"
-              onClick={() =>
-                navigate(fromQuickAdd ? "/school-admin" : "/school-admin/students")
-              }
-              className="flex items-center gap-1.5 text-[#0058be] text-sm font-semibold hover:underline"
+              onClick={() => navigate(fromQuickAdd ? "/school-admin" : "/school-admin/students")}
+              className="flex items-center gap-1.5 text-primary text-xs md:text-sm font-bold hover:underline"
             >
-              <span className="material-symbols-outlined text-[18px]">arrow_back</span>
+              <span className="material-symbols-outlined text-base">arrow_back</span>
               {fromQuickAdd ? "Back to Dashboard" : "Back to Directory"}
             </button>
 
-            <div className="flex gap-2">
+            <div className="flex gap-2 w-full sm:w-auto justify-end">
               <button
                 type="button"
-                onClick={() =>
-                  navigate(fromQuickAdd ? "/school-admin" : "/school-admin/students")
-                }
-                className="px-4 py-2 text-sm text-gray-500 font-bold hover:bg-gray-100 rounded-md"
+                onClick={() => navigate(fromQuickAdd ? "/school-admin" : "/school-admin/students")}
+                className="px-4 py-2 text-xs md:text-sm text-on-surface-variant font-bold hover:bg-surface-container-high rounded-lg transition"
               >
                 Cancel
               </button>
               <button
                 type="submit"
                 disabled={loading}
-                className="flex items-center gap-2 px-4 py-2 bg-[#0058be] text-white text-sm font-bold rounded-md shadow-sm disabled:opacity-70"
+                className="flex items-center justify-center gap-2 px-5 py-2 bg-primary text-white text-xs md:text-sm font-bold rounded-lg shadow-sm disabled:opacity-60 transition"
               >
-                {loading && (
-                  <span className="material-symbols-outlined animate-spin text-[16px]">
-                    progress_activity
-                  </span>
-                )}
+                {loading && <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>}
                 {loading ? "Saving..." : "Register Student"}
               </button>
             </div>
           </div>
 
-          {/* Error banner */}
+          {/* Error Dashboard Banner */}
           {error && (
-            <div className="p-3 bg-red-50 text-red-600 rounded-md border border-red-200 text-sm font-medium flex gap-2">
-              <span className="material-symbols-outlined text-xl shrink-0">error</span>
-              {error}
+            <div className="p-3.5 bg-error/10 text-error rounded-xl border border-error/20 text-xs md:text-sm font-medium flex gap-2.5 items-start">
+              <span className="material-symbols-outlined text-lg shrink-0">error</span>
+              <div className="break-all">{error}</div>
             </div>
           )}
 
-          {/* ── Identity Card ── */}
-          <div className="bg-white rounded-xl shadow-sm border border-gray-100 p-6">
-            <div className="flex items-center gap-5">
-              {/* Live-preview avatar */}
-              <div className="w-16 h-16 shrink-0 rounded-2xl bg-[#e5eeff] text-[#0058be] flex items-center justify-center font-bold text-xl border border-blue-100">
+          {/* ── Core Identity Module Card ── */}
+          <div className="bg-surface-container-lowest border border-outline-variant/10 rounded-xl p-4 md:p-6 shadow-sm">
+            <div className="flex flex-col md:flex-row items-center md:items-start gap-4 md:gap-6">
+              
+              {/* Dynamic Live Preview Initials Avatar */}
+              <div className="w-14 h-14 md:w-16 md:h-16 shrink-0 rounded-xl bg-primary/10 text-primary flex items-center justify-center font-bold text-lg md:text-xl border border-primary/20">
                 {initials}
               </div>
 
-              {/* Name + email + password */}
-              <div className="flex-1 space-y-3">
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <p className={labelClass}>First Name</p>
+              {/* Responsive Input Configurations for Identity */}
+              <div className="flex-1 w-full space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>First Name</label>
                     <input
                       required
                       value={firstName}
@@ -364,8 +295,8 @@ export default function AddStudent() {
                       className={editFieldClass}
                     />
                   </div>
-                  <div className="flex-1">
-                    <p className={labelClass}>Last Name</p>
+                  <div>
+                    <label className={labelClass}>Last Name</label>
                     <input
                       value={lastName}
                       onChange={(e) => setLastName(e.target.value)}
@@ -374,20 +305,21 @@ export default function AddStudent() {
                     />
                   </div>
                 </div>
-                <div className="flex gap-3">
-                  <div className="flex-1">
-                    <p className={labelClass}>Email Address</p>
+                
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div>
+                    <label className={labelClass}>Email Address</label>
                     <input
                       type="email"
                       required
                       value={email}
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="student@school.com"
-                      className={`${editFieldClass} font-mono text-xs`}
+                      className={`${editFieldClass} font-mono`}
                     />
                   </div>
-                  <div className="flex-1">
-                    <p className={labelClass}>Temporary Password</p>
+                  <div>
+                    <label className={labelClass}>Temporary Password</label>
                     <input
                       type="password"
                       required
@@ -399,24 +331,24 @@ export default function AddStudent() {
                   </div>
                 </div>
               </div>
+
             </div>
           </div>
 
-          {/* ── Academic Profile SectionCard ── */}
+          {/* ── Academic Profile Grid Metrics ── */}
           <SectionCard title="Academic Profile" icon="assignment_ind">
             <div>
-              <p className={labelClass}>Enrollment Number</p>
+              <label className={labelClass}>Enrollment Number</label>
               <input
                 required
                 value={enrollmentNumber}
                 onChange={(e) => setEnrollmentNumber(e.target.value)}
-                placeholder="e.g. STU-2024-001"
+                placeholder="e.g. STU-2026-001"
                 className={editFieldClass}
               />
             </div>
-
             <div>
-              <p className={labelClass}>Date of Birth</p>
+              <label className={labelClass}>Date of Birth</label>
               <input
                 type="date"
                 value={dateOfBirth}
@@ -424,52 +356,44 @@ export default function AddStudent() {
                 className={editFieldClass}
               />
             </div>
-
             <div>
-              <p className={labelClass}>Phone Number</p>
+              <label className={labelClass}>Phone Number</label>
               <input
                 value={phoneNumber}
                 onChange={(e) => setPhoneNumber(e.target.value)}
-                placeholder="+91 98765 43210"
+                placeholder="Student phone details"
                 className={editFieldClass}
               />
             </div>
-
             <div>
-              <p className={labelClass}>Blood Group</p>
+              <label className={labelClass}>Blood Group</label>
               <select
                 value={bloodGroup}
                 onChange={(e) => setBloodGroup(e.target.value)}
                 className={editFieldClass}
               >
                 <option value="">Select Group</option>
-                <option value="A+">A+</option>
-                <option value="A-">A-</option>
-                <option value="B+">B+</option>
-                <option value="B-">B-</option>
-                <option value="AB+">AB+</option>
-                <option value="AB-">AB-</option>
-                <option value="O+">O+</option>
-                <option value="O-">O-</option>
+                {["A+", "A-", "B+", "B-", "AB+", "AB-", "O+", "O-"].map((bg) => (
+                  <option key={bg} value={bg}>{bg}</option>
+                ))}
               </select>
             </div>
-
-            <div className="md:col-span-2">
-              <p className={labelClass}>Residential Address</p>
+            <div className="sm:col-span-2 w-full min-w-0">
+              <label className={labelClass}>Residential Address</label>
               <textarea
                 rows="2"
                 value={address}
                 onChange={(e) => setAddress(e.target.value)}
-                placeholder="Street, City, State"
+                placeholder="Street, City, State details"
                 className={`${editFieldClass} resize-none`}
               />
             </div>
           </SectionCard>
 
-          {/* ── Class Enrollment SectionCard ── */}
-          <SectionCard title="Class Enrollment" icon="school">
+          {/* ── Allocation Parameters SectionCard ── */}
+          <SectionCard title="Class Enrollment Setup" icon="school">
             <div>
-              <p className={labelClass}>Academic Year</p>
+              <label className={labelClass}>Academic Year</label>
               <select
                 value={academicYear}
                 onChange={(e) => setAcademicYear(e.target.value)}
@@ -481,9 +405,8 @@ export default function AddStudent() {
                 ))}
               </select>
             </div>
-
             <div>
-              <p className={labelClass}>Class Level</p>
+              <label className={labelClass}>Class Level</label>
               <select
                 value={classLevel}
                 onChange={(e) => setClassLevel(e.target.value)}
@@ -495,9 +418,8 @@ export default function AddStudent() {
                 ))}
               </select>
             </div>
-
-            <div>
-              <p className={labelClass}>Section</p>
+            <div className="sm:col-span-2 w-full min-w-0">
+              <label className={labelClass}>Section</label>
               <select
                 value={section}
                 onChange={(e) => setSection(e.target.value)}
@@ -506,10 +428,8 @@ export default function AddStudent() {
               >
                 <option value="">
                   {classLevel
-                    ? filteredSections.length
-                      ? "Select Section"
-                      : "No sections available"
-                    : "Pick class first"}
+                    ? filteredSections.length ? "Select Section" : "No sections defined"
+                    : "Select class parameter first"}
                 </option>
                 {filteredSections.map((s) => (
                   <option key={s.id} value={s.id}>{s.name}</option>
