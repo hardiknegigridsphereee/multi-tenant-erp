@@ -75,22 +75,22 @@ export const createUser = async (data) => {
 };
 
 export const createStudentProfile = async (data) => {
-    const response = await apiClient.post('/profiles/students/', data);
+    const response = await apiClient.post('/school-admin/staff/students/register/', data);
     return response.data;
 };
 
 export const registerStudent = async (data) => {
-    const response = await apiClient.post('/profiles/students/register/', data);
+    const response = await apiClient.post('/school-admin/staff/students/register/', data);
     return response.data;
 };
 
 export const createTeacherProfile = async (data) => {
-    const response = await apiClient.post('/profiles/teachers/', data);
+    const response = await apiClient.post('/school-admin/staff/teachers/register/', data);
     return response.data;
 };
 
 export const createParentProfile = async (data) => {
-    const response = await apiClient.post('/profiles/parents/', data);
+    const response = await apiClient.post('/school-admin/staff/parents/register/', data);
     return response.data;
 };
 
@@ -188,26 +188,26 @@ export const getStudents = async (page = 1, search = "", status = "ALL", classId
     // status filter: backend uses is_archived boolean
     if (status === "ACTIVE")   params.append("is_archived", "false");
     if (status === "ARCHIVED") params.append("is_archived", "true");
-    const response = await apiClient.get(`/profiles/students/?${params.toString()}`);
+    const response = await apiClient.get(`/school-admin/students/?${params.toString()}`);
     return response.data;
 };
 
 export const getTeachers = async (page = 1, search = "") => {
     const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-    const response = await apiClient.get(`/profiles/teachers/?page=${page}${searchParam}`);
+    const response = await apiClient.get(`/school-admin/teachers/?page=${page}${searchParam}`);
     return response.data;
 };
 
 export const getParents = async (page = 1, search = "") => {
     // Append the search parameter only if a search query is provided
     const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-    const response = await apiClient.get(`/profiles/parents/?page=${page}${searchParam}`);
+    const response = await apiClient.get(`/school-admin/parents/?page=${page}${searchParam}`);
     return response.data;
 };
 
 export const getParentStudentMappings = async (page = 1, search = "") => {
     const searchParam = search ? `&search=${encodeURIComponent(search)}` : "";
-    const response = await apiClient.get(`/profiles/parent-student-mappings/?page=${page}${searchParam}`);
+    const response = await apiClient.get(`/school-admin/parent-student-mappings/?page=${page}${searchParam}`);
     return response.data;
 };
 
