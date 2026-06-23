@@ -1,6 +1,7 @@
 import React, { useState, useRef, useEffect } from "react";
 import DashboardLayout from "../../components/erp/parent/DashboardLayout";
 import { getParentProfile } from "../../services/parentAPIs";
+import api from "../../services/axiosClient";
 
 const Toggle = ({ enabled, onToggle }) => (
   <button
@@ -106,7 +107,6 @@ function CountryCodePicker({ value, onChange }) {
 
 const ParentPortalSettings = () => {
 
-  // ── Dark mode ──────────────────────────────────────────────────────────
   const [isDark, setIsDark] = useState(
     () => typeof localStorage !== "undefined" && localStorage.getItem("parent_theme") === "dark"
   );
@@ -121,28 +121,38 @@ const ParentPortalSettings = () => {
     }
   }, [isDark]);
 
-  const [notifs, setNotifs]           = useState({ email: true, push: true, sms: false });
-  const [saved, setSaved]             = useState(false);
-  const [countryCode, setCountryCode] = useState("+91");
-  const [phone, setPhone]             = useState("");
-  const [name, setName]               = useState("");
-  const [email, setEmail]             = useState("");
+  const [notifs, setNotifs]                 = useState({ email: true, push: true, sms: false });
+  const [saved, setSaved]                   = useState(false);
+  const [saveError, setSaveError]           = useState(null);
+  const [saving, setSaving]                 = useState(false);
+  const [countryCode, setCountryCode]       = useState("+91");
+  const [phone, setPhone]                   = useState("");
+  const [firstName, setFirstName]           = useState("");
+  const [lastName, setLastName]             = useState("");
+  const [email, setEmail]                   = useState("");
+  const [relationship, setRelationship]     = useState("Mother");
+  const [address, setAddress]               = useState("");
+  const [occupation, setOccupation]         = useState("");
+  const [emergencyContact, setEmergencyContact] = useState("");
+  const [dob, setDob]                       = useState("");
+  const [profilePicUrl, setProfilePicUrl]   = useState(null);
+  const [profilePicFile, setProfilePicFile] = useState(null);
+  const [profilePicPreview, setProfilePicPreview] = useState(null);
+  const fileInputRef                        = useRef(null);
 
-  // ── Fetch parent profile on mount ──────────────────────────────────────
-  // FIX: replaced wrong `parentData` import with correct `getParentProfile`
-  // FIX: moved async fetch into useEffect (removed broken setTimeout pattern)
   useEffect(() => {
     const fetchProfile = async () => {
       try {
         const profileData = await getParentProfile();
-        const firstName = profileData.first_name || "";
-        const lastName  = profileData.last_name  || "";
-        const fullName  =
-          (firstName ? firstName[0].toUpperCase() + firstName.slice(1) : "") +
-          (lastName  ? " " + lastName[0].toUpperCase() + lastName.slice(1) : "");
-        setName(fullName.trim());
+        setFirstName(profileData.first_name || "");
+        setLastName(profileData.last_name || "");
         setEmail(profileData.email || "");
         setPhone(profileData.phone_number || "");
+        setAddress(profileData.address || "");
+        setOccupation(profileData.occupation || "");
+        setEmergencyContact(profileData.emergency_contact_number || "");
+        setDob(profileData.date_of_birth || "");
+        setProfilePicUrl(profileData.profile_picture || null);
       } catch (err) {
         console.error("Couldn't fetch parent profile", err);
       }
@@ -150,10 +160,62 @@ const ParentPortalSettings = () => {
     fetchProfile();
   }, []);
 
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const handlePicChange = (e) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    setProfilePicFile(file);
+    setProfilePicPreview(URL.createObjectURL(file));
   };
+
+  const handleSave = async () => {
+    setSaving(true);
+    setSaveError(null);
+    try {
+      const userData = JSON.parse(localStorage.getItem("user_data") || "null");
+      const userId = userData?.identity?.id || null;
+
+      // Use FormData if there's a new profile picture
+      if (profilePicFile) {
+        const formData = new FormData();
+        formData.append("user", userId);
+        formData.append("phone_number", phone);
+        formData.append("address", address);
+        formData.append("occupation", occupation);
+        formData.append("emergency_contact_number", emergencyContact);
+        if (dob) formData.append("date_of_birth", dob);
+        formData.append("profile_picture", profilePicFile);
+
+        await api.patch(`/profiles/parents/me/`, formData, {
+          headers: { "Content-Type": "multipart/form-data" },
+        });
+      } else {
+        const payload = {
+          user: userId,
+          phone_number: phone,
+          address,
+          occupation,
+          emergency_contact_number: emergencyContact,
+        };
+        if (dob) payload.date_of_birth = dob;
+        await api.patch(`/profiles/parents/me/`, payload);
+      }
+
+      setSaved(true);
+      setProfilePicFile(null);
+      setTimeout(() => setSaved(false), 2000);
+    } catch (err) {
+      console.error("Save failed", err);
+      setSaveError("Failed to save. Please try again.");
+      setTimeout(() => setSaveError(null), 3000);
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const avatarSrc =
+    profilePicPreview ||
+    profilePicUrl ||
+    `https://ui-avatars.com/api/?name=${encodeURIComponent(`${firstName} ${lastName}`.trim() || "P")}&background=3b82f6&color=fff`;
 
   const inputCls =
     "w-full rounded-lg px-3 py-2 text-xs border-none outline-none " +
@@ -162,11 +224,16 @@ const ParentPortalSettings = () => {
     "placeholder:text-slate-400 dark:placeholder:text-slate-400 " +
     "focus:ring-2 focus:ring-blue-500 transition-all";
 
+  const readonlyCls =
+    "w-full rounded-lg px-3 py-2 text-xs border-none outline-none " +
+    "bg-slate-50 dark:bg-slate-700/50 " +
+    "text-slate-500 dark:text-slate-400 " +
+    "cursor-not-allowed select-none";
+
   return (
     <DashboardLayout>
       <div className="p-3 sm:p-5 max-w-7xl mx-auto flex flex-col gap-3 sm:gap-4">
 
-        {/* ── Header ── */}
         <div>
           <h1 className="text-lg sm:text-xl font-bold text-slate-800 dark:text-white">Settings</h1>
           <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5">
@@ -179,40 +246,145 @@ const ParentPortalSettings = () => {
           {/* ── Account Profile ── */}
           <section className="xl:col-span-7 bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 p-4 flex flex-col transition-colors duration-300">
 
-            <div className="flex items-center gap-2 mb-3">
+            <div className="flex items-center gap-2 mb-4">
               <span className="p-1.5 bg-blue-100 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded-lg material-symbols-outlined text-base">person</span>
               <h2 className="text-sm font-bold text-slate-800 dark:text-white">Account Profile</h2>
             </div>
 
+            {/* Profile picture */}
+            <div className="flex items-center gap-4 mb-4">
+              <div className="relative flex-shrink-0">
+                <img
+                  src={avatarSrc}
+                  alt="Profile"
+                  className="w-16 h-16 rounded-xl object-cover ring-2 ring-slate-200 dark:ring-slate-600"
+                />
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="absolute -bottom-1 -right-1 w-6 h-6 bg-blue-600 text-white rounded-full flex items-center justify-center shadow hover:bg-blue-700 transition-colors"
+                >
+                  <span className="material-symbols-outlined" style={{ fontSize: "13px" }}>edit</span>
+                </button>
+                <input
+                  ref={fileInputRef}
+                  type="file"
+                  accept="image/*"
+                  className="hidden"
+                  onChange={handlePicChange}
+                />
+              </div>
+              <div>
+                <p className="text-sm font-bold text-slate-800 dark:text-white">
+                  {[firstName, lastName].filter(Boolean).map(n => n[0].toUpperCase() + n.slice(1)).join(" ") || "Parent"}
+                </p>
+                <p className="text-xs text-slate-400 dark:text-slate-500 mt-0.5">{email}</p>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  className="text-[10px] text-blue-500 dark:text-blue-400 mt-1 hover:underline"
+                >
+                  Change photo
+                </button>
+              </div>
+            </div>
+
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
 
-              {/* Full Name */}
+              {/* First Name — readonly */}
+<div className="space-y-1">
+  <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
+    First Name
+  </label>
+  <div className="relative">
+    <input type="text" value={firstName} readOnly className={readonlyCls} />
+    <span
+      title="Name can only be changed by school admin"
+      className="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 dark:text-slate-600 cursor-help"
+      style={{ fontSize: "14px" }}
+    >
+      info
+    </span>
+  </div>
+</div>
+
+{/* Last Name — readonly */}
+<div className="space-y-1">
+  <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
+    Last Name
+  </label>
+  <div className="relative">
+    <input type="text" value={lastName} readOnly className={readonlyCls} />
+    <span
+      title="Name can only be changed by school admin"
+      className="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 dark:text-slate-600 cursor-help"
+      style={{ fontSize: "14px" }}
+    >
+      info
+    </span>
+  </div>
+</div>
+
+{/* Email — readonly */}
+<div className="space-y-1">
+  <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
+    Email
+  </label>
+  <div className="relative">
+    <input type="email" value={email} readOnly className={readonlyCls} />
+    <span
+      title="Email can only be changed by school admin"
+      className="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 dark:text-slate-600 cursor-help"
+      style={{ fontSize: "14px" }}
+    >
+      info
+    </span>
+  </div>
+</div>
+
+{/* Relationship — readonly */}
+<div className="space-y-1">
+  <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
+    Relationship
+  </label>
+  <div className="relative">
+    <input type="text" value={relationship} readOnly className={readonlyCls} />
+    <span
+      title="Relationship is set by school admin"
+      className="absolute right-2 top-1/2 -translate-y-1/2 material-symbols-outlined text-slate-300 dark:text-slate-600 cursor-help"
+      style={{ fontSize: "14px" }}
+    >
+      info
+    </span>
+  </div>
+</div>
+
+              {/* Date of Birth — editable */}
               <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Full Name</label>
+                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Date of Birth</label>
+                <input
+                  type="date"
+                  value={dob}
+                  onChange={(e) => setDob(e.target.value)}
+                  className={inputCls}
+                />
+              </div>
+
+              {/* Occupation — editable */}
+              <div className="space-y-1">
+                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Occupation</label>
                 <input
                   type="text"
-                  value={name}
-                  onChange={(e) => setName(e.target.value)}
+                  value={occupation}
+                  onChange={(e) => setOccupation(e.target.value)}
+                  placeholder="e.g. Software Engineer"
                   className={inputCls}
                 />
               </div>
 
-              {/* Email */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Email Address</label>
-                <input
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  className={inputCls}
-                />
-              </div>
-
-              {/* Phone with country code */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">
-                  Phone Number
-                </label>
+              {/* Phone — editable */}
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Phone Number</label>
                 <div className="flex gap-1.5">
                   <CountryCodePicker
                     value={countryCode}
@@ -233,31 +405,56 @@ const ParentPortalSettings = () => {
                       className={`${inputCls} pr-10`}
                     />
                     <span className="absolute right-2 top-1/2 -translate-y-1/2 text-[9px] sm:text-[10px] text-slate-400 dark:text-slate-300 pointer-events-none whitespace-nowrap">
-                      {phone && phone.length}/{COUNTRY_CODES.find((c) => c.code === countryCode)?.maxDigits || 10}
+                      {phone.length}/{COUNTRY_CODES.find((c) => c.code === countryCode)?.maxDigits || 10}
                     </span>
                   </div>
                 </div>
               </div>
 
-              {/* Relationship */}
-              <div className="space-y-1">
-                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Relationship</label>
-                <select className={inputCls}>
-                  <option>Mother</option>
-                  <option>Father</option>
-                  <option>Legal Guardian</option>
-                </select>
+              {/* Address — editable */}
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Address</label>
+                <input
+                  type="text"
+                  value={address}
+                  onChange={(e) => setAddress(e.target.value)}
+                  placeholder="Enter your address"
+                  className={inputCls}
+                />
               </div>
+
+              {/* Emergency Contact — editable */}
+              <div className="space-y-1 sm:col-span-2">
+                <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Emergency Contact Number</label>
+                <input
+                  type="text"
+                  inputMode="numeric"
+                  value={emergencyContact}
+                  onChange={(e) => {
+                    const onlyNums = e.target.value.replace(/\D/g, "");
+                    if (onlyNums.length <= 15) setEmergencyContact(onlyNums);
+                  }}
+                  placeholder="Emergency phone number"
+                  className={inputCls}
+                />
+              </div>
+
             </div>
 
-            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex justify-end">
-              <button
-                onClick={handleSave}
-                className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-all"
-              >
-                <span className="material-symbols-outlined text-sm">{saved ? "check" : "save"}</span>
-                {saved ? "Saved!" : "Save Changes"}
-              </button>
+            <div className="mt-3 pt-3 border-t border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3">
+              {saveError && <p className="text-xs text-red-500 dark:text-red-400">{saveError}</p>}
+              <div className="ml-auto">
+                <button
+                  onClick={handleSave}
+                  disabled={saving}
+                  className="flex items-center gap-1.5 bg-blue-600 text-white px-4 py-2 rounded-lg text-xs font-semibold hover:bg-blue-700 transition-all disabled:opacity-60"
+                >
+                  <span className="material-symbols-outlined text-sm">
+                    {saving ? "hourglass_empty" : saved ? "check" : "save"}
+                  </span>
+                  {saving ? "Saving..." : saved ? "Saved!" : "Save Changes"}
+                </button>
+              </div>
             </div>
           </section>
 
@@ -270,7 +467,6 @@ const ParentPortalSettings = () => {
                 <span className="p-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-600 dark:text-purple-300 rounded-lg material-symbols-outlined text-base">language</span>
                 <h2 className="text-sm font-bold text-slate-800 dark:text-white">Language &amp; Appearance</h2>
               </div>
-
               <div className="grid grid-cols-2 gap-2 sm:gap-3">
                 <div className="space-y-1">
                   <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Language</label>
@@ -287,8 +483,6 @@ const ParentPortalSettings = () => {
                   </div>
                 </div>
               </div>
-
-              {/* Light / Dark toggle */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
