@@ -1,7 +1,10 @@
-import React, { useState, useMemo } from "react";
+import React, { useState, useMemo, useEffect } from "react";
 import DashboardLayout from "../../components/erp/parent/DashboardLayout";
 import { useParent } from "../../context/ParentProvider";
 
+/* ─────────────────────────────────────────────
+   Skeleton
+───────────────────────────────────────────── */
 function Skeleton({ className = "" }) {
   return <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />;
 }
@@ -10,14 +13,11 @@ function AssignmentsSkeleton() {
   return (
     <DashboardLayout>
       <div className="space-y-5">
-        {/* Header */}
         <div className="space-y-2">
           <Skeleton className="w-40 h-7" />
           <Skeleton className="w-64 h-4" />
         </div>
-        {/* AI banner */}
         <Skeleton className="w-full h-20 rounded-xl" />
-        {/* Metric cards */}
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           {[1, 2, 3].map(i => (
             <div key={i} className="bg-white rounded-xl p-4 border space-y-2">
@@ -26,7 +26,6 @@ function AssignmentsSkeleton() {
             </div>
           ))}
         </div>
-        {/* Roadmap + sidebar */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4">
           <div className="xl:col-span-2 space-y-3">
             {[1, 2, 3].map(i => <Skeleton key={i} className="w-full h-20 rounded-xl" />)}
@@ -38,17 +37,19 @@ function AssignmentsSkeleton() {
   );
 }
 
-/* ── Subject icons ── */
+/* ─────────────────────────────────────────────
+   Subject icons
+───────────────────────────────────────────── */
 const SUBJECT_ICONS = {
-  physics:     { icon: "science",      bg: "bg-blue-50",    color: "text-blue-600"    },
-  mathematics: { icon: "calculate",    bg: "bg-purple-50",  color: "text-purple-600"  },
-  math:        { icon: "calculate",    bg: "bg-purple-50",  color: "text-purple-600"  },
-  literature:  { icon: "menu_book",    bg: "bg-orange-50",  color: "text-orange-600"  },
-  english:     { icon: "menu_book",    bg: "bg-orange-50",  color: "text-orange-600"  },
-  chemistry:   { icon: "experiment",   bg: "bg-green-50",   color: "text-green-600"   },
-  biology:     { icon: "biotech",      bg: "bg-emerald-50", color: "text-emerald-600" },
-  "computer science": { icon: "code",  bg: "bg-indigo-50",  color: "text-indigo-600"  },
-  history:     { icon: "history_edu",  bg: "bg-amber-50",   color: "text-amber-600"   },
+  physics:            { icon: "science",      bg: "bg-blue-50",    color: "text-blue-600"    },
+  mathematics:        { icon: "calculate",    bg: "bg-purple-50",  color: "text-purple-600"  },
+  math:               { icon: "calculate",    bg: "bg-purple-50",  color: "text-purple-600"  },
+  literature:         { icon: "menu_book",    bg: "bg-orange-50",  color: "text-orange-600"  },
+  english:            { icon: "menu_book",    bg: "bg-orange-50",  color: "text-orange-600"  },
+  chemistry:          { icon: "experiment",   bg: "bg-green-50",   color: "text-green-600"   },
+  biology:            { icon: "biotech",      bg: "bg-emerald-50", color: "text-emerald-600" },
+  "computer science": { icon: "code",         bg: "bg-indigo-50",  color: "text-indigo-600"  },
+  history:            { icon: "history_edu",  bg: "bg-amber-50",   color: "text-amber-600"   },
 };
 
 function getSubjectMeta(subjectName) {
@@ -67,19 +68,65 @@ function formatDueDate(dueDateStr) {
   const now  = new Date();
   const diff = Math.ceil((due - now) / (1000 * 60 * 60 * 24));
   const timeStr = due.toLocaleTimeString("en-US", { hour: "numeric", minute: "2-digit" });
-  if (diff < 0)  return { text: `Overdue — ${due.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, urgent: true };
+  if (diff < 0)   return { text: `Overdue — ${due.toLocaleDateString("en-US", { month: "short", day: "numeric" })}`, urgent: true };
   if (diff === 0) return { text: `Today, ${timeStr}`, urgent: true };
   if (diff === 1) return { text: `Tomorrow, ${timeStr}`, urgent: true };
   return { text: due.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }), urgent: false };
 }
 
+/* ─────────────────────────────────────────────
+   Main Component
+───────────────────────────────────────────── */
 export default function AssignmentsOverview() {
-  const { profile, assignments, loading, error } = useParent();
+  const { profile, activeChild, token } = useParent();
+
+  const [assignments, setAssignments] = useState([]);
+  const [childInfo,   setChildInfo]   = useState(null);
+  const [loading,     setLoading]     = useState(true);
+  const [error,       setError]       = useState(null);
+
   const [subjectFilter, setSubjectFilter] = useState("All Subjects");
   const [statusFilter,  setStatusFilter]  = useState("All Status");
 
-  /* ── All hooks unconditionally at top ── */
-  const list = assignments || [];
+  /* ── Fetch assignments whenever active child changes ── */
+  useEffect(() => {
+    if (!activeChild?.id || !token) return;
+
+    const fetchAssignments = async () => {
+      setLoading(true);
+      setError(null);
+      try {
+        const res = await fetch(
+          `/api/v1/profiles/parents/me/children/${activeChild.id}/assignments/`,
+          {
+            headers: {
+              Authorization: `Bearer ${token}`,
+              "Content-Type": "application/json",
+            },
+          }
+        );
+
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.detail || `Error ${res.status}`);
+        }
+
+        const data = await res.json();
+        // Response shape: { child: {...}, count: N, results: [...] }
+        setAssignments(data.results || []);
+        setChildInfo(data.child || null);
+      } catch (err) {
+        setError(err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchAssignments();
+  }, [activeChild?.id, token]);
+
+  /* ── Derived values (all hooks unconditionally at top) ── */
+  const list = assignments;
 
   const subjectOptions = useMemo(
     () => ["All Subjects", ...Array.from(new Set(list.map(a => a.subject_name).filter(Boolean)))],
@@ -108,6 +155,13 @@ export default function AssignmentsOverview() {
 
   const sortedList = [...filteredList].sort((a, b) => new Date(a.due_date) - new Date(b.due_date));
 
+  /* ── Derive student name: prefer child info from API response, fall back to activeChild / profile ── */
+  const studentFirstName =
+    childInfo?.name?.split(" ")[0] ||
+    activeChild?.name?.split(" ")[0] ||
+    profile?.first_name ||
+    "your child";
+
   /* ── Early returns after all hooks ── */
   if (loading) return <AssignmentsSkeleton />;
 
@@ -121,15 +175,19 @@ export default function AssignmentsOverview() {
     );
   }
 
-  const studentFirstName = profile?.first_name || "your child";
+  /* ── No active child selected ── */
+  if (!activeChild?.id) {
+    return (
+      <DashboardLayout>
+        <div className="bg-amber-50 text-amber-700 rounded-lg p-5 text-sm">
+          No active child selected. Please switch to a child profile first.
+        </div>
+      </DashboardLayout>
+    );
+  }
 
   return (
     <DashboardLayout>
-      {/*
-        max-w-7xl + responsive padding handled by DashboardLayout's inner wrapper.
-        We just provide the page content with tight vertical spacing.
-        All paddings are responsive: tighter on mobile/tablet, comfortable on desktop.
-      */}
       <div className="space-y-4 sm:space-y-6">
 
         {/* ── HEADER ── */}
@@ -173,9 +231,7 @@ export default function AssignmentsOverview() {
           </div>
         )}
 
-        {/* ── METRIC CARDS ──
-            2-col on mobile/tablet, 3-col on xl+ (sidebar fully expanded on xl)
-        ── */}
+        {/* ── METRIC CARDS ── */}
         <div className="grid grid-cols-2 xl:grid-cols-3 gap-3 sm:gap-4">
           <div className="bg-white rounded-xl p-4 sm:p-5 shadow-sm border flex justify-between items-start">
             <div>
@@ -208,11 +264,7 @@ export default function AssignmentsOverview() {
           </div>
         </div>
 
-        {/* ── ROADMAP + SIDEBAR ──
-            1-col on mobile → stacked
-            tablet (md): still 1-col stacked (sidebar takes space, not enough room for 2-col)
-            xl+: 3-col grid, roadmap gets col-span-2
-        ── */}
+        {/* ── ROADMAP + SIDEBAR ── */}
         <div className="grid grid-cols-1 xl:grid-cols-3 gap-4 sm:gap-5">
 
           {/* ROADMAP */}
@@ -248,8 +300,8 @@ export default function AssignmentsOverview() {
             )}
 
             {sortedList.map(a => {
-              const meta = getSubjectMeta(a.subject_name);
-              const due  = formatDueDate(a.due_date);
+              const meta        = getSubjectMeta(a.subject_name);
+              const due         = formatDueDate(a.due_date);
               const isGraded    = a.submission_status === "Graded";
               const isSubmitted = a.submission_status === "Submitted";
 
@@ -277,7 +329,7 @@ export default function AssignmentsOverview() {
                     )}
                   </div>
 
-                  {/* Due / grade — hidden on very small screens, shown sm+ */}
+                  {/* Due / grade — hidden on very small screens */}
                   <div className="hidden sm:block text-right shrink-0">
                     {isGraded ? (
                       <>

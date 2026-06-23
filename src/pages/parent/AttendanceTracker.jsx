@@ -53,9 +53,9 @@ function AttendanceSkeleton() {
 
 /* ─── Request Leave Modal ───────────────────────────────────────────────── */
 function RequestLeaveModal({ studentName, onClose, onSubmit }) {
-  const [form, setForm] = useState({ fromDate: "", toDate: "", reason: "", type: "Medical" });
+  const [form, setForm]           = useState({ fromDate: "", toDate: "", reason: "", type: "Medical" });
   const [submitting, setSubmitting] = useState(false);
-  const [submitted, setSubmitted] = useState(false);
+  const [submitted, setSubmitted]   = useState(false);
 
   const leaveTypes = ["Medical", "Family Emergency", "Travel", "Personal", "Other"];
 
@@ -76,12 +76,12 @@ function RequestLeaveModal({ studentName, onClose, onSubmit }) {
       <div className="bg-white dark:bg-slate-800 rounded-t-2xl sm:rounded-xl shadow-xl w-full sm:max-w-md max-h-[92vh] overflow-y-auto">
         <div className="flex items-center justify-between gap-2 px-5 py-4 border-b border-gray-100 dark:border-slate-700">
           <div className="min-w-0">
-            <h2 className="text-sm font-bold font-headline text-gray-900 dark:text-white">Request Leave</h2>
-            <p className="text-xs text-on-surface-variant dark:text-slate-300 mt-0.5 truncate">For {studentName}</p>
+            <h2 className="text-sm font-bold text-gray-900 dark:text-white">Request Leave</h2>
+            <p className="text-xs text-slate-500 dark:text-slate-300 mt-0.5 truncate">For {studentName}</p>
           </div>
           <button
             onClick={onClose}
-            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-surface-container dark:hover:bg-slate-700 text-on-surface-variant dark:text-slate-300 transition-colors flex-shrink-0"
+            className="w-7 h-7 flex items-center justify-center rounded-full hover:bg-slate-100 dark:hover:bg-slate-700 text-slate-500 dark:text-slate-300 transition-colors flex-shrink-0"
           >
             <span className="material-symbols-outlined text-base">close</span>
           </button>
@@ -92,65 +92,65 @@ function RequestLeaveModal({ studentName, onClose, onSubmit }) {
             <div className="w-12 h-12 rounded-full bg-green-50 dark:bg-green-900/30 flex items-center justify-center mb-3">
               <span className="material-symbols-outlined text-green-600 dark:text-green-300">check_circle</span>
             </div>
-            <p className="text-sm font-bold font-headline text-on-surface dark:text-white">Leave request submitted</p>
-            <p className="text-xs text-on-surface-variant dark:text-slate-300 mt-1">The school will review and respond shortly.</p>
+            <p className="text-sm font-bold text-slate-900 dark:text-white">Leave request submitted</p>
+            <p className="text-xs text-slate-500 dark:text-slate-300 mt-1">The school will review and respond shortly.</p>
           </div>
         ) : (
           <div className="px-5 py-4 space-y-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-on-surface-variant dark:text-slate-300 mb-1">From date</label>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">From date</label>
                 <input
                   type="date"
                   value={form.fromDate}
                   onChange={e => setForm(p => ({ ...p, fromDate: e.target.value }))}
-                  className="w-full text-sm bg-surface-container-low dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-on-surface dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full text-sm bg-slate-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
               <div className="min-w-0">
-                <label className="block text-xs font-medium text-on-surface-variant dark:text-slate-300 mb-1">To date</label>
+                <label className="block text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">To date</label>
                 <input
                   type="date"
                   value={form.toDate}
                   onChange={e => setForm(p => ({ ...p, toDate: e.target.value }))}
-                  className="w-full text-sm bg-surface-container-low dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-on-surface dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                  className="w-full text-sm bg-slate-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
                 />
               </div>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-on-surface-variant dark:text-slate-300 mb-1">Leave type</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">Leave type</label>
               <select
                 value={form.type}
                 onChange={e => setForm(p => ({ ...p, type: e.target.value }))}
-                className="w-full text-sm bg-surface-container-low dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-on-surface dark:text-white focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full text-sm bg-slate-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-900 dark:text-white focus:outline-none focus:ring-2 focus:ring-blue-500"
               >
                 {leaveTypes.map(t => <option key={t}>{t}</option>)}
               </select>
             </div>
 
             <div>
-              <label className="block text-xs font-medium text-on-surface-variant dark:text-slate-300 mb-1">Reason</label>
+              <label className="block text-xs font-medium text-slate-500 dark:text-slate-300 mb-1">Reason</label>
               <textarea
                 rows={3}
                 value={form.reason}
                 onChange={e => setForm(p => ({ ...p, reason: e.target.value }))}
                 placeholder="Briefly describe the reason for leave..."
-                className="w-full text-sm bg-surface-container-low dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-on-surface dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-primary"
+                className="w-full text-sm bg-slate-50 dark:bg-slate-700 border border-gray-200 dark:border-slate-600 rounded-lg px-3 py-2 text-slate-900 dark:text-white placeholder:text-slate-400 resize-none focus:outline-none focus:ring-2 focus:ring-blue-500"
               />
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 pt-1 pb-2">
               <button
                 onClick={onClose}
-                className="flex-1 text-sm py-2.5 rounded-lg bg-surface-container-low dark:bg-slate-700 text-on-surface-variant dark:text-slate-300 font-medium hover:bg-surface-container dark:hover:bg-slate-600 transition-colors"
+                className="flex-1 text-sm py-2.5 rounded-lg bg-slate-100 dark:bg-slate-700 text-slate-600 dark:text-slate-300 font-medium hover:bg-slate-200 dark:hover:bg-slate-600 transition-colors"
               >
                 Cancel
               </button>
               <button
                 onClick={handleSubmit}
                 disabled={submitting || !form.fromDate || !form.toDate || !form.reason.trim()}
-                className="flex-1 text-sm py-2.5 rounded-lg bg-primary text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
+                className="flex-1 text-sm py-2.5 rounded-lg bg-blue-600 text-white font-semibold hover:opacity-90 transition-opacity disabled:opacity-40 disabled:cursor-not-allowed"
               >
                 {submitting ? "Submitting…" : "Submit request"}
               </button>
@@ -170,7 +170,7 @@ function exportToCSV(records, studentName) {
     return [
       d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" }),
       d.toLocaleDateString("en-US", { weekday: "long" }),
-      r.status || "",
+      r.status  || "",
       r.remarks || "",
     ];
   });
@@ -196,7 +196,16 @@ function exportToCSV(records, studentName) {
 
 /* ─── Main Component ────────────────────────────────────────────────────── */
 export default function AttendanceTracker() {
-  const { profile, dashboard, attendanceRecords, enrollment, loading, error } = useParent();
+  const {
+    activeChild,
+    enrollment,
+    attendanceRecords,
+    attendanceSummary,
+    dashboard,
+    loading,
+    childDataLoading,
+    error,
+  } = useParent();
 
   const [currentDate,    setCurrentDate]    = useState(new Date());
   const [showLeaveModal, setShowLeaveModal]  = useState(false);
@@ -204,15 +213,13 @@ export default function AttendanceTracker() {
   const [selectedRow,    setSelectedRow]     = useState(null);
   const [visibleLogs,    setVisibleLogs]     = useState(5);
 
-  // Reset pagination whenever the underlying records change (e.g. child switch)
   useEffect(() => {
     setVisibleLogs(5);
   }, [attendanceRecords]);
 
   const year      = currentDate.getFullYear();
   const month     = currentDate.getMonth();
-  const monthWord = currentDate.toLocaleString("en-US", { month: "long" });
-  const monthLabel = currentDate.toLocaleString("en-US", { month: "long", year: "numeric" });
+  const monthWord  = currentDate.toLocaleString("en-US", { month: "long" });
 
   const attendanceMap = useMemo(() => {
     if (!Array.isArray(attendanceRecords)) return {};
@@ -227,27 +234,35 @@ export default function AttendanceTracker() {
   const handlePrevMonth = () => setCurrentDate(new Date(year, month - 1, 1));
   const handleNextMonth = () => setCurrentDate(new Date(year, month + 1, 1));
 
+  // ── FIX: Math.round() → toFixed(2) ──
   const overallAttendance = useMemo(() => {
-    if (!Array.isArray(attendanceRecords) || attendanceRecords.length === 0) return 0;
+    if (attendanceSummary?.attendance_percentage != null) {
+      return parseFloat(attendanceSummary.attendance_percentage).toFixed(2);
+    }
+    if (!Array.isArray(attendanceRecords) || attendanceRecords.length === 0) return "0.00";
     const present = attendanceRecords.filter(r => r.status === "Present").length;
-    return Math.round((present / attendanceRecords.length) * 100);
-  }, [attendanceRecords]);
+    return ((present / attendanceRecords.length) * 100).toFixed(2);
+  }, [attendanceSummary, attendanceRecords]);
 
   const minRequirement       = 75;
-  const attendanceDifference = overallAttendance - minRequirement;
-  const requirementMet       = overallAttendance >= minRequirement;
+  const attendanceDifference = (parseFloat(overallAttendance) - minRequirement).toFixed(2);
+  const requirementMet       = parseFloat(overallAttendance) >= minRequirement;
 
   const monthlyDistribution = useMemo(() => {
     const s = { Present: 0, Absent: 0, Late: 0 };
     if (!Array.isArray(attendanceRecords)) return s;
     attendanceRecords.forEach(r => {
       const d = new Date(r.date);
-      if (d.getFullYear() === year && d.getMonth() === month && s[r.status] !== undefined) s[r.status]++;
+      if (d.getFullYear() === year && d.getMonth() === month && s[r.status] !== undefined) {
+        s[r.status]++;
+      }
     });
     return s;
   }, [attendanceRecords, year, month]);
 
-  const grades = dashboard?.grades?.results || [];
+  const studentFirstName = activeChild?.name?.split(" ")[0] || "your child";
+  const studentFullName  = activeChild?.name || studentFirstName;
+  const totalSubjects    = dashboard?.stats?.total_grades ?? 0;
 
   const statusClasses = {
     Present: "bg-green-100 text-green-700 border-green-200",
@@ -270,7 +285,7 @@ export default function AttendanceTracker() {
 
   if (loading) return <AttendanceSkeleton />;
 
-  if (error || !profile) {
+  if (error || !activeChild) {
     return (
       <DashboardLayout>
         <div className="p-4 sm:p-6 max-w-7xl mx-auto">
@@ -282,10 +297,8 @@ export default function AttendanceTracker() {
     );
   }
 
-  const studentFirstName = profile?.first_name || "your child";
-  const studentFullName  = `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() || studentFirstName;
-  const sortedRecords    = [...(attendanceRecords || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
-  const visibleRecords   = sortedRecords.slice(0, visibleLogs);
+  const sortedRecords  = [...(attendanceRecords || [])].sort((a, b) => new Date(b.date) - new Date(a.date));
+  const visibleRecords = sortedRecords.slice(0, visibleLogs);
 
   return (
     <DashboardLayout>
@@ -294,17 +307,20 @@ export default function AttendanceTracker() {
         {/* ── Header ── */}
         <div className="flex flex-col xs:flex-row xs:justify-between xs:items-center gap-3">
           <div className="min-w-0">
-            <h1 className="text-lg sm:text-xl font-bold font-headline text-on-surface dark:text-white">
+            <h1 className="text-lg sm:text-xl font-bold text-slate-900 dark:text-white">
               Child Attendance
             </h1>
-            <p className="text-xs text-on-surface-variant dark:text-slate-400 mt-0.5">
+            <p className="text-xs text-slate-500 dark:text-slate-400 mt-0.5 flex items-center gap-2">
               Tracking {studentFirstName}'s academic presence
+              {childDataLoading && (
+                <span className="inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin" />
+              )}
             </p>
           </div>
           <div className="flex gap-2 flex-shrink-0">
             <button
               onClick={handleExport}
-              className="flex items-center justify-center gap-1.5 bg-surface-container-high dark:bg-slate-700 text-primary dark:text-blue-300 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold text-xs sm:text-sm hover:bg-surface-variant dark:hover:bg-slate-600 active:scale-95 transition-all whitespace-nowrap"
+              className="flex items-center justify-center gap-1.5 bg-slate-100 dark:bg-slate-700 text-blue-600 dark:text-blue-300 px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold text-xs sm:text-sm hover:bg-slate-200 dark:hover:bg-slate-600 active:scale-95 transition-all whitespace-nowrap"
             >
               <span className="material-symbols-outlined text-base">
                 {exportFeedback ? "check" : "download"}
@@ -313,7 +329,7 @@ export default function AttendanceTracker() {
             </button>
             <button
               onClick={() => setShowLeaveModal(true)}
-              className="flex items-center justify-center gap-1.5 bg-primary text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold text-xs sm:text-sm hover:opacity-90 active:scale-95 transition-all whitespace-nowrap"
+              className="flex items-center justify-center gap-1.5 bg-blue-600 text-white px-3 sm:px-4 py-2 sm:py-2.5 rounded-lg font-semibold text-xs sm:text-sm hover:opacity-90 active:scale-95 transition-all whitespace-nowrap"
             >
               <span className="material-symbols-outlined text-base">event_busy</span>
               <span>Request Leave</span>
@@ -328,41 +344,41 @@ export default function AttendanceTracker() {
           <div className="xl:col-span-4 grid grid-cols-1 sm:grid-cols-3 xl:grid-cols-1 gap-3 sm:gap-4">
 
             {/* Card 1: Overall */}
-            <div className="bg-surface-container-lowest dark:bg-slate-800 px-4 py-3.5 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap transition-colors duration-300">
+            <div className="bg-white dark:bg-slate-800 px-4 py-3.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap transition-colors duration-300">
               <div className="flex items-center gap-3 min-w-0">
                 <span className="p-2 bg-blue-50 dark:bg-blue-900/40 text-blue-600 dark:text-blue-300 rounded-lg flex-shrink-0">
                   <span className="material-symbols-outlined text-xl">analytics</span>
                 </span>
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-on-surface-variant dark:text-slate-400 truncate">Overall Attendance</p>
-                  <p className="text-2xl font-bold font-headline text-on-surface dark:text-white leading-tight">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Overall Attendance</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
                     {overallAttendance}<span className="text-sm font-semibold">%</span>
                   </p>
                 </div>
               </div>
               <div className="w-14 flex flex-col items-end gap-1 flex-shrink-0">
-                <div className="w-full bg-surface-container dark:bg-slate-700 rounded-full h-1.5">
+                <div className="w-full bg-slate-100 dark:bg-slate-700 rounded-full h-1.5">
                   <div
-                    className="bg-primary h-1.5 rounded-full transition-all duration-500"
-                    style={{ width: `${Math.min(overallAttendance, 100)}%` }}
+                    className="bg-blue-600 h-1.5 rounded-full transition-all duration-500"
+                    style={{ width: `${Math.min(parseFloat(overallAttendance), 100)}%` }}
                   />
                 </div>
-                <span className="text-[9px] text-on-surface-variant dark:text-slate-400 whitespace-nowrap">{overallAttendance}% of 100%</span>
+                <span className="text-[9px] text-slate-400 dark:text-slate-400 whitespace-nowrap">{overallAttendance}% of 100%</span>
               </div>
             </div>
 
             {/* Card 2: Min Requirement */}
-            <div className="bg-surface-container-lowest dark:bg-slate-800 px-4 py-3.5 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap transition-colors duration-300">
+            <div className="bg-white dark:bg-slate-800 px-4 py-3.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 flex items-center justify-between gap-3 flex-wrap transition-colors duration-300">
               <div className="flex items-center gap-3 min-w-0">
                 <span className="p-2 bg-purple-50 dark:bg-purple-900/40 text-purple-600 dark:text-purple-300 rounded-lg flex-shrink-0">
                   <span className="material-symbols-outlined text-xl">gavel</span>
                 </span>
                 <div className="min-w-0">
-                  <p className="text-xs font-medium text-on-surface-variant dark:text-slate-400 truncate">Min. Requirement</p>
-                  <p className="text-2xl font-bold font-headline text-on-surface dark:text-white leading-tight">
+                  <p className="text-xs font-medium text-slate-500 dark:text-slate-400 truncate">Min. Requirement</p>
+                  <p className="text-2xl font-bold text-slate-900 dark:text-white leading-tight">
                     {minRequirement}<span className="text-sm font-semibold">%</span>
                   </p>
-                  <p className="text-[10px] text-on-surface-variant dark:text-slate-400 italic truncate">
+                  <p className="text-[10px] text-slate-400 dark:text-slate-400 italic truncate">
                     {requirementMet
                       ? `${Math.abs(attendanceDifference)}% above limit`
                       : `${Math.abs(attendanceDifference)}% below limit`}
@@ -379,12 +395,12 @@ export default function AttendanceTracker() {
             </div>
 
             {/* Card 3: Monthly Breakdown */}
-            <div className="bg-surface-container-lowest dark:bg-slate-800 px-4 py-3.5 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-700 transition-colors duration-300">
-              <p className="text-xs font-medium text-on-surface-variant dark:text-slate-400 mb-0.5">Monthly Breakdown</p>
-              <p className="text-[10px] text-on-surface-variant/60 dark:text-slate-500 mb-3">{monthWord} {year}</p>
+            <div className="bg-white dark:bg-slate-800 px-4 py-3.5 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 transition-colors duration-300">
+              <p className="text-xs font-medium text-slate-500 dark:text-slate-400 mb-0.5">Monthly Breakdown</p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-500 mb-3">{monthWord} {year}</p>
 
               {monthlyDistribution.Present === 0 && monthlyDistribution.Absent === 0 && monthlyDistribution.Late === 0 ? (
-                <p className="text-xs text-on-surface-variant dark:text-slate-400 text-center py-4">No data for this month</p>
+                <p className="text-xs text-slate-400 dark:text-slate-400 text-center py-4">No data for this month</p>
               ) : (
                 <div className="flex items-end gap-2 sm:gap-3 h-16">
                   {[
@@ -393,7 +409,8 @@ export default function AttendanceTracker() {
                     { label: "Late",    count: monthlyDistribution.Late,    barColor: "bg-yellow-400", textColor: "text-yellow-600 dark:text-yellow-300" },
                   ].map(({ label, count, barColor, textColor }) => {
                     const total = monthlyDistribution.Present + monthlyDistribution.Absent + monthlyDistribution.Late;
-                    const heightPercent = total > 0 ? Math.round((count / total) * 100) : 0;
+                    // ── FIX: Math.round() → toFixed(2) ──
+                    const heightPercent = total > 0 ? ((count / total) * 100).toFixed(2) : "0.00";
                     return (
                       <div key={label} className="flex-1 flex flex-col items-center gap-1 min-w-0">
                         <span className={`text-[10px] font-bold ${textColor}`}>{count}</span>
@@ -403,7 +420,7 @@ export default function AttendanceTracker() {
                             style={{ height: `${heightPercent}%`, minHeight: count > 0 ? "3px" : "0px" }}
                           />
                         </div>
-                        <span className="text-[9px] text-on-surface-variant dark:text-slate-400 truncate">{label}</span>
+                        <span className="text-[9px] text-slate-400 dark:text-slate-400 truncate">{label}</span>
                       </div>
                     );
                   })}
@@ -413,24 +430,24 @@ export default function AttendanceTracker() {
           </div>
 
           {/* RIGHT: Calendar */}
-          <div className="xl:col-span-8 bg-surface-container-lowest dark:bg-slate-800 rounded-xl p-4 sm:p-5 shadow-sm border border-outline-variant/10 dark:border-slate-700 transition-colors duration-300">
+          <div className="xl:col-span-8 bg-white dark:bg-slate-800 rounded-xl p-4 sm:p-5 shadow-sm border border-slate-200 dark:border-slate-700 transition-colors duration-300">
             <div className="flex justify-between items-center flex-wrap gap-2 mb-4 sm:mb-5">
               <div className="min-w-0">
-                <h3 className="text-sm sm:text-base font-bold font-headline text-on-surface dark:text-white truncate">
+                <h3 className="text-sm sm:text-base font-bold text-slate-900 dark:text-white truncate">
                   {monthWord} {year}
                 </h3>
-                <p className="text-xs text-on-surface-variant dark:text-slate-400">Visual Presence Log</p>
+                <p className="text-xs text-slate-500 dark:text-slate-400">Visual Presence Log</p>
               </div>
               <div className="flex gap-1 flex-shrink-0">
                 <button
                   onClick={handlePrevMonth}
-                  className="p-1.5 hover:bg-surface-container dark:hover:bg-slate-700 rounded-lg transition-colors text-on-surface dark:text-white active:scale-90"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-800 dark:text-white active:scale-90"
                 >
                   <span className="material-symbols-outlined text-xl">chevron_left</span>
                 </button>
                 <button
                   onClick={handleNextMonth}
-                  className="p-1.5 hover:bg-surface-container dark:hover:bg-slate-700 rounded-lg transition-colors text-on-surface dark:text-white active:scale-90"
+                  className="p-1.5 hover:bg-slate-100 dark:hover:bg-slate-700 rounded-lg transition-colors text-slate-800 dark:text-white active:scale-90"
                 >
                   <span className="material-symbols-outlined text-xl">chevron_right</span>
                 </button>
@@ -440,7 +457,7 @@ export default function AttendanceTracker() {
             {/* Day grid */}
             <div className="grid grid-cols-7 gap-1 sm:gap-1.5">
               {["Sun","Mon","Tue","Wed","Thu","Fri","Sat"].map(d => (
-                <div key={d} className="text-center text-[9px] sm:text-[10px] font-bold text-on-surface-variant dark:text-slate-400 pb-1">{d}</div>
+                <div key={d} className="text-center text-[9px] sm:text-[10px] font-bold text-slate-400 dark:text-slate-400 pb-1">{d}</div>
               ))}
               {emptyDays.map((_, idx) => <div key={`b-${idx}`} />)}
               {days.map(day => {
@@ -452,8 +469,8 @@ export default function AttendanceTracker() {
                     title={record?.status || ""}
                     className={`h-8 sm:h-9 xl:h-10 rounded-lg flex items-center justify-center text-[11px] sm:text-xs font-semibold border transition-all cursor-default select-none ${
                       record
-                        ? (statusClasses[record.status] ?? "bg-surface-container dark:bg-slate-700 border-surface-container dark:border-slate-600")
-                        : "bg-surface-container-lowest dark:bg-slate-800 border-surface-container dark:border-slate-700 text-on-surface-variant dark:text-slate-400"
+                        ? (statusClasses[record.status] ?? "bg-slate-100 dark:bg-slate-700 border-slate-200 dark:border-slate-600")
+                        : "bg-slate-50 dark:bg-slate-800 border-slate-100 dark:border-slate-700 text-slate-400 dark:text-slate-400"
                     }`}
                   >
                     {day}
@@ -463,16 +480,16 @@ export default function AttendanceTracker() {
             </div>
 
             {/* Legend */}
-            <div className="flex flex-wrap gap-3 sm:gap-5 mt-4 sm:mt-5 pt-4 border-t border-surface-container-low dark:border-slate-700">
+            <div className="flex flex-wrap gap-3 sm:gap-5 mt-4 sm:mt-5 pt-4 border-t border-slate-100 dark:border-slate-700">
               {[
                 { color: "bg-green-400",  label: "Present"   },
                 { color: "bg-red-400",    label: "Absent"    },
                 { color: "bg-yellow-400", label: "Late"      },
-                { color: "bg-surface-container dark:bg-slate-700", label: "No record" },
+                { color: "bg-slate-200 dark:bg-slate-700", label: "No record" },
               ].map(({ color, label }) => (
                 <div key={label} className="flex items-center gap-1.5">
                   <div className={`w-2.5 h-2.5 rounded-full flex-shrink-0 ${color}`} />
-                  <span className="text-xs font-medium text-on-surface-variant dark:text-slate-400 whitespace-nowrap">{label}</span>
+                  <span className="text-xs font-medium text-slate-500 dark:text-slate-400 whitespace-nowrap">{label}</span>
                 </div>
               ))}
             </div>
@@ -480,31 +497,30 @@ export default function AttendanceTracker() {
         </section>
 
         {/* ── Enrollment Details ── */}
-        <div className="bg-surface-container-lowest dark:bg-slate-800 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-700 px-4 py-3.5 transition-colors duration-300">
-          <p className="text-xs font-semibold text-on-surface-variant dark:text-slate-400 mb-3 uppercase tracking-wider">Enrollment Details</p>
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 px-4 py-3.5 transition-colors duration-300">
+          <p className="text-xs font-semibold text-slate-400 dark:text-slate-400 mb-3 uppercase tracking-wider">Enrollment Details</p>
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3 sm:gap-4">
             {[
               { label: "Student",       value: studentFullName },
               { label: "Class",         value: enrollment ? `${enrollment.class_level_name} – ${enrollment.section_name}` : "N/A" },
               { label: "Roll no.",      value: enrollment?.roll_number || "N/A" },
               { label: "Academic year", value: enrollment?.academic_year_name || "N/A" },
-              { label: "Subjects",      value: grades.length || "N/A" },
+              { label: "Subjects",      value: totalSubjects || "N/A" },
             ].map(({ label, value }) => (
               <div key={label} className="min-w-0">
-                <p className="text-[10px] text-on-surface-variant dark:text-slate-400 mb-0.5 break-words">{label}</p>
-                <p className="text-xs font-bold font-headline text-on-surface dark:text-white break-words">{value}</p>
+                <p className="text-[10px] text-slate-400 dark:text-slate-400 mb-0.5 break-words">{label}</p>
+                <p className="text-xs font-bold text-slate-900 dark:text-white break-words">{value}</p>
               </div>
             ))}
           </div>
         </div>
 
         {/* ── Attendance Log ── */}
-        <div className="bg-surface-container-lowest dark:bg-slate-800 rounded-xl shadow-sm border border-outline-variant/10 dark:border-slate-700 overflow-hidden transition-colors duration-300">
+        <div className="bg-white dark:bg-slate-800 rounded-xl shadow-sm border border-slate-200 dark:border-slate-700 overflow-hidden transition-colors duration-300">
 
-          {/* Table header bar */}
-          <div className="flex items-center justify-between gap-2 px-4 py-3.5 border-b border-surface-container-low dark:border-slate-700">
-            <h2 className="text-sm font-bold font-headline text-on-surface dark:text-white">Attendance Log</h2>
-            <span className="text-xs text-on-surface-variant dark:text-slate-400 flex-shrink-0">
+          <div className="flex items-center justify-between gap-2 px-4 py-3.5 border-b border-slate-100 dark:border-slate-700">
+            <h2 className="text-sm font-bold text-slate-900 dark:text-white">Attendance Log</h2>
+            <span className="text-xs text-slate-400 dark:text-slate-400 flex-shrink-0">
               Showing {Math.min(visibleLogs, sortedRecords.length)} of {sortedRecords.length}
             </span>
           </div>
@@ -512,54 +528,53 @@ export default function AttendanceTracker() {
           <div className="overflow-x-auto">
             <table className="w-full text-left min-w-[520px]">
               <thead>
-                <tr className="border-b-2 border-primary/20 dark:border-primary/30">
-                  <th className="sticky left-0 z-10 bg-surface-container-lowest dark:bg-slate-800 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-primary dark:text-blue-400 whitespace-nowrap">
+                <tr className="border-b-2 border-blue-100 dark:border-blue-900/30">
+                  <th className="sticky left-0 z-10 bg-white dark:bg-slate-800 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 whitespace-nowrap">
                     Date
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-primary dark:text-blue-400 whitespace-nowrap bg-surface-container-lowest dark:bg-slate-800">
+                  <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 whitespace-nowrap bg-white dark:bg-slate-800">
                     Day
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-primary dark:text-blue-400 whitespace-nowrap bg-surface-container-lowest dark:bg-slate-800">
+                  <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 whitespace-nowrap bg-white dark:bg-slate-800">
                     Remarks
                   </th>
-                  <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-primary dark:text-blue-400 whitespace-nowrap text-center bg-surface-container-lowest dark:bg-slate-800">
+                  <th className="px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-blue-600 dark:text-blue-400 whitespace-nowrap text-center bg-white dark:bg-slate-800">
                     Status
                   </th>
                 </tr>
               </thead>
 
-              <tbody className="divide-y divide-surface-container-low dark:divide-slate-700/60">
+              <tbody className="divide-y divide-slate-100 dark:divide-slate-700/60">
                 {sortedRecords.length === 0 ? (
                   <tr>
-                    <td colSpan={4} className="px-4 py-10 text-center text-xs text-on-surface-variant dark:text-slate-400">
+                    <td colSpan={4} className="px-4 py-10 text-center text-xs text-slate-400 dark:text-slate-400">
                       No attendance records found.
                     </td>
                   </tr>
                 ) : (
-                  visibleRecords.map(rec => {
+                  visibleRecords.map((rec, idx) => {
                     const d          = new Date(rec.date);
-                    const isSelected = selectedRow === rec.id;
+                    const rowKey     = rec.id || rec.date || idx;
+                    const isSelected = selectedRow === rowKey;
                     return (
                       <tr
-                        key={rec.id}
-                        onClick={() => setSelectedRow(isSelected ? null : rec.id)}
+                        key={rowKey}
+                        onClick={() => setSelectedRow(isSelected ? null : rowKey)}
                         className={`cursor-pointer transition-colors duration-150 ${
                           isSelected
-                            ? "bg-primary/8 dark:bg-primary/15"
-                            : "hover:bg-primary/5 dark:hover:bg-primary/10"
+                            ? "bg-blue-50 dark:bg-blue-900/20"
+                            : "hover:bg-slate-50 dark:hover:bg-slate-700/30"
                         }`}
                       >
-                        <td className={`sticky left-0 z-10 px-4 py-3 text-xs font-semibold text-on-surface dark:text-white whitespace-nowrap transition-colors duration-150 ${
-                          isSelected
-                            ? "bg-primary/8 dark:bg-primary/15"
-                            : "bg-surface-container-lowest dark:bg-slate-800 group-hover:bg-primary/5"
+                        <td className={`sticky left-0 z-10 px-4 py-3 text-xs font-semibold text-slate-900 dark:text-white whitespace-nowrap transition-colors duration-150 ${
+                          isSelected ? "bg-blue-50 dark:bg-blue-900/20" : "bg-white dark:bg-slate-800"
                         }`}>
                           {d.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" })}
                         </td>
-                        <td className="px-4 py-3 text-xs text-on-surface-variant dark:text-slate-300 whitespace-nowrap">
+                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-300 whitespace-nowrap">
                           {d.toLocaleDateString("en-US", { weekday: "long" })}
                         </td>
-                        <td className="px-4 py-3 text-xs text-on-surface-variant dark:text-slate-300 max-w-[200px] break-words">
+                        <td className="px-4 py-3 text-xs text-slate-500 dark:text-slate-300 max-w-[200px] break-words">
                           {rec.remarks || "—"}
                         </td>
                         <td className="px-4 py-3 text-center">
@@ -575,12 +590,11 @@ export default function AttendanceTracker() {
             </table>
           </div>
 
-          {/* Lazy load trigger */}
           {visibleLogs < sortedRecords.length && (
-            <div className="px-4 py-3 border-t border-surface-container-low dark:border-slate-700 flex justify-center">
+            <div className="px-4 py-3 border-t border-slate-100 dark:border-slate-700 flex justify-center">
               <button
                 onClick={() => setVisibleLogs(v => v + 5)}
-                className="text-xs font-semibold text-primary dark:text-blue-300 hover:underline px-3 py-1.5 rounded-lg hover:bg-primary/5 dark:hover:bg-primary/10 transition-colors"
+                className="text-xs font-semibold text-blue-600 dark:text-blue-300 hover:underline px-3 py-1.5 rounded-lg hover:bg-blue-50 dark:hover:bg-blue-900/20 transition-colors"
               >
                 Load more ({sortedRecords.length - visibleLogs} remaining)
               </button>
@@ -590,7 +604,6 @@ export default function AttendanceTracker() {
 
       </div>
 
-      {/* Leave Modal */}
       {showLeaveModal && (
         <RequestLeaveModal
           studentName={studentFullName}

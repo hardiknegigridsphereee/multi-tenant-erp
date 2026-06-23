@@ -73,47 +73,63 @@ const SubjectIcon = ({ name = "" }) => {
 /* ─── Main Component ────────────────────────────────────────────────────── */
 const ChildOverview = () => {
   const navigate = useNavigate();
-  const { mapping, profile, enrollment, attendanceRecords, grades, loading, error } = useParent();
+
+  // ── FIX: use correct context keys from updated ParentProvider ──
+  const {
+    activeChild,        // full child object: { id, name, email, enrollment_number,
+                        //   relationship, is_primary_contact, can_view_academics,
+                        //   can_pay_fees, dashboard{} }
+    enrollment,         // derived: { class_level_name, section_name, academic_year_name, roll_number }
+    attendanceRecords,  // [{ date, status, remarks }]
+    attendanceSummary,  // { total_days, present, absent, late, attendance_percentage, status }
+    gradesFlat,         // [{ subject, subject_name, marks_obtained, max_marks, percentage, ... }]
+    loading,
+    childDataLoading,
+    error,
+  } = useParent();
 
   const childData = useMemo(() => {
-    if (!profile && !mapping) return null;
+    if (!activeChild) return null;
 
-    const name =
-      mapping?.student_name ||
-      `${profile?.first_name || ""} ${profile?.last_name || ""}`.trim() ||
-      "Student";
+    // ── Name ──
+    const name = activeChild.name || "Student";
 
-    const rollNumber = enrollment?.roll_number || profile?.enrollment_number || "N/A";
+    // ── Roll number ──
+    const rollNumber = enrollment?.roll_number || activeChild.enrollment_number || "N/A";
 
+    // ── Grade label ──
     const grade = enrollment
       ? `${enrollment.class_level_name}${enrollment.section_name ? ` - ${enrollment.section_name}` : ""}`
       : "Not Enrolled";
 
-    const rawPic = profile?.profile_picture || "";
-    const profilePicUrl =
-      rawPic.startsWith("http://") || rawPic.startsWith("https://")
-        ? rawPic
-        : `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
+    // ── Profile picture ──
+    // activeChild from dashboard list doesn't carry profile_picture;
+    // fall back to ui-avatars
+    const profilePicUrl = `https://ui-avatars.com/api/?name=${encodeURIComponent(name)}&background=0D8ABC&color=fff`;
 
-    const records = Array.isArray(attendanceRecords) ? attendanceRecords : [];
-    const attendancePercentage =
-      records.length > 0
-        ? Math.round((records.filter((r) => r.status === "Present").length / records.length) * 100)
-        : 0;
+    // ── Attendance ──
+    // Prefer detailed summary if available, fallback to dashboard bundle
+    const attendancePct =
+      attendanceSummary?.attendance_percentage ??
+      activeChild.dashboard?.attendance?.attendance_percentage ??
+      0;
+    // FIX: Math.round() hatao, toFixed(2) use karo
+    const attendancePercentage = attendancePct.toFixed(2);
 
-    const gradesList = Array.isArray(grades) ? grades : [];
-    const numericScores = gradesList
+    // ── Grades from gradesFlat ──
+    const numericScores = gradesFlat
       .map((g) => {
         const obtained = parseFloat(g.marks_obtained);
-        const max = parseFloat(g.max_marks) || 100;
+        const max      = parseFloat(g.max_marks) || 100;
         return (obtained / max) * 100;
       })
       .filter((n) => !isNaN(n));
 
+    // FIX: Math.round() hatao, toFixed(2) use karo
     const avgScoreNum =
       numericScores.length > 0
-        ? Math.round(numericScores.reduce((a, b) => a + b, 0) / numericScores.length)
-        : 0;
+        ? (numericScores.reduce((a, b) => a + b, 0) / numericScores.length).toFixed(2)
+        : "0.00";
 
     const avgGradeLetter =
       numericScores.length === 0 ? "N/A"
@@ -123,22 +139,26 @@ const ChildOverview = () => {
         : avgScoreNum >= 60 ? "B"
         : "C";
 
+    // ── Subject map ── (aggregate across exams per subject)
     const subjectMap = new Map();
-    gradesList.forEach((g) => {
-      const key = g.subject_name || "Unknown Subject";
+    gradesFlat.forEach((g) => {
+      const key      = g.subject_name || "Unknown Subject";
       const obtained = parseFloat(g.marks_obtained) || 0;
-      const max = parseFloat(g.max_marks) || 100;
-      if (!subjectMap.has(key)) subjectMap.set(key, { totalObtained: 0, totalMax: 0, id: g.subject || key });
+      const max      = parseFloat(g.max_marks) || 100;
+      if (!subjectMap.has(key)) {
+        subjectMap.set(key, { totalObtained: 0, totalMax: 0, id: g.subject || key });
+      }
       const entry = subjectMap.get(key);
       entry.totalObtained += obtained;
-      entry.totalMax += max;
+      entry.totalMax      += max;
     });
 
     const subjects = Array.from(subjectMap.entries()).map(([subjName, entry]) => {
-      const scoreNum = entry.totalMax > 0 ? Math.round((entry.totalObtained / entry.totalMax) * 100) : 0;
-      const trend = scoreNum >= 80 ? "up" : scoreNum < 70 ? "down" : "flat";
+      // FIX: Math.round() hatao, toFixed(2) use karo
+      const scoreNum = entry.totalMax > 0 ? ((entry.totalObtained / entry.totalMax) * 100).toFixed(2) : "0.00";
+      const trend    = scoreNum >= 80 ? "up" : scoreNum < 70 ? "down" : "flat";
       return {
-        id: entry.id,
+        id:   entry.id,
         name: subjName,
         score: scoreNum,
         level: scoreNum >= 80 ? "Excellent" : scoreNum >= 70 ? "Good" : "Needs Improvement",
@@ -159,13 +179,14 @@ const ChildOverview = () => {
       profilePicUrl,
       stats: {
         totalSubjects: subjects.length,
-        avgGrade: avgGradeLetter,
-        attendance: attendancePercentage,
+        avgGrade:      avgGradeLetter,
+        attendance:    attendancePercentage,
       },
       subjects,
     };
-  }, [profile, mapping, enrollment, attendanceRecords, grades]);
+  }, [activeChild, enrollment, attendanceRecords, attendanceSummary, gradesFlat]);
 
+  // ── Loading state ──
   if (loading) {
     return (
       <DashboardLayout>
@@ -199,6 +220,9 @@ const ChildOverview = () => {
           </h1>
           <p className="text-xs sm:text-sm lg:text-base text-slate-500 dark:text-slate-400 mt-0.5 sm:mt-1">
             Tracking {childData.name}&apos;s academic progress
+            {childDataLoading && (
+              <span className="ml-2 inline-block w-3 h-3 border-2 border-blue-400 border-t-transparent rounded-full animate-spin align-middle" />
+            )}
           </p>
         </div>
 

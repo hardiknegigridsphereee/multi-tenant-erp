@@ -1,29 +1,30 @@
-// src/components/erp/parent/AIInsights.jsx  (also used as AllInsights)
+// src/components/erp/parent/AIInsights.jsx
 
-import React from "react";
-
-/*
-  ── Why plain CSS container queries instead of Tailwind's @container ──────
-  Tailwind's @container utility variants need the official container-queries
-  plugin registered in tailwind.config.js. Since this project's Tailwind
-  config isn't something we're touching, we use *native* CSS container
-  queries directly via a <style> tag scoped to this component's class names.
-  Native container queries are supported in all current browsers (Chrome,
-  Edge, Safari, Firefox) and need zero build config — they just work.
-
-  This card now measures its OWN rendered width (not the viewport) and
-  shrinks text/spacing in three tiers:
-    < 250px   → ultra-narrow (worst-case squeeze, e.g. a bad grid split)
-    250–320px → narrow (typical when this card shares a row, e.g. Nest Hub)
-    320px+    → normal (full desktop sizing, current default look)
-
-  Because it reacts to its own box size, it self-corrects no matter what
-  grid/column width the parent page gives it — Nest Hub, Nest Hub Max,
-  iPad Mini/Air/Pro, or full desktop — without ParentDashboard.jsx needing
-  any breakpoint logic at all.
-*/
+import React, { useMemo } from "react";
+import { useParent } from "../../../context/ParentProvider";
 
 const AIInsights = () => {
+  const { activeChild, dashboard } = useParent();
+
+  const { topSubject, topPct, checklist } = useMemo(() => {
+    const grades = dashboard?.recent_grades || [];
+    if (!grades.length) return { topSubject: null, topPct: null, checklist: [] };
+
+    const sorted = [...grades].sort((a, b) => b.percentage - a.percentage);
+    const top = sorted[0];
+
+    const items = [];
+    if (dashboard?.attendance?.status) {
+      items.push(`Attendance status: ${dashboard.attendance.status}`);
+    }
+    if (dashboard?.stats?.total_grades) {
+      items.push(`${dashboard.stats.total_grades} grade${dashboard.stats.total_grades > 1 ? "s" : ""} recorded so far`);
+    }
+    return { topSubject: top.subject, topPct: top.percentage, checklist: items };
+  }, [dashboard]);
+
+  const name = activeChild?.name?.split(" ")[0] || "Your child";
+
   return (
     <div className="ai-insight-card h-full min-h-[280px] sm:min-h-[320px] bg-surface-container-lowest dark:bg-slate-800/60 rounded-xl border-2 border-primary/5 dark:border-slate-700/40 relative flex flex-col overflow-hidden">
       <style>{`
@@ -72,23 +73,15 @@ const AIInsights = () => {
         }
       `}</style>
 
-      {/* Background icon */}
       <div className="ai-bg-icon absolute top-0 right-0 opacity-10 pointer-events-none">
-        <span
-          className="material-symbols-outlined text-primary"
-          style={{ fontVariationSettings: "'FILL' 1" }}
-        >
+        <span className="material-symbols-outlined text-primary" style={{ fontVariationSettings: "'FILL' 1" }}>
           psychology
         </span>
       </div>
 
-      {/* Header */}
       <div className="ai-header flex items-center flex-shrink-0 min-w-0">
         <div className="ai-header-icon-wrap bg-tertiary-fixed dark:bg-purple-900/30 rounded-lg flex-shrink-0">
-          <span
-            className="material-symbols-outlined text-tertiary dark:text-purple-400"
-            style={{ fontVariationSettings: "'FILL' 1" }}
-          >
+          <span className="material-symbols-outlined text-tertiary dark:text-purple-400" style={{ fontVariationSettings: "'FILL' 1" }}>
             auto_awesome
           </span>
         </div>
@@ -97,32 +90,38 @@ const AIInsights = () => {
         </h3>
       </div>
 
-      {/* Quote */}
       <div className="ai-quote bg-tertiary/5 dark:bg-purple-900/20 rounded-xl border-l-4 border-tertiary dark:border-purple-500 flex-shrink-0">
         <p className="text-on-surface dark:text-slate-200 font-medium leading-relaxed">
-          "Your child shows significant improvement in{" "}
-          <span className="text-tertiary dark:text-purple-300 font-bold">Mathematics</span>.
-          Alex has improved their average from B to A- over the last month."
+          {topSubject ? (
+            <>
+              "{name} is performing strongly in{" "}
+              <span className="text-tertiary dark:text-purple-300 font-bold">{topSubject}</span>
+              , currently at {topPct}%."
+            </>
+          ) : (
+            `"Not enough grade data yet for ${name} to generate an insight."`
+          )}
         </p>
       </div>
 
-      {/* Checklist — flex-1 fills space between quote and button */}
       <ul className="ai-checklist flex-1 flex flex-col text-on-surface-variant dark:text-slate-400 min-h-0">
-        <li className="flex items-start">
-          <span className="material-symbols-outlined text-tertiary dark:text-purple-400 mt-0.5 flex-shrink-0">
-            check_circle
-          </span>
-          <span>Completed 100% of Algebra modules</span>
-        </li>
-        <li className="flex items-start">
-          <span className="material-symbols-outlined text-tertiary dark:text-purple-400 mt-0.5 flex-shrink-0">
-            check_circle
-          </span>
-          <span>High engagement during Calculus labs</span>
-        </li>
+        {checklist.length ? (
+          checklist.map((item, i) => (
+            <li key={i} className="flex items-start">
+              <span className="material-symbols-outlined text-tertiary dark:text-purple-400 mt-0.5 flex-shrink-0">
+                check_circle
+              </span>
+              <span>{item}</span>
+            </li>
+          ))
+        ) : (
+          <li className="flex items-start">
+            <span className="material-symbols-outlined text-tertiary dark:text-purple-400 mt-0.5 flex-shrink-0">info</span>
+            <span>Check back after more data is recorded.</span>
+          </li>
+        )}
       </ul>
 
-      {/* Button — always pinned to bottom, scales with container width instead of clipping */}
       <button
         className="ai-button w-full rounded-xl font-bold flex-shrink-0 leading-snug
                    bg-surface-container-high dark:bg-slate-700

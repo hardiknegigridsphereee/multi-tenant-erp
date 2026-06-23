@@ -1,6 +1,6 @@
 import React, { useState, useRef, useEffect } from "react";
 import DashboardLayout from "../../components/erp/parent/DashboardLayout";
-import { parentData } from "../../services/parentAPIs";
+import { getParentProfile } from "../../services/parentAPIs";
 
 const Toggle = ({ enabled, onToggle }) => (
   <button
@@ -47,7 +47,6 @@ function FlagImg({ iso, className = "" }) {
   );
 }
 
-/* Custom flag dropdown — opens downward, compact, shows flag */
 function CountryCodePicker({ value, onChange }) {
   const [open, setOpen] = useState(false);
   const ref = useRef(null);
@@ -63,7 +62,6 @@ function CountryCodePicker({ value, onChange }) {
 
   return (
     <div ref={ref} className="relative flex-shrink-0">
-      {/* Trigger button */}
       <button
         type="button"
         onClick={() => setOpen((o) => !o)}
@@ -77,7 +75,6 @@ function CountryCodePicker({ value, onChange }) {
         </span>
       </button>
 
-      {/* Dropdown panel — opens downward */}
       {open && (
         <div
           className="absolute left-0 top-full mt-1 z-50 bg-white dark:bg-slate-800 rounded-xl shadow-xl border border-slate-200 dark:border-slate-600 overflow-hidden"
@@ -109,7 +106,7 @@ function CountryCodePicker({ value, onChange }) {
 
 const ParentPortalSettings = () => {
 
-  // ── Dark mode — real, working: localStorage + <html> class ──────────────
+  // ── Dark mode ──────────────────────────────────────────────────────────
   const [isDark, setIsDark] = useState(
     () => typeof localStorage !== "undefined" && localStorage.getItem("parent_theme") === "dark"
   );
@@ -127,32 +124,36 @@ const ParentPortalSettings = () => {
   const [notifs, setNotifs]           = useState({ email: true, push: true, sms: false });
   const [saved, setSaved]             = useState(false);
   const [countryCode, setCountryCode] = useState("+91");
-  const [phone, setPhone] = useState();
-  const [name, setName] = useState();
-  const [email, setEmail] = useState()
+  const [phone, setPhone]             = useState("");
+  const [name, setName]               = useState("");
+  const [email, setEmail]             = useState("");
+
+  // ── Fetch parent profile on mount ──────────────────────────────────────
+  // FIX: replaced wrong `parentData` import with correct `getParentProfile`
+  // FIX: moved async fetch into useEffect (removed broken setTimeout pattern)
+  useEffect(() => {
+    const fetchProfile = async () => {
+      try {
+        const profileData = await getParentProfile();
+        const firstName = profileData.first_name || "";
+        const lastName  = profileData.last_name  || "";
+        const fullName  =
+          (firstName ? firstName[0].toUpperCase() + firstName.slice(1) : "") +
+          (lastName  ? " " + lastName[0].toUpperCase() + lastName.slice(1) : "");
+        setName(fullName.trim());
+        setEmail(profileData.email || "");
+        setPhone(profileData.phone_number || "");
+      } catch (err) {
+        console.error("Couldn't fetch parent profile", err);
+      }
+    };
+    fetchProfile();
+  }, []);
 
   const handleSave = () => {
     setSaved(true);
     setTimeout(() => setSaved(false), 2000);
   };
-
-  // Fetch Parent Dynamic Data
-    setTimeout(() => {
-      async function gerParentData(){
-        try {
-          const userData = JSON.parse(localStorage.getItem("user_data"));
-          const parentId = userData?.profiles?.parent?.id
-          const parentStats = await parentData(parentId);
-          setName(parentStats.first_name[0].toUpperCase() + parentStats.first_name.slice(1) + " " + parentStats.last_name[0].toUpperCase() + parentStats.last_name.slice(1))
-          setEmail(parentStats.email)
-          setPhone(parentStats.phone_number)
-
-        } catch(err){
-            console.error("couldn't fetch parent data", err)
-          }
-      }
-      gerParentData();
-    }, 1000);
 
   const inputCls =
     "w-full rounded-lg px-3 py-2 text-xs border-none outline-none " +
@@ -183,19 +184,28 @@ const ParentPortalSettings = () => {
               <h2 className="text-sm font-bold text-slate-800 dark:text-white">Account Profile</h2>
             </div>
 
-            {/* 2-col on sm+, 1-col on mobile */}
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 flex-1">
 
               {/* Full Name */}
               <div className="space-y-1">
                 <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Full Name</label>
-                <input type="text" defaultValue={name} className={inputCls} />
+                <input
+                  type="text"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className={inputCls}
+                />
               </div>
 
               {/* Email */}
               <div className="space-y-1">
                 <label className="text-[10px] font-semibold text-slate-400 dark:text-slate-300 uppercase tracking-wider">Email Address</label>
-                <input type="email" defaultValue={email} className={inputCls} />
+                <input
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  className={inputCls}
+                />
               </div>
 
               {/* Phone with country code */}
@@ -278,7 +288,7 @@ const ParentPortalSettings = () => {
                 </div>
               </div>
 
-              {/* Light / Dark buttons — real, working toggle */}
+              {/* Light / Dark toggle */}
               <div className="grid grid-cols-2 gap-2">
                 <button
                   type="button"
@@ -348,9 +358,9 @@ const ParentPortalSettings = () => {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-3 gap-2 sm:gap-3">
               {[
-                { key: "email", icon: "mail",      label: "Email Summaries",    desc: "Weekly digests of child progress"   },
-                { key: "push",  icon: "smartphone", label: "Push Notifications", desc: "Real-time alerts for absences"      },
-                { key: "sms",   icon: "sms",        label: "SMS Alerts",         desc: "Emergency weather or security info" },
+                { key: "email", icon: "mail",       label: "Email Summaries",    desc: "Weekly digests of child progress"   },
+                { key: "push",  icon: "smartphone",  label: "Push Notifications", desc: "Real-time alerts for absences"      },
+                { key: "sms",   icon: "sms",         label: "SMS Alerts",         desc: "Emergency weather or security info" },
               ].map(({ key, icon, label, desc }) => (
                 <div
                   key={key}

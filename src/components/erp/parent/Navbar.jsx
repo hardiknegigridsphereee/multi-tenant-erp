@@ -1,9 +1,9 @@
 // src/components/erp/parent/Navbar.jsx
 
-import React from "react";
+import React, { useState, useRef, useEffect } from "react";
 import { useNavigate, useLocation } from "react-router-dom";
+import { useParent } from "../../../context/ParentProvider";
 
-// Route → page name mapping
 const PAGE_NAMES = {
   "/parent":                "Dashboard",
   "/parent/child-overview": "Child Overview",
@@ -16,21 +16,29 @@ const PAGE_NAMES = {
 };
 
 const Navbar = ({ onOpenSidebar, onToggleSidebar, isMobile }) => {
-  const navigate  = useNavigate();
-  const location  = useLocation();
+  const navigate = useNavigate();
+  const location = useLocation();
+  const { students, activeChild, switchChild, loading } = useParent();
 
-  // Mobile: drawer is closed by default → hamburger opens it.
-  // Desktop/laptop: sidebar is expanded by default → hamburger toggles
-  // collapse/expand (same as the toggle button inside the sidebar itself).
+  const [childMenuOpen, setChildMenuOpen] = useState(false);
+  const menuRef = useRef(null);
+
+  useEffect(() => {
+    const closeOnOutsideClick = (e) => {
+      if (menuRef.current && !menuRef.current.contains(e.target)) {
+        setChildMenuOpen(false);
+      }
+    };
+    document.addEventListener("mousedown", closeOnOutsideClick);
+    return () => document.removeEventListener("mousedown", closeOnOutsideClick);
+  }, []);
+
   const handleHamburgerClick = () => {
-    if (isMobile) {
-      onOpenSidebar();
-    } else {
-      onToggleSidebar();
-    }
+    if (isMobile) onOpenSidebar();
+    else onToggleSidebar();
   };
 
-  const userData = JSON.parse(localStorage.getItem('user_data') || 'null');
+  const userData = JSON.parse(localStorage.getItem("user_data") || "null");
   const parentData = userData?.identity;
   const parentFirstName = parentData?.first_name;
   const parentLastName = parentData?.last_name;
@@ -40,12 +48,9 @@ const Navbar = ({ onOpenSidebar, onToggleSidebar, isMobile }) => {
       ? `${parentFirstName[0].toUpperCase() + parentFirstName.slice(1)} ${parentLastName[0].toUpperCase() + parentLastName.slice(1)}`
       : "Parent";
 
-  // Match current path — exact first, then prefix
   const pageName =
     PAGE_NAMES[location.pathname] ||
-    Object.entries(PAGE_NAMES).find(([key]) =>
-      location.pathname.startsWith(key + "/")
-    )?.[1] ||
+    Object.entries(PAGE_NAMES).find(([key]) => location.pathname.startsWith(key + "/"))?.[1] ||
     "Parent Portal";
 
   return (
@@ -57,7 +62,7 @@ const Navbar = ({ onOpenSidebar, onToggleSidebar, isMobile }) => {
                  flex justify-between items-center px-3 sm:px-6 h-14 sm:h-16
                  transition-colors duration-300 gap-2"
     >
-      {/* Left: mobile hamburger (desktop already has its own toggle inside the sidebar) + page title */}
+      {/* Left: hamburger + page title */}
       <div className="flex items-center gap-1.5 sm:gap-3 min-w-0 flex-1">
         <button
           type="button"
@@ -79,6 +84,64 @@ const Navbar = ({ onOpenSidebar, onToggleSidebar, isMobile }) => {
 
       {/* Right */}
       <div className="flex items-center gap-2 sm:gap-3 lg:gap-6 flex-shrink-0">
+
+        {/* Child switcher — only renders once there's data and >0 children */}
+        {!loading && students.length > 0 && (
+          <div className="relative" ref={menuRef}>
+            <button
+              type="button"
+              onClick={() => setChildMenuOpen((v) => !v)}
+              className="flex items-center gap-1.5 sm:gap-2 px-2 sm:px-3 py-1.5 rounded-lg
+                         border border-slate-200 dark:border-slate-700
+                         bg-white dark:bg-slate-800
+                         hover:bg-blue-50 dark:hover:bg-slate-700
+                         transition-colors max-w-[140px] sm:max-w-[200px]"
+            >
+              <span className="material-symbols-outlined text-blue-600 dark:text-blue-300 text-base sm:text-lg flex-shrink-0">
+                face
+              </span>
+              <span className="text-xs sm:text-sm font-semibold text-slate-700 dark:text-slate-200 truncate">
+                {activeChild?.name || "Select child"}
+              </span>
+              <span
+                className={`material-symbols-outlined text-slate-400 text-base transition-transform flex-shrink-0 ${
+                  childMenuOpen ? "rotate-180" : ""
+                }`}
+              >
+                expand_more
+              </span>
+            </button>
+
+            {childMenuOpen && (
+              <div className="absolute right-0 mt-2 w-56 bg-white dark:bg-slate-800 rounded-xl shadow-lg border border-slate-100 dark:border-slate-700 py-1.5 z-40">
+                {students.map((s) => (
+                  <button
+                    key={s.id}
+                    onClick={() => {
+                      switchChild(s.id);
+                      setChildMenuOpen(false);
+                    }}
+                    className={`w-full flex items-center justify-between gap-2 px-3 py-2 text-left text-sm
+                               hover:bg-blue-50 dark:hover:bg-slate-700 transition-colors
+                               ${
+                                 s.id === activeChild?.id
+                                   ? "text-blue-700 dark:text-blue-300 font-semibold bg-blue-50/60 dark:bg-slate-700/60"
+                                   : "text-slate-700 dark:text-slate-200"
+                               }`}
+                  >
+                    <span className="truncate">{s.name}</span>
+                    {s.id === activeChild?.id && (
+                      <span className="material-symbols-outlined text-blue-600 dark:text-blue-300 text-base flex-shrink-0">
+                        check
+                      </span>
+                    )}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
         {/* Name + divider — desktop only */}
         <div className="hidden lg:flex items-center gap-4">
           <span className="text-sm font-medium text-blue-700 dark:text-blue-400 whitespace-nowrap">

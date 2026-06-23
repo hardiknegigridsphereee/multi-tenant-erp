@@ -3,50 +3,43 @@
 import React, { useState } from "react";
 import { useParent } from "../../../context/ParentProvider";
 
+const getGradeDetails = (obtained, max) => {
+  const pct = max > 0 ? (obtained / max) * 100 : 0;
+  if (pct >= 90) return { letter: "A+", cls: "grade-Aplus" };
+  if (pct >= 80) return { letter: "A",  cls: "grade-A" };
+  if (pct >= 70) return { letter: "B+", cls: "grade-Bplus" };
+  if (pct >= 60) return { letter: "B",  cls: "grade-B" };
+  return               { letter: "C",  cls: "grade-C" };
+};
+
 const StudentHeader = () => {
-  const { profile, enrollment, dashboard, loading } = useParent();
+  const { activeChild, dashboard, gradesReport, loading } = useParent();
   const [downloading, setDownloading] = useState(false);
 
-  const displayName = (() => {
-    if (profile?.user?.first_name)
-      return `${profile.user.first_name} ${profile.user.last_name || ""}`.trim();
-    if (profile?.first_name)
-      return `${profile.first_name} ${profile.last_name || ""}`.trim();
-    return "Student";
-  })();
+  const displayName = activeChild?.name || "Student";
+  const classInfo = dashboard?.class_info;
+  const classSection = classInfo
+    ? `${classInfo.class || ""}${classInfo.section ? ` – ${classInfo.section}` : ""}`.trim()
+    : "—";
 
-  const classSection =
-    enrollment?.class_level_name && enrollment?.section_name
-      ? `${enrollment.class_level_name} – ${enrollment.section_name}`
-      : enrollment?.class_name && enrollment?.section_name
-      ? `${enrollment.class_name} – ${enrollment.section_name}`
-      : enrollment?.class_name || enrollment?.class_level_name || "—";
-
-  const schoolName   = enrollment?.school_name || profile?.school_name || "School";
-  const teacherEmail = enrollment?.class_teacher_email || enrollment?.teacher_email || null;
-
-  const getGradeDetails = (obtained, max) => {
-    const pct = max > 0 ? (obtained / max) * 100 : 0;
-    if (pct >= 90) return { letter: "A+", cls: "grade-Aplus" };
-    if (pct >= 80) return { letter: "A",  cls: "grade-A" };
-    if (pct >= 70) return { letter: "B+", cls: "grade-Bplus" };
-    if (pct >= 60) return { letter: "B",  cls: "grade-B" };
-    return               { letter: "C",  cls: "grade-C" };
-  };
+  let schoolName = "School";
+  try {
+    const userData = JSON.parse(localStorage.getItem("user_data") || "null");
+    schoolName = userData?.school_name || userData?.identity?.school_name || "School";
+  } catch {
+    // ignore parse errors, keep fallback
+  }
 
   const downloadReportCard = () => {
+    if (!gradesReport) return;
     setDownloading(true);
-    const grades = dashboard?.grades?.results || [];
-    const exams  = dashboard?.exams?.results  || [];
 
-    const pastExams = exams
-      .filter((e) => new Date(e.end_date) < new Date())
-      .sort((a, b) => new Date(b.end_date) - new Date(a.end_date));
-    const latestExam = pastExams[0] || null;
-
-    const totalMarks = grades.reduce((s, g) => s + parseFloat(g.marks_obtained || 0), 0);
-    const totalMax   = grades.reduce((s, g) => s + parseFloat(g.max_marks || 0), 0);
-    const overallPct = totalMax > 0 ? ((totalMarks / totalMax) * 100).toFixed(1) : 0;
+    const exams = gradesReport.exams || [];
+    const flatRows = exams.flatMap((exam) =>
+      (exam.subjects || []).map((s) => ({ ...s, exam_name: exam.exam_name }))
+    );
+    const overallPct = gradesReport.overall_percentage ?? 0;
+    const latestExam = exams[exams.length - 1] || null;
 
     const printWindow = window.open("", "_blank");
     const reportHTML = `<!DOCTYPE html><html><head><title>Report Card</title><meta charset="UTF-8">
@@ -66,24 +59,24 @@ const StudentHeader = () => {
     .grade-Bplus{background:#fef3c7;color:#92400e}.grade-B{background:#ffedd5;color:#9a3412}.grade-C{background:#fee2e2;color:#991b1b}
     .footer{margin-top:30px;padding-top:20px;border-top:1px solid #e2e8f0;text-align:center;font-size:11px;color:#94a3b8}
     </style></head><body>
-    <div class="header"><h1>ACADEMIC REPORT CARD</h1><h2>${classSection}</h2><p>Academic Year ${new Date().getFullYear()}</p></div>
+    <div class="header"><h1>ACADEMIC REPORT CARD</h1><h2>${classSection}</h2><p>Academic Year ${classInfo?.academic_year || new Date().getFullYear()}</p></div>
     <div class="info">
       <div class="info-item"><span class="info-label">Student:</span><span class="info-value">${displayName}</span></div>
-      <div class="info-item"><span class="info-label">Enroll No:</span><span class="info-value">${profile?.enrollment_number || "N/A"}</span></div>
-      <div class="info-item"><span class="info-label">Roll No:</span><span class="info-value">${enrollment?.roll_number || "N/A"}</span></div>
+      <div class="info-item"><span class="info-label">Enroll No:</span><span class="info-value">${gradesReport.enrollment_number || "N/A"}</span></div>
+      <div class="info-item"><span class="info-label">Roll No:</span><span class="info-value">${classInfo?.roll_number || "N/A"}</span></div>
       <div class="info-item"><span class="info-label">Date:</span><span class="info-value">${new Date().toLocaleDateString()}</span></div>
     </div>
     <div class="summary">
       <div class="card"><h4>Overall %</h4><div class="value">${overallPct}%</div></div>
-      <div class="card" style="background:linear-gradient(135deg,#10b981,#059669)"><h4>Subjects Passed</h4><div class="value">${grades.filter(g=>parseFloat(g.marks_obtained)>=parseFloat(g.max_marks)*0.4).length}</div></div>
-      <div class="card" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)"><h4>Latest Exam</h4><div class="value" style="font-size:16px">${latestExam?.name||"N/A"}</div></div>
+      <div class="card" style="background:linear-gradient(135deg,#10b981,#059669)"><h4>Subjects Passed</h4><div class="value">${flatRows.filter(r=>parseFloat(r.marks_obtained)>=parseFloat(r.max_marks)*0.4).length}</div></div>
+      <div class="card" style="background:linear-gradient(135deg,#8b5cf6,#7c3aed)"><h4>Latest Exam</h4><div class="value" style="font-size:16px">${latestExam?.exam_name || "N/A"}</div></div>
     </div>
     <table><thead><tr><th>Subject</th><th>Exam</th><th>Obtained</th><th>Max</th><th>%</th><th>Grade</th><th>Remarks</th></tr></thead>
-    <tbody>${grades.map(g=>{
-      const obt=parseFloat(g.marks_obtained||0),max=parseFloat(g.max_marks||0);
-      const pct=max>0?((obt/max)*100).toFixed(1):"0.0";
-      const gd=getGradeDetails(obt,max);
-      return `<tr><td><strong>${g.subject_name}</strong></td><td>${g.exam_name}</td><td>${g.marks_obtained}</td><td>${g.max_marks}</td><td><strong>${pct}%</strong></td><td><span class="badge ${gd.cls}">${gd.letter}</span></td><td style="font-style:italic;color:#64748b">${g.remarks||"No remarks"}</td></tr>`;
+    <tbody>${flatRows.map((r) => {
+      const obt = parseFloat(r.marks_obtained || 0), max = parseFloat(r.max_marks || 0);
+      const pct = max > 0 ? ((obt / max) * 100).toFixed(1) : "0.0";
+      const gd = getGradeDetails(obt, max);
+      return `<tr><td><strong>${r.subject_name}</strong></td><td>${r.exam_name}</td><td>${r.marks_obtained}</td><td>${r.max_marks}</td><td><strong>${pct}%</strong></td><td><span class="badge ${gd.cls}">${gd.letter}</span></td><td style="font-style:italic;color:#64748b">${r.remarks || "No remarks"}</td></tr>`;
     }).join("")}</tbody></table>
     <div class="footer"><p>Generated on ${new Date().toLocaleString()} — Academic Architect</p></div>
     <script>window.print();setTimeout(()=>window.close(),500)</script></body></html>`;
@@ -110,22 +103,13 @@ const StudentHeader = () => {
   }
 
   return (
-    /*
-      Key fix: stack name+chips above buttons until lg (1024px) instead of sm (640px).
-      On tablets (iPad 768-1024px, Nest Hub 1024px) the title + 3 chips + 2 buttons
-      simply don't fit on one row without wrapping awkwardly mid-word — so we
-      keep them stacked (flex-col) for the whole tablet range and only go
-      side-by-side on real desktop widths.
-    */
     <section className="flex flex-col lg:flex-row lg:items-center justify-between gap-4">
 
-      {/* Left: name + meta */}
       <div className="space-y-1.5 min-w-0">
         <h2 className="text-xl sm:text-2xl lg:text-3xl font-extrabold text-on-surface dark:text-white font-headline tracking-tight leading-tight">
           Parent Dashboard
         </h2>
 
-        {/* Chips row — wraps freely at every breakpoint */}
         <div className="flex flex-wrap items-center gap-x-2 sm:gap-x-3 gap-y-1 text-xs sm:text-sm text-on-surface-variant dark:text-slate-300">
           <span className="flex items-center gap-1 min-w-0 max-w-full">
             <span className="material-symbols-outlined text-primary dark:text-blue-300 text-sm sm:text-base flex-shrink-0">person</span>
@@ -145,11 +129,10 @@ const StudentHeader = () => {
         </div>
       </div>
 
-      {/* Right: action buttons — full-width grid on mobile/tablet, inline row on lg+ */}
       <div className="grid grid-cols-2 lg:flex gap-2 sm:gap-3 lg:flex-nowrap lg:justify-end flex-shrink-0 w-full lg:w-auto">
         <button
           onClick={downloadReportCard}
-          disabled={downloading}
+          disabled={downloading || !gradesReport}
           className="flex items-center justify-center gap-1.5
                      bg-slate-100 dark:bg-slate-700
                      text-primary dark:text-blue-300
@@ -164,30 +147,18 @@ const StudentHeader = () => {
           <span className="truncate">{downloading ? "Preparing..." : "Download Report"}</span>
         </button>
 
-        {teacherEmail ? (
-          <a
-            href={`mailto:${teacherEmail}`}
-            className="flex items-center justify-center gap-1.5
-                       bg-blue-600 text-white
-                       px-3 sm:px-4 py-2.5 rounded-lg font-semibold text-xs sm:text-sm
-                       hover:bg-blue-700 transition-colors active:scale-95 duration-75
-                       whitespace-nowrap min-w-0"
-          >
-            <span className="material-symbols-outlined text-base flex-shrink-0">mail</span>
-            <span className="truncate">Contact Teacher</span>
-          </a>
-        ) : (
-          <button
-            disabled
-            title="Teacher email not available"
-            className="flex items-center justify-center gap-1.5
-                       bg-blue-600 text-white opacity-60 cursor-not-allowed
-                       px-3 sm:px-4 py-2.5 rounded-lg font-semibold text-xs sm:text-sm whitespace-nowrap min-w-0"
-          >
-            <span className="material-symbols-outlined text-base flex-shrink-0">mail</span>
-            <span className="truncate">Contact Teacher</span>
-          </button>
-        )}
+        {/* Teacher email isn't returned by any current parent API — disabled
+            until that's available. Wire up once we hit the Assignments page. */}
+        <button
+          disabled
+          title="Teacher contact not available yet"
+          className="flex items-center justify-center gap-1.5
+                     bg-blue-600 text-white opacity-60 cursor-not-allowed
+                     px-3 sm:px-4 py-2.5 rounded-lg font-semibold text-xs sm:text-sm whitespace-nowrap min-w-0"
+        >
+          <span className="material-symbols-outlined text-base flex-shrink-0">mail</span>
+          <span className="truncate">Contact Teacher</span>
+        </button>
       </div>
     </section>
   );

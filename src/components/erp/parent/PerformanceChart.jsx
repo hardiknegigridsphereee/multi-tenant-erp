@@ -6,25 +6,25 @@ import { useParent } from "../../../context/ParentProvider";
 const MONTH_LABELS = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
 
 const PerformanceChart = () => {
-  const { dashboard, loading } = useParent();
+  const { gradesReport, gradesLoading } = useParent();
 
   const { points, monthLabels, yearLabel, hasData } = useMemo(() => {
-    const grades = dashboard?.grades?.results || [];
-    const exams  = dashboard?.exams?.results  || [];
-    if (!grades.length || !exams.length)
+    const exams = (gradesReport?.exams || []).filter((e) => e.is_published !== false && e.exam_date);
+    if (!exams.length)
       return { points: [], monthLabels: [], yearLabel: new Date().getFullYear(), hasData: false };
 
-    const examDateByName = {};
-    exams.forEach((e) => { if (e.name && e.start_date) examDateByName[e.name] = new Date(e.start_date); });
-
     const monthBuckets = {};
-    grades.forEach((g) => {
-      const examDate = examDateByName[g.exam_name];
-      if (!examDate) return;
-      const key = `${examDate.getFullYear()}-${examDate.getMonth()}`;
-      if (!monthBuckets[key]) monthBuckets[key] = { totalObtained: 0, totalMax: 0, year: examDate.getFullYear(), month: examDate.getMonth() };
-      monthBuckets[key].totalObtained += parseFloat(g.marks_obtained || 0);
-      monthBuckets[key].totalMax      += parseFloat(g.max_marks || 0);
+    exams.forEach((exam) => {
+      const date = new Date(exam.exam_date);
+      if (Number.isNaN(date.getTime())) return;
+      const key = `${date.getFullYear()}-${date.getMonth()}`;
+      if (!monthBuckets[key]) {
+        monthBuckets[key] = { totalObtained: 0, totalMax: 0, year: date.getFullYear(), month: date.getMonth() };
+      }
+      (exam.subjects || []).forEach((s) => {
+        monthBuckets[key].totalObtained += parseFloat(s.marks_obtained || 0);
+        monthBuckets[key].totalMax += parseFloat(s.max_marks || 0);
+      });
     });
 
     const sortedKeys = Object.keys(monthBuckets).sort((a, b) => {
@@ -37,10 +37,10 @@ const PerformanceChart = () => {
       const b = monthBuckets[key];
       return { pct: b.totalMax > 0 ? Math.round((b.totalObtained / b.totalMax) * 100) : 0, month: b.month, year: b.year };
     });
-    const labels     = pts.map((p) => MONTH_LABELS[p.month]);
-    const latestYear = pts.length > 0 ? pts[pts.length - 1].year : new Date().getFullYear();
+    const labels = pts.map((p) => MONTH_LABELS[p.month]);
+    const latestYear = pts.length ? pts[pts.length - 1].year : new Date().getFullYear();
     return { points: pts, monthLabels: labels, yearLabel: latestYear, hasData: pts.length > 0 };
-  }, [dashboard]);
+  }, [gradesReport]);
 
   const { linePath, areaPath, dotPositions } = useMemo(() => {
     if (!points.length) return { linePath: "", areaPath: "", dotPositions: [] };
@@ -62,7 +62,7 @@ const PerformanceChart = () => {
     return { linePath: line, areaPath: area, dotPositions: coords };
   }, [points]);
 
-  if (loading) {
+  if (gradesLoading) {
     return (
       <div className="perf-chart-card h-full bg-surface-container-lowest dark:bg-slate-800/60 rounded-xl border border-outline-variant/5 dark:border-slate-700/40 animate-pulse flex flex-col gap-3 p-4 sm:p-5">
         <div className="h-5 w-40 sm:w-48 bg-surface-container-low dark:bg-slate-700 rounded" />
@@ -73,12 +73,6 @@ const PerformanceChart = () => {
   }
 
   return (
-    /*
-      Same native-CSS-container-query approach as AllInsights.jsx, so this
-      card also self-corrects based on its OWN rendered width rather than
-      the page viewport. Keeps both cards visually consistent if they ever
-      end up sharing a narrow row (e.g. Nest Hub, Nest Hub Max).
-    */
     <div className="perf-chart-card h-full min-h-[280px] sm:min-h-[320px] bg-surface-container-lowest dark:bg-slate-800/60 rounded-xl border border-outline-variant/5 dark:border-slate-700/40 flex flex-col">
       <style>{`
         .perf-chart-card {
@@ -106,7 +100,6 @@ const PerformanceChart = () => {
         }
       `}</style>
 
-      {/* Header */}
       <div className="flex justify-between items-start mb-3 flex-shrink-0 gap-2">
         <div className="min-w-0">
           <h3 className="pc-title font-bold font-headline text-on-surface dark:text-white mb-0.5 truncate">
@@ -151,7 +144,6 @@ const PerformanceChart = () => {
               ))}
             </svg>
           </div>
-          {/* Month labels pinned to bottom */}
           <div className="flex justify-between mt-2 px-1 flex-shrink-0 overflow-x-auto">
             {monthLabels.map((label, i) => (
               <span
