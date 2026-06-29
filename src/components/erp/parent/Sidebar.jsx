@@ -46,21 +46,22 @@ export default function Sidebar({ isExpanded, isMobile, onToggle, onClose }) {
   };
 
   const navItems = [
-    { to: "/parent",                end: true,  icon: "dashboard",      label: "Dashboard"       },
-    { to: "/parent/child-overview", end: false, icon: "child_care",     label: "Child Overview"  },
-    { to: "/parent/attendance",     end: false, icon: "calendar_today", label: "Attendance"      },
-    { to: "/parent/assignments",    end: false, icon: "assignment",     label: "Assignments"     },
-    { to: "/parent/grades",         end: false, icon: "assessment",     label: "Grades & Report" },
-    { to: "/parent/insights",       end: false, icon: "psychology",     label: "AI Insights"     },
+    { to: "/parent", end: true, icon: "dashboard", label: "Dashboard" },
+    { to: "/parent/child-overview", end: false, icon: "child_care", label: "Child Overview" },
+    { to: "/parent/attendance", end: false, icon: "calendar_today", label: "Attendance" },
+    { to: "/parent/assignments", end: false, icon: "assignment", label: "Assignments" },
+    { to: "/parent/grades", end: false, icon: "assessment", label: "Grades & Report" },
+    { to: "/parent/insights", end: false, icon: "psychology", label: "AI Insights" },
+    { to: "/parent/grievance", end: false, icon: "gavel", label: "Grievance" }, // ← added
   ];
 
   const navClass = ({ isActive }) =>
     `flex items-center rounded-xl transition-all duration-200 font-semibold text-sm flex-shrink-0
      ${isExpanded ? "gap-3 px-3 py-2.5" : "justify-center px-2 py-2.5"}
      ${isActive
-       ? "bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-sm"
-       : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 hover:text-blue-600 dark:hover:text-blue-300"
-     }`;
+      ? "bg-white dark:bg-slate-700 text-blue-700 dark:text-blue-300 shadow-sm"
+      : "text-slate-600 dark:text-slate-300 hover:bg-slate-200/50 dark:hover:bg-slate-700/50 hover:text-blue-600 dark:hover:text-blue-300"
+    }`;
 
   return (
     <>

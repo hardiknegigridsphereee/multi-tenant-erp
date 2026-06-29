@@ -113,6 +113,7 @@ import GradesAssessmentHub from "../pages/parent/GradesAssessmentHub";
 import NotificationsHub from "../pages/parent/NotificationsHub";
 import AllInsightsRecommendations from "../pages/parent/AllInsightsRecommendations";
 import ParentPortalSettings from "../pages/parent/ParentPortalSettings";
+import ParentGrievance from "../pages/parent/ParentGrievance";
 
 /* Redirect logged-in users to their dashboard when visiting "/" */
 function RootRedirect() {
@@ -407,6 +408,7 @@ function AppRoutes() {
         <Route path="/parent/ai-insights" element={<ParentProvider><AllInsightsRecommendations /></ParentProvider>} />
         <Route path="/parent/notifications" element={<ParentProvider><NotificationsHub /></ParentProvider>} />
         <Route path="/parent/settings" element={<ParentProvider><ParentPortalSettings /></ParentProvider>} />
+        <Route path="/parent/grievance" element={<ParentProvider><ParentGrievance /></ParentProvider>} />
       </Routes>
     </BrowserRouter>
   );

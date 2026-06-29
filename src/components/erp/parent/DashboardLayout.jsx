@@ -95,18 +95,18 @@ export default function DashboardLayout({ children }) {
       />
 
       {/*
-        min-w-0 is the actual fix — without it, a flex child refuses to shrink
-        below its content's intrinsic width (e.g. a 520px-wide table), which
-        forces the WHOLE page to scroll horizontally instead of just that table.
-        md:ml-72 / md:ml-20  → shift right of sidebar on desktop only.
-        On mobile the sidebar is an off-canvas drawer (fixed, translated
-        off-screen), so content never needs a left margin there — ml-0.
-      */}
+          min-w-0 is the actual fix — without it, a flex child refuses to shrink
+          below its content's intrinsic width (e.g. a 520px-wide table), which
+          forces the WHOLE page to scroll horizontally instead of just that table.
+          md:ml-72 / md:ml-20  → shift right of sidebar on desktop only.
+          On mobile the sidebar is an off-canvas drawer (fixed, translated
+          off-screen), so content never needs a left margin there — ml-0.
+        */}
       <div
         className={`flex-1 min-w-0 min-h-screen bg-white dark:bg-slate-950
-                    transition-all duration-300
-                    ml-0 w-full min-w-0
-                    ${isExpanded ? "md:ml-72" : "md:ml-20"}`}
+                      transition-all duration-300
+                      ml-0 w-full min-w-0
+                      ${isExpanded ? "md:ml-72" : "md:ml-20"}`}
       >
         <Navbar
           onOpenSidebar={openSidebar}
