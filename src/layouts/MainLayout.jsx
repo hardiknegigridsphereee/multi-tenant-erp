@@ -2,7 +2,7 @@ import React, { useState, useEffect } from 'react';
 import Sidebar from '../components/shared/Sidebar';
 import TopNavbar from '../components/shared/TopNavbar';
 
-export default function MainLayout({ children, title }) {
+export default function MainLayout({ children, title, headerActions }) {
   /*
     ── SIDEBAR SYNC ──
     We listen to the 'sidebar-toggle' custom event fired by Sidebar.jsx
@@ -53,7 +53,7 @@ export default function MainLayout({ children, title }) {
         className="flex flex-col min-h-screen transition-all duration-300"
         style={{ marginLeft, backgroundColor: 'var(--color-background)' }}
       >
-        <TopNavbar title={title} />
+        <TopNavbar title={title} headerActions={headerActions} />
         {/*
           flex-1 ensures the content area grows to fill remaining vertical space.
           overflow-x-hidden prevents any child from causing horizontal scroll.

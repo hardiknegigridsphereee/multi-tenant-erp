@@ -1,8 +1,9 @@
-import React, { useMemo } from "react";
+import React, { useMemo, useState } from "react";
 import { Link } from "react-router-dom";
 import MainLayout from "../../layouts/MainLayout";
 import { getMonthName } from "../../utils/calculations";
 import { useStudent } from "../../context/StudentProvider";
+import IDCardModal from "./IDCard";
 
 function Skeleton({ className = "" }) {
   return <div className={`animate-pulse bg-gray-200 rounded-md ${className}`} />;
@@ -114,6 +115,9 @@ export default function Dashboard() {
     error,
     reload,
   } = useStudent();
+
+  // ── ID Card modal state ──
+  const [showIDCard, setShowIDCard] = useState(false);
 
   const now       = useMemo(() => new Date(), []);
   const year      = now.getFullYear();
@@ -246,260 +250,290 @@ export default function Dashboard() {
   };
 
   return (
-    <MainLayout title="Dashboard">
-      <div className="px-8 py-8 space-y-6">
+    <>
+      {/* ── ID Card Modal (portal-rendered above everything) ── */}
+      {showIDCard && <IDCardModal onClose={() => setShowIDCard(false)} />}
 
-        {/* ── HERO BANNER ── */}
-        <section className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary to-primary-container p-8 text-white">
-          <div className="relative z-10 max-w-2xl">
-            <h2 className="text-3xl font-extrabold font-headline mb-2">
-              Welcome back, {student?.first_name}!
-            </h2>
-            <p className="text-white/80 text-lg">
-              You are currently leading {enroll?.class_level_name} with
-              exceptional progress. Here&apos;s what&apos;s happening in your
-              academic journey today.
-            </p>
-          </div>
-          <div className="absolute -right-20 -top-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
-          <div className="absolute right-12 bottom-0 hidden lg:block">
-            <span className="material-symbols-outlined text-[160px] opacity-10">auto_awesome</span>
-          </div>
-        </section>
-
-        {/* ── ROW 1: 3 STAT CARDS ── */}
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-
-          {/* Attendance */}
-          <div className="bg-surface-container-lowest px-4 py-3 rounded-xl custom-shadow flex items-center justify-between border border-outline-variant/10 hover:scale-[1.01] transition-all">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-md bg-blue-50 text-blue-700 flex-shrink-0">
-                <span className="material-symbols-outlined text-xl">calendar_today</span>
-              </span>
-              <div>
-                <p className="text-xs font-medium text-on-surface-variant whitespace-nowrap">Attendance Rate</p>
-                <p className="text-xl font-bold font-headline text-on-surface leading-tight">
-                  {attendanceRate}<span className="text-sm font-semibold">%</span>
-                </p>
-              </div>
-            </div>
-            <span className={`text-2xs font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${attendanceStatus.className}`}>
-              {attendanceStatus.label}
+      <MainLayout
+        title="Dashboard"
+        // ── Pass ID card button to MainLayout's header via headerActions prop ──
+        // If your MainLayout doesn't support headerActions, we inject it via
+        // a custom slot below using the titleSlot pattern.
+        headerActions={
+          <button
+            onClick={() => setShowIDCard(true)}
+            title="Download ID Card"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-surface-container-low hover:bg-primary hover:text-white text-on-surface-variant border border-outline-variant/30 transition-all duration-200 text-xs font-bold group"
+          >
+            <span className="material-symbols-outlined text-base group-hover:scale-110 transition-transform">
+              badge
             </span>
-          </div>
+            <span className="hidden sm:inline">ID Card</span>
+          </button>
+        }
+      >
+        <div className="px-8 py-8 space-y-6">
 
-          {/* ── PERCENTAGE (was GPA) ── */}
-          <div className="bg-surface-container-lowest px-4 py-3 rounded-xl custom-shadow flex items-center justify-between border border-outline-variant/10 hover:scale-[1.01] transition-all">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-md bg-secondary-fixed text-secondary flex-shrink-0">
-                <span className="material-symbols-outlined text-xl">grade</span>
-              </span>
-              <div>
-                <p className="text-xs font-medium text-on-surface-variant whitespace-nowrap">Overall Percentage</p>
-                <p className="text-xl font-bold font-headline text-on-surface leading-tight">
-                  {percentage}<span className="text-sm font-semibold">%</span>
-                </p>
-              </div>
+          {/* ── HERO BANNER ── */}
+          <section className="relative overflow-hidden rounded-xl bg-gradient-to-br from-primary to-primary-container p-8 text-white">
+            <div className="relative z-10 max-w-2xl">
+              <h2 className="text-3xl font-extrabold font-headline mb-2">
+                Welcome back, {student?.first_name}!
+              </h2>
+              <p className="text-white/80 text-lg">
+                You are currently leading {enroll?.class_level_name} with
+                exceptional progress. Here&apos;s what&apos;s happening in your
+                academic journey today.
+              </p>
             </div>
-            <span className={`text-2xs font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${percentageStatus.className}`}>
-              {percentageStatus.label}
-            </span>
-          </div>
-
-          {/* Fees */}
-          <div className="bg-surface-container-lowest px-4 py-3 rounded-xl custom-shadow flex items-center justify-between border border-outline-variant/10 hover:scale-[1.01] transition-all">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-md bg-green-50 text-green-700 flex-shrink-0">
-                <span className="material-symbols-outlined text-xl">verified</span>
-              </span>
-              <div>
-                <p className="text-xs font-medium text-on-surface-variant">Fees Status</p>
-                <p className="text-xl font-bold font-headline text-on-surface leading-tight">Paid</p>
-                <p className="text-2xs text-on-surface-variant">Next due: Oct 15, 2024</p>
-              </div>
+            <div className="absolute -right-20 -top-20 w-80 h-80 bg-white/10 rounded-full blur-3xl" />
+            <div className="absolute right-12 bottom-0 hidden lg:block">
+              <span className="material-symbols-outlined text-[160px] opacity-10">auto_awesome</span>
             </div>
-            <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
-          </div>
+          </section>
 
-        </div>
+          {/* ── ROW 1: 3 STAT CARDS ── */}
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
 
-        {/* ── ROW 2: Calendar + Subjects + Right col ── */}
-        <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
-          <div className="xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
-
-            {/* Calendar */}
-            <Link to="/student/attendance" className="block group xl:h-full">
-              <div className="xl:h-full bg-surface-container-lowest rounded-xl p-4 custom-shadow border border-outline-variant/10 group-hover:border-primary/40 transition-all duration-200 flex flex-col">
-                <div className="flex items-center justify-between mb-3">
-                  <div>
-                    <p className="text-xs font-bold text-on-surface">{monthWord} {year}</p>
-                    <p className="text-2xs text-on-surface-variant">Visual Presence Log</p>
-                  </div>
-                  <span className="flex items-center gap-0.5 text-2xs font-bold text-primary group-hover:underline">
-                    View all
-                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                  </span>
+            {/* Attendance */}
+            <div className="bg-surface-container-lowest px-4 py-3 rounded-xl custom-shadow flex items-center justify-between border border-outline-variant/10 hover:scale-[1.01] transition-all">
+              <div className="flex items-center gap-3">
+                <span className="p-2 rounded-md bg-blue-50 text-blue-700 flex-shrink-0">
+                  <span className="material-symbols-outlined text-xl">calendar_today</span>
+                </span>
+                <div>
+                  <p className="text-xs font-medium text-on-surface-variant whitespace-nowrap">Attendance Rate</p>
+                  <p className="text-xl font-bold font-headline text-on-surface leading-tight">
+                    {attendanceRate}<span className="text-sm font-semibold">%</span>
+                  </p>
                 </div>
-                <div className="flex-1">
-                  <div className="grid grid-cols-7 gap-0.5">
-                    {["S","M","T","W","T","F","S"].map((d, i) => (
-                      <div key={i} className="text-center text-[8px] font-bold text-outline pb-0.5">{d}</div>
+              </div>
+              <span className={`text-2xs font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${attendanceStatus.className}`}>
+                {attendanceStatus.label}
+              </span>
+            </div>
+
+            {/* ── PERCENTAGE ── */}
+            <div className="bg-surface-container-lowest px-4 py-3 rounded-xl custom-shadow flex items-center justify-between border border-outline-variant/10 hover:scale-[1.01] transition-all">
+              <div className="flex items-center gap-3">
+                <span className="p-2 rounded-md bg-secondary-fixed text-secondary flex-shrink-0">
+                  <span className="material-symbols-outlined text-xl">grade</span>
+                </span>
+                <div>
+                  <p className="text-xs font-medium text-on-surface-variant whitespace-nowrap">Overall Percentage</p>
+                  <p className="text-xl font-bold font-headline text-on-surface leading-tight">
+                    {percentage}<span className="text-sm font-semibold">%</span>
+                  </p>
+                </div>
+              </div>
+              <span className={`text-2xs font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${percentageStatus.className}`}>
+                {percentageStatus.label}
+              </span>
+            </div>
+
+            {/* Fees */}
+            <div className="bg-surface-container-lowest px-4 py-3 rounded-xl custom-shadow flex items-center justify-between border border-outline-variant/10 hover:scale-[1.01] transition-all">
+              <div className="flex items-center gap-3">
+                <span className="p-2 rounded-md bg-green-50 text-green-700 flex-shrink-0">
+                  <span className="material-symbols-outlined text-xl">verified</span>
+                </span>
+                <div>
+                  <p className="text-xs font-medium text-on-surface-variant">Fees Status</p>
+                  <p className="text-xl font-bold font-headline text-on-surface leading-tight">Paid</p>
+                  <p className="text-2xs text-on-surface-variant">Next due: Oct 15, 2024</p>
+                </div>
+              </div>
+              <div className="h-2 w-2 bg-green-500 rounded-full animate-pulse" />
+            </div>
+
+          </div>
+
+          {/* ── ROW 2: Calendar + Subjects + Right col ── */}
+          <div className="grid grid-cols-1 xl:grid-cols-3 gap-6 items-start">
+            <div className="xl:col-span-2 grid grid-cols-1 xl:grid-cols-2 gap-6 items-start">
+
+              {/* Calendar */}
+              <Link to="/student/attendance" className="block group xl:h-full">
+                <div className="xl:h-full bg-surface-container-lowest rounded-xl p-4 custom-shadow border border-outline-variant/10 group-hover:border-primary/40 transition-all duration-200 flex flex-col">
+                  <div className="flex items-center justify-between mb-3">
+                    <div>
+                      <p className="text-xs font-bold text-on-surface">{monthWord} {year}</p>
+                      <p className="text-2xs text-on-surface-variant">Visual Presence Log</p>
+                    </div>
+                    <span className="flex items-center gap-0.5 text-2xs font-bold text-primary group-hover:underline">
+                      View all
+                      <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <div className="grid grid-cols-7 gap-0.5">
+                      {["S","M","T","W","T","F","S"].map((d, i) => (
+                        <div key={i} className="text-center text-[8px] font-bold text-outline pb-0.5">{d}</div>
+                      ))}
+                      {emptyDays.map((_, i) => <div key={`e-${i}`} />)}
+                      {days.map((day) => {
+                        const dateKey = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
+                        const record  = attendanceMap[dateKey];
+                        return (
+                          <div key={day}
+                            className={`aspect-square flex items-center justify-center rounded text-3xs font-semibold border transition-all ${
+                              record
+                                ? (dayStatusCls[record.status] ?? "bg-surface-container border-surface-container")
+                                : "bg-surface-container-lowest border-surface-container text-on-surface-variant"
+                            }`}>
+                            {day}
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+                  <div className="flex gap-3 mt-3 pt-2 border-t border-surface-container-low flex-wrap">
+                    {[
+                      { color: "bg-green-400",  label: "Present", count: monthlyDist.Present },
+                      { color: "bg-red-400",    label: "Absent",  count: monthlyDist.Absent  },
+                      { color: "bg-yellow-400", label: "Late",    count: monthlyDist.Late    },
+                    ].map(({ color, label, count }) => (
+                      <div key={label} className="flex items-center gap-1">
+                        <div className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
+                        <span className="text-3xs font-semibold text-on-surface-variant">
+                          {label}<span className="ml-0.5 font-bold text-on-surface">{count}</span>
+                        </span>
+                      </div>
                     ))}
-                    {emptyDays.map((_, i) => <div key={`e-${i}`} />)}
-                    {days.map((day) => {
-                      const dateKey = `${year}-${String(month+1).padStart(2,"0")}-${String(day).padStart(2,"0")}`;
-                      const record  = attendanceMap[dateKey];
+                  </div>
+                </div>
+              </Link>
+
+              {/* Subjects */}
+              <div className="xl:h-full bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/10 overflow-hidden flex flex-col">
+                <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-surface-container-low flex-shrink-0">
+                  <div>
+                    <p className="text-xs font-bold text-on-surface">My Subjects</p>
+                    <p className="text-2xs text-on-surface-variant">Graded first</p>
+                  </div>
+                  <Link to="/student/grades" className="flex items-center gap-0.5 text-2xs font-bold text-primary hover:underline">
+                    View More
+                    <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                  </Link>
+                </div>
+                <div className="flex-1 divide-y divide-surface-container-low overflow-hidden">
+                  {top4Subjects.length === 0 ? (
+                    <div className="px-4 py-4 text-center text-xs text-on-surface-variant">No subjects found.</div>
+                  ) : (
+                    top4Subjects.map(({ subject, gradeInfo }) => {
+                      const { icon, bg } = getSubjectIcon(subject.name);
+                      const subPct = gradeInfo
+                        ? ((parseFloat(gradeInfo.marks_obtained) / parseFloat(gradeInfo.max_marks)) * 100).toFixed(1)
+                        : null;
+                      const grade = gradeInfo ? getGradeLetter(gradeInfo.marks_obtained, gradeInfo.max_marks) : null;
                       return (
-                        <div key={day}
-                          className={`aspect-square flex items-center justify-center rounded text-3xs font-semibold border transition-all ${
-                            record
-                              ? (dayStatusCls[record.status] ?? "bg-surface-container border-surface-container")
-                              : "bg-surface-container-lowest border-surface-container text-on-surface-variant"
-                          }`}>
-                          {day}
+                        <div key={subject.id} className="flex items-center gap-3 px-4 py-5 hover:bg-surface-container-low/40 transition-colors">
+                          <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${bg}`}>
+                            <span className="material-symbols-outlined text-sm">{icon}</span>
+                          </div>
+                          <div className="flex-1 min-w-0">
+                            <div className="flex items-center justify-between mb-1">
+                              <p className="text-sm font-bold text-on-surface truncate pr-1">{subject.name}</p>
+                              {subPct ? (
+                                <span className="text-xs text-on-surface-variant flex-shrink-0 font-semibold">{subPct}%</span>
+                              ) : (
+                                <span className="text-2xs text-outline flex-shrink-0">N/A</span>
+                              )}
+                            </div>
+                            <div className="w-full bg-surface-container-high rounded-full h-1 overflow-hidden">
+                              <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${subPct || 0}%` }} />
+                            </div>
+                          </div>
+                          {grade ? (
+                            <span className={`text-2xs font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${grade.cls}`}>{grade.letter}</span>
+                          ) : (
+                            <span className="text-2xs text-outline flex-shrink-0 w-6 text-center">—</span>
+                          )}
                         </div>
                       );
-                    })}
-                  </div>
+                    })
+                  )}
                 </div>
-                <div className="flex gap-3 mt-3 pt-2 border-t border-surface-container-low flex-wrap">
-                  {[
-                    { color: "bg-green-400",  label: "Present", count: monthlyDist.Present },
-                    { color: "bg-red-400",    label: "Absent",  count: monthlyDist.Absent  },
-                    { color: "bg-yellow-400", label: "Late",    count: monthlyDist.Late    },
-                  ].map(({ color, label, count }) => (
-                    <div key={label} className="flex items-center gap-1">
-                      <div className={`w-2 h-2 rounded-full flex-shrink-0 ${color}`} />
-                      <span className="text-3xs font-semibold text-on-surface-variant">
-                        {label}<span className="ml-0.5 font-bold text-on-surface">{count}</span>
-                      </span>
+                <div className="px-4 py-2 border-t border-surface-container-low flex-shrink-0">
+                  <Link to="/student/grades" className="w-full flex items-center justify-center gap-1 text-2xs font-bold text-primary hover:text-primary-container transition-colors py-0.5">
+                    <span className="material-symbols-outlined text-xs">open_in_new</span>
+                    View Full Report Card
+                  </Link>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Column */}
+            <div className="flex flex-col gap-4">
+              <section className="bg-surface-container-low rounded-xl p-5">
+                <h3 className="text-sm font-black text-on-surface-variant uppercase tracking-widest mb-4">Quick Actions</h3>
+                <div className="grid grid-cols-2 gap-3">
+                  {/* ID Card quick action */}
+                  <button
+                    onClick={() => setShowIDCard(true)}
+                    className="flex flex-col items-center justify-center p-4 bg-surface-container-lowest rounded-lg custom-shadow hover:bg-blue-50 transition-colors group"
+                  >
+                    <span className="material-symbols-outlined text-primary mb-2 group-hover:scale-110 transition-transform">badge</span>
+                    <span className="text-sm font-bold text-on-surface">ID Card</span>
+                  </button>
+                  <Link to="/student/help" className="flex flex-col items-center justify-center p-4 bg-surface-container-lowest rounded-lg custom-shadow hover:bg-blue-50 transition-colors group">
+                    <span className="material-symbols-outlined text-primary mb-2 group-hover:scale-110 transition-transform">support_agent</span>
+                    <span className="text-sm font-bold text-on-surface">Help Desk</span>
+                  </Link>
+                  <Link to="/student/fees" className="flex flex-col items-center justify-center p-4 bg-surface-container-lowest rounded-lg custom-shadow hover:bg-blue-50 transition-colors group">
+                    <span className="material-symbols-outlined text-primary mb-2 group-hover:scale-110 transition-transform">account_balance_wallet</span>
+                    <span className="text-sm font-bold text-on-surface">Fees</span>
+                  </Link>
+                </div>
+              </section>
+
+              <section className="bg-surface-container-lowest rounded-xl p-5 custom-shadow">
+                <h3 className="text-sm font-black text-on-surface-variant uppercase tracking-widest mb-5">Recent Activity</h3>
+                <div className="relative space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-surface-container">
+                  <div className="relative pl-8">
+                    <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center ring-4 ring-white">
+                      <span className="material-symbols-outlined text-green-700 text-xs">check_circle</span>
                     </div>
-                  ))}
+                    <p className="text-sm font-bold text-on-surface">Grade Updated: Physics Lab</p>
+                    <p className="text-xs text-on-surface-variant">You received an <span className="font-bold text-green-700">A</span> for the Optics experiment.</p>
+                    <span className="text-2xs text-outline-variant mt-1 block">15 mins ago</span>
+                  </div>
+                  <div className="relative pl-8">
+                    <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center ring-4 ring-white">
+                      <span className="material-symbols-outlined text-blue-700 text-xs">upload</span>
+                    </div>
+                    <p className="text-sm font-bold text-on-surface">Submission Received</p>
+                    <p className="text-xs text-on-surface-variant">English Literature Essay: &quot;Modernism in 1920s&quot;</p>
+                    <span className="text-2xs text-outline-variant mt-1 block">2 hours ago</span>
+                  </div>
+                  <div className="relative pl-8">
+                    <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center ring-4 ring-white">
+                      <span className="material-symbols-outlined text-amber-700 text-xs">info</span>
+                    </div>
+                    <p className="text-sm font-bold text-on-surface">Attendance Marked</p>
+                    <p className="text-xs text-on-surface-variant">Present for Period 4: Computer Science.</p>
+                    <span className="text-2xs text-outline-variant mt-1 block">4 hours ago</span>
+                  </div>
                 </div>
-              </div>
-            </Link>
+                <button className="w-full mt-5 py-3 border-t border-surface-container text-xs font-bold text-primary hover:text-primary-container transition-colors uppercase tracking-tight">
+                  Show More History
+                </button>
+              </section>
 
-            {/* Subjects */}
-            <div className="xl:h-full bg-surface-container-lowest rounded-xl custom-shadow border border-outline-variant/10 overflow-hidden flex flex-col">
-              <div className="flex items-center justify-between px-4 pt-4 pb-2 border-b border-surface-container-low flex-shrink-0">
-                <div>
-                  <p className="text-xs font-bold text-on-surface">My Subjects</p>
-                  <p className="text-2xs text-on-surface-variant">Graded first</p>
+              <div className="relative p-5 rounded-lg bg-surface-container-highest overflow-hidden">
+                <div className="absolute top-4 right-4 bg-white/40 backdrop-blur-md px-3 py-1 rounded-full text-2xs font-black uppercase tracking-widest text-on-surface">Active</div>
+                <h4 className="text-sm font-medium text-on-surface-variant mb-4">Course Credits</h4>
+                <div className="text-2xl font-bold font-headline text-on-surface">24.0 / 30.0</div>
+                <div className="w-full bg-white/30 h-1.5 rounded-full mt-4">
+                  <div className="bg-primary h-full rounded-full" style={{ width: "80%" }} />
                 </div>
-                <Link to="/student/grades" className="flex items-center gap-0.5 text-2xs font-bold text-primary hover:underline">
-                  View More
-                  <span className="material-symbols-outlined text-xs">arrow_forward</span>
-                </Link>
-              </div>
-              <div className="flex-1 divide-y divide-surface-container-low overflow-hidden">
-                {top4Subjects.length === 0 ? (
-                  <div className="px-4 py-4 text-center text-xs text-on-surface-variant">No subjects found.</div>
-                ) : (
-                  top4Subjects.map(({ subject, gradeInfo }) => {
-                    const { icon, bg } = getSubjectIcon(subject.name);
-                    const subPct = gradeInfo
-                      ? ((parseFloat(gradeInfo.marks_obtained) / parseFloat(gradeInfo.max_marks)) * 100).toFixed(1)
-                      : null;
-                    const grade = gradeInfo ? getGradeLetter(gradeInfo.marks_obtained, gradeInfo.max_marks) : null;
-                    return (
-                      <div key={subject.id} className="flex items-center gap-3 px-4 py-5 hover:bg-surface-container-low/40 transition-colors">
-                        <div className={`w-7 h-7 rounded-md flex items-center justify-center flex-shrink-0 ${bg}`}>
-                          <span className="material-symbols-outlined text-sm">{icon}</span>
-                        </div>
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center justify-between mb-1">
-                            <p className="text-sm font-bold text-on-surface truncate pr-1">{subject.name}</p>
-                            {subPct ? (
-                              <span className="text-xs text-on-surface-variant flex-shrink-0 font-semibold">{subPct}%</span>
-                            ) : (
-                              <span className="text-2xs text-outline flex-shrink-0">N/A</span>
-                            )}
-                          </div>
-                          <div className="w-full bg-surface-container-high rounded-full h-1 overflow-hidden">
-                            <div className="bg-primary h-full rounded-full transition-all duration-500" style={{ width: `${subPct || 0}%` }} />
-                          </div>
-                        </div>
-                        {grade ? (
-                          <span className={`text-2xs font-bold px-1.5 py-0.5 rounded flex-shrink-0 ${grade.cls}`}>{grade.letter}</span>
-                        ) : (
-                          <span className="text-2xs text-outline flex-shrink-0 w-6 text-center">—</span>
-                        )}
-                      </div>
-                    );
-                  })
-                )}
-              </div>
-              <div className="px-4 py-2 border-t border-surface-container-low flex-shrink-0">
-                <Link to="/student/grades" className="w-full flex items-center justify-center gap-1 text-2xs font-bold text-primary hover:text-primary-container transition-colors py-0.5">
-                  <span className="material-symbols-outlined text-xs">open_in_new</span>
-                  View Full Report Card
-                </Link>
+                <p className="text-2xs text-on-surface-variant mt-3">You are on track to graduate early in June 2025.</p>
               </div>
             </div>
           </div>
 
-          {/* Right Column */}
-          <div className="flex flex-col gap-4">
-            <section className="bg-surface-container-low rounded-xl p-5">
-              <h3 className="text-sm font-black text-on-surface-variant uppercase tracking-widest mb-4">Quick Actions</h3>
-              <div className="grid grid-cols-2 gap-3">
-                <Link to="/student/help" className="flex flex-col items-center justify-center p-4 bg-surface-container-lowest rounded-lg custom-shadow hover:bg-blue-50 transition-colors group">
-                  <span className="material-symbols-outlined text-primary mb-2 group-hover:scale-110 transition-transform">support_agent</span>
-                  <span className="text-sm font-bold text-on-surface">Help Desk</span>
-                </Link>
-                <Link to="/student/fees" className="flex flex-col items-center justify-center p-4 bg-surface-container-lowest rounded-lg custom-shadow hover:bg-blue-50 transition-colors group">
-                  <span className="material-symbols-outlined text-primary mb-2 group-hover:scale-110 transition-transform">account_balance_wallet</span>
-                  <span className="text-sm font-bold text-on-surface">Fees</span>
-                </Link>
-              </div>
-            </section>
-
-            <section className="bg-surface-container-lowest rounded-xl p-5 custom-shadow">
-              <h3 className="text-sm font-black text-on-surface-variant uppercase tracking-widest mb-5">Recent Activity</h3>
-              <div className="relative space-y-5 before:absolute before:left-[11px] before:top-2 before:bottom-2 before:w-[2px] before:bg-surface-container">
-                <div className="relative pl-8">
-                  <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-green-100 flex items-center justify-center ring-4 ring-white">
-                    <span className="material-symbols-outlined text-green-700 text-xs">check_circle</span>
-                  </div>
-                  <p className="text-sm font-bold text-on-surface">Grade Updated: Physics Lab</p>
-                  <p className="text-xs text-on-surface-variant">You received an <span className="font-bold text-green-700">A</span> for the Optics experiment.</p>
-                  <span className="text-2xs text-outline-variant mt-1 block">15 mins ago</span>
-                </div>
-                <div className="relative pl-8">
-                  <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-blue-100 flex items-center justify-center ring-4 ring-white">
-                    <span className="material-symbols-outlined text-blue-700 text-xs">upload</span>
-                  </div>
-                  <p className="text-sm font-bold text-on-surface">Submission Received</p>
-                  <p className="text-xs text-on-surface-variant">English Literature Essay: &quot;Modernism in 1920s&quot;</p>
-                  <span className="text-2xs text-outline-variant mt-1 block">2 hours ago</span>
-                </div>
-                <div className="relative pl-8">
-                  <div className="absolute left-0 top-1 w-6 h-6 rounded-full bg-amber-100 flex items-center justify-center ring-4 ring-white">
-                    <span className="material-symbols-outlined text-amber-700 text-xs">info</span>
-                  </div>
-                  <p className="text-sm font-bold text-on-surface">Attendance Marked</p>
-                  <p className="text-xs text-on-surface-variant">Present for Period 4: Computer Science.</p>
-                  <span className="text-2xs text-outline-variant mt-1 block">4 hours ago</span>
-                </div>
-              </div>
-              <button className="w-full mt-5 py-3 border-t border-surface-container text-xs font-bold text-primary hover:text-primary-container transition-colors uppercase tracking-tight">
-                Show More History
-              </button>
-            </section>
-
-            <div className="relative p-5 rounded-lg bg-surface-container-highest overflow-hidden">
-              <div className="absolute top-4 right-4 bg-white/40 backdrop-blur-md px-3 py-1 rounded-full text-2xs font-black uppercase tracking-widest text-on-surface">Active</div>
-              <h4 className="text-sm font-medium text-on-surface-variant mb-4">Course Credits</h4>
-              <div className="text-2xl font-bold font-headline text-on-surface">24.0 / 30.0</div>
-              <div className="w-full bg-white/30 h-1.5 rounded-full mt-4">
-                <div className="bg-primary h-full rounded-full" style={{ width: "80%" }} />
-              </div>
-              <p className="text-2xs text-on-surface-variant mt-3">You are on track to graduate early in June 2025.</p>
-            </div>
-          </div>
         </div>
-
-      </div>
-    </MainLayout>
+      </MainLayout>
+    </>
   );
 }
