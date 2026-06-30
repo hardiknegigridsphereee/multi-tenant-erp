@@ -93,19 +93,23 @@ export const StudentProvider = ({ children }) => {
       const academic = academicResult.status === "fulfilled" && academicResult.value ? academicResult.value : { years: [], subs: [] };
       const assignments = assignmentsResult.status === "fulfilled" && assignmentsResult.value ? assignmentsResult.value : [];
       const submissions = submissionsResult.status === "fulfilled" && submissionsResult.value ? submissionsResult.value : [];
-      
+
       const MOCK_ATTENDANCE = {
         summary: { total_days: 100, present: 85, absent: 10, late: 5, attendance_percentage: 85 },
-        records: Array.from({length: 30}).map((_, i) => ({
-          date: new Date(Date.now() - i*86400000).toISOString().split('T')[0],
+        records: Array.from({ length: 30 }).map((_, i) => ({
+          date: new Date(Date.now() - i * 86400000).toISOString().split('T')[0],
           status: i % 7 === 0 ? "Absent" : i % 5 === 0 ? "Late" : "Present",
           remarks: ""
         }))
       };
-      
-      const attendanceRecords = attendanceRecordsResult.status === "fulfilled" && attendanceRecordsResult.value 
-        ? attendanceRecordsResult.value 
+
+      const attendanceRecords = attendanceRecordsResult.status === "fulfilled" && attendanceRecordsResult.value
+        ? attendanceRecordsResult.value
         : MOCK_ATTENDANCE;
+
+      const circulars = circularsResult.status === "fulfilled" && circularsResult.value
+        ? circularsResult.value
+        : [];
 
       setContextData({
         profile,
