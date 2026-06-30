@@ -72,6 +72,7 @@ import GradesCard from "../pages/student/GradesCard";
 import StudentTimetable from '../pages/student/StudentTimetable';
 import Grievance from "../pages/student/Grievance";
 import Circulars from "../pages/student/Circulars";
+import LeavePortal from "../pages/student/LeavePortal";
 
 import { StudentProvider } from '../context/StudentProvider';
 
@@ -358,6 +359,14 @@ function AppRoutes() {
           element={
             <StudentProvider>
               <StudentTimetable />
+            </StudentProvider>
+          }
+        />
+        <Route
+          path="/student/leave"
+          element={
+            <StudentProvider>
+              <LeavePortal />
             </StudentProvider>
           }
         />
