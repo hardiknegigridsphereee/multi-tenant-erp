@@ -13,7 +13,7 @@ const SchoolAdminContext = createContext();
 
 const LOAD_LABELS = [
   "classLevels", "sections", "academicYears", "subjects", 
-  "teachers", "stats", "trends", "notifications", "settings"
+  "teachers", "stats", "trends", "notifications", "settings", "leaveStats"
 ];
 
 export const toList = (data) => {
@@ -43,6 +43,9 @@ export const SchoolAdminProvider = ({ children }) => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
+  // --- Leave Management State ---
+  const [leaveStats, setLeaveStats] = useState({ pendingTeacher: 0, pendingStudent: 0 });
+
   // --- Derived Selectors ---
   const unreadCount = useMemo(
     () => notifications.filter((n) => !n.is_read).length,
@@ -52,6 +55,11 @@ export const SchoolAdminProvider = ({ children }) => {
   const notificationPreviewList = useMemo(
     () => notifications.slice(0, 4),
     [notifications]
+  );
+
+  const pendingLeaveCount = useMemo(
+    () => leaveStats.pendingTeacher + leaveStats.pendingStudent,
+    [leaveStats]
   );
 
   // --- Isolated Refresh Actions ---
@@ -143,6 +151,21 @@ export const SchoolAdminProvider = ({ children }) => {
     }
   }, []);
 
+  // Pending-leave counts, split by applicant role so a sidebar badge or
+  // dashboard card can call out "N teacher / N student" leaves waiting.
+  const refreshLeaveStats = useCallback(async () => {
+    try {
+      const data = await schoolAdminApi.getLeaveRequests({ status: "Pending" });
+      const list = toList(data);
+      setLeaveStats({
+        pendingTeacher: list.filter((l) => l.applicant_role === "Teacher").length,
+        pendingStudent: list.filter((l) => l.applicant_role === "Student").length,
+      });
+    } catch (err) {
+      console.error("Failed to refresh leave stats:", err);
+    }
+  }, []);
+
   // FIXED: Removed 'sectionsByClass' dependency to eliminate UI-freezing infinite render loop.
   const fetchSectionsByClass = useCallback(
     async (classId) => {
@@ -201,6 +224,7 @@ export const SchoolAdminProvider = ({ children }) => {
         schoolAdminApi.getEnrollmentTrends(),
         schoolAdminApi.getNotifications(),
         schoolAdminApi.getSettings(),
+        schoolAdminApi.getLeaveRequests({ status: "Pending" }),
       ]);
 
       results.forEach((r, i) => {
@@ -211,7 +235,8 @@ export const SchoolAdminProvider = ({ children }) => {
 
       const [
         classResult, sectionResult, yearResult, subjectResult,
-        teacherResult, statsResult, trendsResult, notificationsResult, settingsResult
+        teacherResult, statsResult, trendsResult, notificationsResult, settingsResult,
+        leaveStatsResult
       ] = results;
       
       setClassLevels(classResult.status === "fulfilled" ? toList(classResult.value) : []);
@@ -240,6 +265,14 @@ export const SchoolAdminProvider = ({ children }) => {
       setNotifications(parsedNotifications);
       setSettings(settingsResult.status === "fulfilled" ? settingsResult.value : null);
       setSectionsByClass({});
+
+      if (leaveStatsResult.status === "fulfilled") {
+        const leaveList = toList(leaveStatsResult.value);
+        setLeaveStats({
+          pendingTeacher: leaveList.filter((l) => l.applicant_role === "Teacher").length,
+          pendingStudent: leaveList.filter((l) => l.applicant_role === "Student").length,
+        });
+      }
     } catch (err) {
       console.error("Failed to load school admin context", err);
       setError(err.message || "Something went wrong loading school admin data.");
@@ -257,18 +290,22 @@ export const SchoolAdminProvider = ({ children }) => {
     classLevels, sections, academicYears, subjects, teachers,
     studentsCount, activeStudents, teachersCount, enrollmentTrends,
     notifications, notificationPreviewList, unreadCount, settings,
+    leaveStats, pendingLeaveCount,
     loading, error,
     reload: loadAllData,
     refreshAcademics, refreshStats, refreshTrends, refreshTeachers,
     refreshNotifications, refreshSettings, fetchSectionsByClass,
+    refreshLeaveStats,
     markNotificationRead, markAllNotificationsRead, updateSettings
   }), [
     classLevels, sections, academicYears, subjects, teachers,
     studentsCount, activeStudents, teachersCount, enrollmentTrends,
     notifications, notificationPreviewList, unreadCount, settings,
+    leaveStats, pendingLeaveCount,
     loading, error, loadAllData, refreshAcademics, refreshStats, 
     refreshTrends, refreshTeachers, refreshNotifications, refreshSettings, 
-    fetchSectionsByClass, markNotificationRead, markAllNotificationsRead, updateSettings
+    fetchSectionsByClass, refreshLeaveStats,
+    markNotificationRead, markAllNotificationsRead, updateSettings
   ]);
 
   return (
