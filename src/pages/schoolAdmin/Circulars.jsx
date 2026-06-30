@@ -128,6 +128,10 @@ export default function CircularsPage() {
   const [error, setError] = useState(null);
   const [toast, setToast] = useState(null);
   const [busyId, setBusyId] = useState(null); // for publish-toggle / delete spinners
+  const [viewCircular, setViewCircular] = useState(null);
+  const [loadingForm, setLoadingForm] = useState(false);
+  const [statusFilter, setStatusFilter] = useState("all"); // all | published | unpublished
+  const [audienceFilter, setAudienceFilter] = useState("any"); // any | all | students | teachers | parents
 
   const showToast = (msg, type = "success") => {
     setToast({ msg, type });
@@ -164,24 +168,64 @@ export default function CircularsPage() {
     loadData(search);
   };
 
+useEffect(() => {
+  if (search === "") {
+    loadData("");
+  }
+  
+}, [search]);
+
   const openCreate = () => {
     setForm(emptyForm);
     setError(null);
     setShowModal(true);
   };
 
-  const openEdit = (circular) => {
+  // Re-fetches the FULL circular record by id — the list endpoint omits
+  // `content` and `target_class_levels`, so we always hit the detail
+  // endpoint here before populating the edit form.
+  const openEdit = async (circular) => {
+    setError(null);
     setForm({
       id: circular.id,
       title: circular.title,
-      content: circular.content || "",
+      content: "",
       target_audience: circular.target_audience,
-      target_class_levels: (circular.target_class_levels || []).map((c) =>
-        typeof c === "object" ? c.id : c
-      ),
+      target_class_levels: [],
     });
-    setError(null);
     setShowModal(true);
+    setLoadingForm(true);
+    try {
+      const full = await schoolAdminApi.getCircularById(circular.id);
+      setForm({
+        id: full.id,
+        title: full.title,
+        content: full.content || "",
+        target_audience: full.target_audience,
+        target_class_levels: (full.target_class_levels || []).map((c) =>
+          typeof c === "object" ? c.id : c
+        ),
+      });
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to load circular details", "error");
+    } finally {
+      setLoadingForm(false);
+    }
+  };
+
+  // Same reasoning as openEdit — re-fetch full detail (including content)
+  // for the read-only view modal, since the list row doesn't include it.
+  const openView = async (circular) => {
+    setViewCircular({ ...circular, content: null }); // null = "still loading"
+    try {
+      const full = await schoolAdminApi.getCircularById(circular.id);
+      setViewCircular(full);
+    } catch (err) {
+      console.error(err);
+      showToast("Failed to load circular details", "error");
+      setViewCircular(null);
+    }
   };
 
   const toggleClassLevel = (id) => {
@@ -264,6 +308,13 @@ export default function CircularsPage() {
     }
   };
 
+  const filteredCirculars = circulars.filter((c) => {
+    if (statusFilter === "published" && !c.is_published) return false;
+    if (statusFilter === "unpublished" && c.is_published) return false;
+    if (audienceFilter !== "any" && c.target_audience !== audienceFilter) return false;
+    return true;
+  });
+
   if (pageLoading) return <CircularsSkeleton />;
 
   return (
@@ -336,25 +387,46 @@ export default function CircularsPage() {
             >
               Search
             </button>
+            <select
+              value={statusFilter}
+              onChange={(e) => setStatusFilter(e.target.value)}
+              className="px-3 py-2 rounded-lg text-sm bg-surface-container-high/50 border border-outline-variant/10 focus:border-primary outline-none text-on-surface font-semibold"
+            >
+              <option value="all">All Status</option>
+              <option value="published">Published</option>
+              <option value="unpublished">Unpublished</option>
+            </select>
+            <select
+              value={audienceFilter}
+              onChange={(e) => setAudienceFilter(e.target.value)}
+              className="px-3 py-2 rounded-lg text-sm bg-surface-container-high/50 border border-outline-variant/10 focus:border-primary outline-none text-on-surface font-semibold"
+            >
+              <option value="any">All Audiences</option>
+              <option value="all">Everyone</option>
+              <option value="students">Students</option>
+              <option value="teachers">Teachers</option>
+              <option value="parents">Parents</option>
+            </select>
             <span className="text-xs font-semibold text-on-surface-variant whitespace-nowrap sm:ml-auto">
-              {circulars.length} {circulars.length === 1 ? "circular" : "circulars"} found
+              {filteredCirculars.length} {filteredCirculars.length === 1 ? "circular" : "circulars"} found
             </span>
           </div>
         </form>
 
         {/* ── Mobile: card list (replaces table below `sm`) ── */}
         <div className="sm:hidden space-y-3">
-          {circulars.length === 0 ? (
+          {filteredCirculars.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 px-4 py-12 text-center text-on-surface-variant">
               <span className="material-symbols-outlined text-4xl block mb-2 opacity-30">campaign</span>
               <p className="text-sm font-medium">No circulars found</p>
               <p className="text-xs">Tap "Post Circular" to create one.</p>
             </div>
           ) : (
-            circulars.map((c, index) => (
+            filteredCirculars.map((c, index) => (
               <div
                 key={c.id}
-                className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm p-4 space-y-3"
+                onClick={() => openView(c)}
+                className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 shadow-sm p-4 space-y-3 cursor-pointer active:scale-[0.99] transition-transform"
                 style={{ animation: `fadeInUp 0.3s ease ${index * 0.05}s both` }}
               >
                 <div className="flex items-start justify-between gap-3">
@@ -390,7 +462,10 @@ export default function CircularsPage() {
                   </span>
                 </div>
 
-                <div className="flex items-center justify-between pt-2 border-t border-outline-variant/10">
+                <div
+                  className="flex items-center justify-between pt-2 border-t border-outline-variant/10"
+                  onClick={(e) => e.stopPropagation()}
+                >
                   <div className="text-[10px] text-on-surface-variant">
                     <div className="font-semibold">{c.created_by_name || "Admin"}</div>
                     <div className="text-outline">{timeAgo(c.created_at)}</div>
@@ -443,7 +518,7 @@ export default function CircularsPage() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                {circulars.length === 0 ? (
+                {filteredCirculars.length === 0 ? (
                   <tr>
                     <td colSpan="6" className="px-4 md:px-6 py-12 text-center text-on-surface-variant">
                       <span className="material-symbols-outlined text-4xl block mb-2 opacity-30">campaign</span>
@@ -452,14 +527,17 @@ export default function CircularsPage() {
                     </td>
                   </tr>
                 ) : (
-                  circulars.map((c, index) => (
+                  filteredCirculars.map((c, index) => (
                     <tr
                       key={c.id}
-                      className="group transition-all duration-150 hover:bg-surface-container-high/30"
+                      onClick={() => openView(c)}
+                      className="group cursor-pointer transition-all duration-150 hover:bg-surface-container-high/30"
                       style={{ animation: `fadeInUp 0.3s ease ${index * 0.05}s both` }}
                     >
                       <td className="px-4 md:px-6 py-3 md:py-4 max-w-[220px]">
-                        <p className="font-semibold text-on-surface truncate">{c.title}</p>
+                        <p className="font-semibold text-on-surface truncate group-hover:text-primary transition-colors">
+                          {c.title}
+                        </p>
                         {c.content && (
                           <p className="text-[10px] md:text-2xs text-outline mt-0.5 truncate">{c.content}</p>
                         )}
@@ -497,7 +575,7 @@ export default function CircularsPage() {
                           </span>
                         )}
                       </td>
-                      <td className="px-4 md:px-6 py-3 md:py-4">
+                      <td className="px-4 md:px-6 py-3 md:py-4" onClick={(e) => e.stopPropagation()}>
                         <div className="flex items-center justify-end gap-1">
                           <button
                             onClick={() => handleTogglePublish(c)}
@@ -542,6 +620,84 @@ export default function CircularsPage() {
         `}</style>
       </div>
 
+      {/* ── View Modal ── */}
+      {viewCircular && (
+        <div
+          className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40"
+          onClick={() => setViewCircular(null)}
+        >
+          <div
+            className="bg-surface-container-lowest w-full max-w-xl rounded-xl shadow-xl border border-outline-variant/10 max-h-[90vh] overflow-y-auto"
+            onClick={(e) => e.stopPropagation()}
+          >
+            <div className="px-5 py-4 border-b border-outline-variant/10 flex items-center justify-between">
+              <h3 className="text-sm md:text-base font-headline font-bold text-on-surface">
+                {viewCircular.title}
+              </h3>
+              <button
+                type="button"
+                onClick={() => setViewCircular(null)}
+                className="p-1.5 rounded-lg hover:bg-surface-container-high text-on-surface-variant transition"
+              >
+                <span className="material-symbols-outlined text-base">close</span>
+              </button>
+            </div>
+
+            <div className="p-5 space-y-4">
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={`inline-flex items-center text-[9px] uppercase font-extrabold px-2.5 py-1 rounded-full ${AUDIENCE_BADGE_STYLE[viewCircular.target_audience] || "bg-outline-variant/20 text-on-surface-variant"}`}
+                >
+                  {viewCircular.target_audience_display || viewCircular.target_audience}
+                </span>
+                <span className="text-xs text-on-surface-variant">
+                  {viewCircular.target_class_level_names?.length > 0
+                    ? viewCircular.target_class_level_names.join(", ")
+                    : "All classes"}
+                </span>
+              </div>
+
+              {viewCircular.content === null ? (
+                <div className="space-y-2">
+                  <Sk w="100%" h={12} />
+                  <Sk w="90%" h={12} />
+                  <Sk w="60%" h={12} />
+                </div>
+              ) : (
+                <p className="text-sm text-on-surface whitespace-pre-wrap leading-relaxed">
+                  {viewCircular.content || "No content provided."}
+                </p>
+              )}
+
+              <div className="text-[10px] text-on-surface-variant pt-3 border-t border-outline-variant/10">
+                Posted by {viewCircular.created_by_name || "Admin"} · {timeAgo(viewCircular.created_at)}
+              </div>
+            </div>
+
+            <div className="px-5 py-4 border-t border-outline-variant/10 flex justify-end gap-2">
+              <button
+                type="button"
+                onClick={() => {
+                  const toEdit = viewCircular;
+                  setViewCircular(null);
+                  openEdit(toEdit);
+                }}
+                className="px-4 py-2 text-xs md:text-sm text-on-surface-variant font-bold hover:bg-surface-container-high rounded-lg transition"
+              >
+                Edit
+              </button>
+              <button
+                type="button"
+                onClick={() => setViewCircular(null)}
+                className="px-5 py-2 bg-primary text-white text-xs md:text-sm font-bold rounded-lg shadow-sm transition"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
       {/* ── Create / Edit Modal ── */}
       {showModal && (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/40">
@@ -568,89 +724,109 @@ export default function CircularsPage() {
                   </div>
                 )}
 
-                <div>
-                  <label className={labelClass}>Title</label>
-                  <input
-                    required
-                    value={form.title}
-                    onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
-                    placeholder="e.g. Annual Sports Day — Registration Open"
-                    className={editFieldClass}
-                  />
-                </div>
-
-                <div>
-                  <label className={labelClass}>Content</label>
-                  <textarea
-                    required
-                    rows={4}
-                    value={form.content}
-                    onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
-                    placeholder="Write the circular details here..."
-                    className={`${editFieldClass} resize-none`}
-                  />
-                </div>
-
-                <SectionCard title="Audience" icon="groups">
-                  <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:col-span-2">
-                    {AUDIENCE_OPTIONS.map((opt) => (
-                      <button
-                        type="button"
-                        key={opt.value}
-                        onClick={() => setForm((f) => ({ ...f, target_audience: opt.value }))}
-                        className={`flex items-start gap-2 p-3 rounded-lg border text-left transition ${
-                          form.target_audience === opt.value
-                            ? "border-primary bg-primary/5"
-                            : "border-outline-variant/20 hover:bg-surface-container-high"
-                        }`}
-                      >
-                        <span
-                          className={`material-symbols-outlined text-lg ${
-                            form.target_audience === opt.value ? "text-primary" : "text-on-surface-variant/50"
-                          }`}
-                        >
-                          {opt.icon}
-                        </span>
-                        <span>
-                          <span className="block text-xs font-bold text-on-surface">{opt.label}</span>
-                          <span className="block text-[10px] text-on-surface-variant/60">{opt.desc}</span>
-                        </span>
-                      </button>
-                    ))}
-                  </div>
-                </SectionCard>
-
-                <SectionCard title="Target Classes (optional)" icon="filter_alt">
-                    <div className="sm:col-span-2">
-                      <p className="text-[11px] text-on-surface-variant/60 mb-3">
-                        Leave empty to send to every class. Select specific classes to narrow the audience —
-                        this also restricts teachers to ones assigned to the selected classes.
-                      </p>
-                      {classLevels.length === 0 ? (
-                        <p className="text-xs text-on-surface-variant/50">No class levels found.</p>
-                      ) : (
-                        <div className="flex flex-wrap gap-2">
-                          {classLevels.map((cl) => {
-                            const selected = form.target_class_levels.includes(cl.id);
-                            return (
-                              <button
-                                type="button"
-                                key={cl.id}
-                                onClick={() => toggleClassLevel(cl.id)}
-                                className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
-                                  selected
-                                    ? "bg-primary text-white border-primary"
-                                    : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high"
-                                }`}
-                              >
-                                {cl.name || cl.display_name || `Class ${cl.id}`}
-                              </button>
-                            );
-                          })}
-                        </div>
-                      )}
+                {loadingForm ? (
+                  <div className="space-y-5 animate-pulse">
+                    <div>
+                      <label className={labelClass}>Title</label>
+                      <div className="w-full h-9 rounded-lg" style={SHIMMER} />
                     </div>
-                  </SectionCard>
+                    <div>
+                      <label className={labelClass}>Content</label>
+                      <div className="w-full h-24 rounded-lg" style={SHIMMER} />
+                    </div>
+                    <div className="grid grid-cols-1 xs:grid-cols-2 gap-3">
+                      {Array.from({ length: 4 }).map((_, i) => (
+                        <div key={i} className="h-16 rounded-lg" style={SHIMMER} />
+                      ))}
+                    </div>
+                  </div>
+                ) : (
+                  <>
+                    <div>
+                      <label className={labelClass}>Title</label>
+                      <input
+                        required
+                        value={form.title}
+                        onChange={(e) => setForm((f) => ({ ...f, title: e.target.value }))}
+                        placeholder="e.g. Annual Sports Day — Registration Open"
+                        className={editFieldClass}
+                      />
+                    </div>
+
+                    <div>
+                      <label className={labelClass}>Content</label>
+                      <textarea
+                        required
+                        rows={4}
+                        value={form.content}
+                        onChange={(e) => setForm((f) => ({ ...f, content: e.target.value }))}
+                        placeholder="Write the circular details here..."
+                        className={`${editFieldClass} resize-none`}
+                      />
+                    </div>
+
+                    <SectionCard title="Audience" icon="groups">
+                      <div className="grid grid-cols-1 xs:grid-cols-2 gap-3 sm:col-span-2">
+                        {AUDIENCE_OPTIONS.map((opt) => (
+                          <button
+                            type="button"
+                            key={opt.value}
+                            onClick={() => setForm((f) => ({ ...f, target_audience: opt.value }))}
+                            className={`flex items-start gap-2 p-3 rounded-lg border text-left transition ${
+                              form.target_audience === opt.value
+                                ? "border-primary bg-primary/5"
+                                : "border-outline-variant/20 hover:bg-surface-container-high"
+                            }`}
+                          >
+                            <span
+                              className={`material-symbols-outlined text-lg ${
+                                form.target_audience === opt.value ? "text-primary" : "text-on-surface-variant/50"
+                              }`}
+                            >
+                              {opt.icon}
+                            </span>
+                            <span>
+                              <span className="block text-xs font-bold text-on-surface">{opt.label}</span>
+                              <span className="block text-[10px] text-on-surface-variant/60">{opt.desc}</span>
+                            </span>
+                          </button>
+                        ))}
+                      </div>
+                    </SectionCard>
+
+                    <SectionCard title="Target Classes (optional)" icon="filter_alt">
+                      <div className="sm:col-span-2">
+                        <p className="text-[11px] text-on-surface-variant/60 mb-3">
+                          Leave empty to send to every class. Select specific classes to narrow the audience —
+                          this also restricts teachers to ones assigned to the selected classes.
+                        </p>
+                        {classLevels.length === 0 ? (
+                          <p className="text-xs text-on-surface-variant/50">No class levels found.</p>
+                        ) : (
+                          <div className="flex flex-wrap gap-2">
+                            {classLevels.map((cl) => {
+                              const selected = form.target_class_levels.includes(cl.id);
+                              return (
+                                <button
+                                  type="button"
+                                  key={cl.id}
+                                  onClick={() => toggleClassLevel(cl.id)}
+                                  className={`px-3 py-1.5 rounded-full text-xs font-bold border transition ${
+                                    selected
+                                      ? "bg-primary text-white border-primary"
+                                      : "border-outline-variant/30 text-on-surface-variant hover:bg-surface-container-high"
+                                  }`}
+                                >
+                                  {cl.name || cl.display_name || `Class ${cl.id}`}
+                                </button>
+                              );
+                            })}
+                          </div>
+                        )}
+                      </div>
+                    </SectionCard>
+                  </>
+                )}
               </div>
 
               <div className="px-5 py-4 border-t border-outline-variant/10 flex justify-end gap-2">
@@ -663,7 +839,7 @@ export default function CircularsPage() {
                 </button>
                 <button
                   type="submit"
-                  disabled={saving}
+                  disabled={saving || loadingForm}
                   className="flex items-center justify-center gap-2 px-5 py-2 bg-primary text-white text-xs md:text-sm font-bold rounded-lg shadow-sm disabled:opacity-60 transition"
                 >
                   {saving && <span className="material-symbols-outlined animate-spin text-base">progress_activity</span>}

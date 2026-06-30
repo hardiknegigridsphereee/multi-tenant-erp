@@ -188,6 +188,11 @@ export const getCirculars = async (page = 1, search = "") => {
     return response.data;
 };
 
+export const getCircularById = async (id) => {
+    const response = await apiClient.get(`/school-admin/circulars/${id}/`);
+    return response.data;
+};
+
 export const createCircular = async (data) => {
     const response = await apiClient.post('/school-admin/circulars/', data);
     return response.data;
@@ -454,11 +459,14 @@ export const schoolAdminApi = {
     resolveGrievance,
     rejectGrievance,
     getGrievanceById,
+    // ── Circulars ──
     getCirculars,
+    getCircularById,
     createCircular,
     updateCircular,
     toggleCircularPublish,
     deleteCircular,
+
     // leave management
     getLeaveRequests,
     getLeaveRequestById,
