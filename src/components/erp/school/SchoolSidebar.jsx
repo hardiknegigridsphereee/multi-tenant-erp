@@ -15,6 +15,7 @@ export default function SchoolSidebar() {
     { name: "Parent-Student Mapping",icon: "diversity_1",     path: "/school-admin/mapping" },
     { name: "Teacher Assignment",    icon: "assignment_ind",  path: "/school-admin/teacher-assignment" },
     { name: "Grievance",             icon: "gavel",           path: "/school-admin/grievances" }, // ← ADDED
+    { name: "Circulars", icon: "power", path: "/school-admin/circulars" },
     { name: "Settings",              icon: "settings",        path: "/school-admin/settings" },
   ];
 
