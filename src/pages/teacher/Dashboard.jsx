@@ -5,6 +5,7 @@ import Card from "../../components/erp/teacher/Card";
 import { useStaleData } from "../../hooks/useStaleData";
 import { useTheme } from "../../context/ThemeContext";
 import { getMyProfile, getMyTeacherAssignments, getAttendanceRecords, getGrades } from "../../services/api";
+import { schoolAdminApi } from "../../services/schoolAdminApi";
 import { RevalidatingBar, SkeletonBlock } from "../../components/erp/teacher/LoadingPrimitives";
 
 const StatValueSkeleton = ({ darkMode }) => (
@@ -115,8 +116,12 @@ const Dashboard = () => {
     { skip: loading || classes.length === 0, deps: metricsKey },
   );
 
-
-
+  // Circulars visible to this teacher — backend scopes results by role via JWT
+  const { data: circularsData, loading: circularsLoading } = useStaleData(
+    'teacher:circulars',
+    () => schoolAdminApi.getCirculars(1),
+  );
+  const circulars = circularsData?.results || circularsData || [];
 
   return (
     <MainLayout title="The Academic Architect">
@@ -130,57 +135,62 @@ const Dashboard = () => {
       </div>
 
       {/* Stats Grid */}
-      <section className="grid grid-cols-2 md:grid-cols-4 gap-3 md:gap-5 mb-6 md:mb-8">
+      <section className="grid grid-cols-1 md:grid-cols-3 gap-3 md:gap-4 mb-6 md:mb-8">
         {/* Total Classes */}
-        <Card hoverable className={`group border shadow-sm ${darkMode ? 'bg-gradient-to-br from-blue-600 to-blue-700 border-transparent shadow-lg' : 'bg-slate-100 border-slate-200'}`}>
-          <div className="flex justify-between items-start mb-2 md:mb-3">
-            <div className={`p-1.5 md:p-2.5 rounded-lg transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105 ${darkMode ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
-              <span className="material-symbols-outlined text-base md:text-xl">groups</span>
-            </div>
-            <span className={`text-3xs md:text-2xs font-black uppercase tracking-wider md:tracking-widest px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg ${darkMode ? 'text-blue-200 bg-white/10' : 'text-slate-500 bg-slate-200'}`}>Today</span>
-          </div>
-          <p className={`text-2xs md:text-xs font-bold uppercase tracking-wide md:tracking-wider ${darkMode ? 'text-blue-200' : 'text-slate-500'}`}>Total Classes</p>
-          {loading && classes.length === 0 ? (
-            <StatValueSkeleton darkMode={darkMode} />
-          ) : (
-            <h3 className={`font-display text-2xl md:text-3xl font-black mt-0.5 md:mt-1 ${darkMode ? 'text-white' : 'text-slate-800'}`}>{classes.length}</h3>
-          )}
-        </Card>
-        {/* Avg Attendance */}
-         <Card hoverable className={`group border shadow-sm ${darkMode ? 'bg-gradient-to-br from-amber-600 to-amber-700 border-transparent shadow-lg' : 'bg-slate-100 border-slate-200'}`}>
-          <div className="flex justify-between items-start mb-2 md:mb-3">
-            <div className={`p-1.5 md:p-2.5 rounded-lg transition-transform duration-500 group-hover:rotate-12 group-hover:scale-105 ${darkMode ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
-              <span className="material-symbols-outlined text-base md:text-xl">how_to_reg</span>
-            </div>
-            <span className={`text-3xs md:text-2xs font-bold flex items-center gap-0.5 md:gap-1 px-1.5 md:px-2 py-0.5 md:py-1 rounded-lg ${darkMode ? 'text-green-200 bg-green-900/30' : 'text-green-700 bg-green-100'}`}>
-              <span className="material-symbols-outlined text-2xs md:text-xs">trending_up</span> <span className="hidden md:inline">2.1%</span>
+        <div className={`px-4 py-3 rounded-xl shadow-sm flex items-center justify-between border transition-all hover:scale-[1.01] ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+          <div className="flex items-center gap-3">
+            <span className={`p-2 rounded-md flex-shrink-0 ${darkMode ? 'bg-blue-500/20 text-blue-400' : 'bg-blue-50 text-blue-700'}`}>
+              <span className="material-symbols-outlined text-xl">groups</span>
             </span>
-          </div>
-          <p className={`text-2xs md:text-xs font-bold uppercase tracking-wide md:tracking-wider ${darkMode ? 'text-amber-100' : 'text-slate-500'}`}>Avg Attendance</p>
-          {statsLoading && !stats ? (
-            <StatValueSkeleton darkMode={darkMode} />
-          ) : (
-            <h3 className={`font-display text-2xl md:text-3xl font-black mt-0.5 md:mt-1 ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-              {`${stats?.avgAttendance ?? 0}%`}
-            </h3>
-          )}
-        </Card>
-        {/* Avg Performance */}
-        <Card hoverable className={`group border shadow-sm col-span-2 md:col-span-1 ${darkMode ? 'bg-gradient-to-br from-purple-600 to-purple-700 border-transparent shadow-lg' : 'bg-slate-100 border-slate-200'}`}>
-          <div className="flex justify-between items-start mb-2 md:mb-3">
-            <div className={`p-1.5 md:p-2.5 rounded-lg transition-transform duration-500 group-hover:-rotate-12 group-hover:scale-105 ${darkMode ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
-              <span className="material-symbols-outlined text-base md:text-xl">query_stats</span>
+            <div>
+              <p className={`text-xs font-medium whitespace-nowrap ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Total Classes</p>
+              {loading && classes.length === 0 ? (
+                <StatValueSkeleton darkMode={darkMode} />
+              ) : (
+                <p className={`text-xl font-bold leading-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>{classes.length}</p>
+              )}
             </div>
           </div>
-          <p className={`text-2xs md:text-xs font-bold uppercase tracking-wide md:tracking-wider ${darkMode ? 'text-purple-100' : 'text-slate-500'}`}>Avg Performance</p>
-          {statsLoading && !stats ? (
-            <StatValueSkeleton darkMode={darkMode} />
-          ) : (
-            <h3 className={`font-display text-2xl md:text-3xl font-black mt-0.5 md:mt-1 ${darkMode ? 'text-white' : 'text-slate-800'}`}>
-              {`${stats?.avgPerformancePercentage ?? 0}%`}
-            </h3>
-          )}
-        </Card>
+          <span className={`text-2xs font-bold px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${darkMode ? 'text-slate-300 bg-white/10' : 'text-slate-500 bg-slate-200'}`}>Today</span>
+        </div>
+
+        {/* Avg Attendance */}
+        <div className={`px-4 py-3 rounded-xl shadow-sm flex items-center justify-between border transition-all hover:scale-[1.01] ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+          <div className="flex items-center gap-3">
+            <span className={`p-2 rounded-md flex-shrink-0 ${darkMode ? 'bg-amber-500/20 text-amber-400' : 'bg-amber-50 text-amber-700'}`}>
+              <span className="material-symbols-outlined text-xl">how_to_reg</span>
+            </span>
+            <div>
+              <p className={`text-xs font-medium whitespace-nowrap ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Avg Attendance</p>
+              {statsLoading && !stats ? (
+                <StatValueSkeleton darkMode={darkMode} />
+              ) : (
+                <p className={`text-xl font-bold leading-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>{`${stats?.avgAttendance ?? 0}%`}</p>
+              )}
+            </div>
+          </div>
+          <span className={`text-2xs font-bold flex items-center gap-1 px-2 py-1 rounded-full flex-shrink-0 whitespace-nowrap ${darkMode ? 'text-green-300 bg-green-900/30' : 'text-green-700 bg-green-100'}`}>
+            <span className="material-symbols-outlined text-xs">trending_up</span> 2.1%
+          </span>
+        </div>
+
+        {/* Avg Performance */}
+        <div className={`px-4 py-3 rounded-xl shadow-sm flex items-center justify-between border transition-all hover:scale-[1.01] ${darkMode ? 'bg-slate-900 border-slate-700' : 'bg-slate-100 border-slate-200'}`}>
+          <div className="flex items-center gap-3">
+            <span className={`p-2 rounded-md flex-shrink-0 ${darkMode ? 'bg-purple-500/20 text-purple-400' : 'bg-purple-50 text-purple-700'}`}>
+              <span className="material-symbols-outlined text-xl">query_stats</span>
+            </span>
+            <div>
+              <p className={`text-xs font-medium whitespace-nowrap ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>Avg Performance</p>
+              {statsLoading && !stats ? (
+                <StatValueSkeleton darkMode={darkMode} />
+              ) : (
+                <p className={`text-xl font-bold leading-tight ${darkMode ? 'text-white' : 'text-slate-800'}`}>{`${stats?.avgPerformancePercentage ?? 0}%`}</p>
+              )}
+            </div>
+          </div>
+          <div className={`h-2 w-2 rounded-full flex-shrink-0 animate-pulse ${darkMode ? 'bg-purple-400' : 'bg-purple-500'}`} />
+        </div>
       </section>
 
       {/* Bento Grid Main Content */}
@@ -279,7 +289,7 @@ const Dashboard = () => {
     {/* Mark Attendance */}
     <Card
       hoverable
-      className={`cursor-pointer flex flex-col items-center justify-center text-center gap-2 md:gap-3 py-4 md:py-8 group border shadow-sm ${darkMode ? 'bg-gradient-to-br from-purple-600 to-purple-700 border-transparent shadow-lg' : 'bg-slate-100 border-slate-200'}`}
+      className={`cursor-pointer flex flex-col items-center justify-center text-center gap-2 md:gap-2.5 py-4 md:py-6 group border shadow-sm ${darkMode ? 'bg-gradient-to-br from-purple-600 to-purple-700 border-transparent shadow-lg' : 'bg-slate-100 border-slate-200'}`}
       onClick={() => navigate("/teacher/attendance/mark")}
     >
       <div className={`p-2 md:p-3 rounded-lg group-hover:scale-105 transition ${darkMode ? 'bg-white/20 text-white' : 'bg-slate-200 text-slate-600'}`}>
@@ -343,58 +353,54 @@ const Dashboard = () => {
         {/* Side Sidebar */}
         <div className="col-span-12 lg:col-span-4 space-y-6">
 
-          {/* Recent Activity Feed */}
-          {/* <section className="bg-surface-container-low rounded-lg p-5">
-            <h4 className="font-display text-base font-bold mb-5 text-on-surface">Recent Activity</h4>
-            <div className="space-y-5">
-              <div className="flex gap-4 relative">
-                <div className="absolute left-[11px] top-6 w-[2px] h-[calc(100%-12px)] bg-outline-variant"></div>
-                <div className="w-6 h-6 rounded-full bg-primary flex items-center justify-center shrink-0 z-10">
-                  <span className="material-symbols-outlined text-white text-xs">check</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-on-surface">Physics Assignment Submitted</p>
-                  <p className="text-xs text-on-surface-variant">15 students from Grade 11-B</p>
-                  <p className="text-2xs text-slate-400 mt-1">24 minutes ago</p>
-                </div>
+          {/* Circulars */}
+          <Link to="/teacher/circulars" className="block group">
+            <Card className={`p-5 border shadow-sm transition-all duration-200 ${darkMode ? 'bg-slate-900 border-slate-700 group-hover:border-slate-600' : 'bg-slate-100 border-slate-200 group-hover:border-slate-300'}`}>
+              <div className="flex items-center justify-between mb-5">
+                <h4 className={`font-display text-sm font-black uppercase tracking-widest ${darkMode ? 'text-slate-300' : 'text-slate-500'}`}>
+                  Circulars
+                </h4>
+                <span className={`flex items-center gap-0.5 text-2xs font-bold group-hover:underline ${darkMode ? 'text-blue-400' : 'text-primary'}`}>
+                  View all
+                  <span className="material-symbols-outlined text-xs">arrow_forward</span>
+                </span>
               </div>
-              <div className="flex gap-4 relative">
-                <div className="absolute left-[11px] top-6 w-[2px] h-[calc(100%-12px)] bg-outline-variant"></div>
-                <div className="w-6 h-6 rounded-full bg-[#6b38d4] flex items-center justify-center shrink-0 z-10">
-                  <span className="material-symbols-outlined text-white text-xs">mail</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-on-surface">New Message from Admin</p>
-                  <p className="text-xs text-on-surface-variant">Regarding semester schedule change</p>
-                  <p className="text-2xs text-slate-400 mt-1">1 hour ago</p>
-                </div>
-              </div>
-              <div className="flex gap-4">
-                <div className="w-6 h-6 rounded-full bg-[#924700] flex items-center justify-center shrink-0 z-10">
-                  <span className="material-symbols-outlined text-white text-xs">edit_calendar</span>
-                </div>
-                <div className="flex-1">
-                  <p className="text-xs font-bold text-on-surface">Exam Dates Confirmed</p>
-                  <p className="text-xs text-on-surface-variant">Calculus Midterm set for Dec 12</p>
-                  <p className="text-2xs text-slate-400 mt-1">3 hours ago</p>
-                </div>
-              </div>
-            </div>
-            <Link to="/teacher/notifications" className="w-full mt-6 py-2 text-xs font-bold text-on-surface-variant hover:text-primary transition-colors flex items-center justify-center gap-2">
-              View All Activity
-              <span className="material-symbols-outlined text-sm">arrow_forward</span>
-            </Link>
-          </section> */}
 
-          {/* Student Spotlight */}
-          {/* <div className="relative overflow-hidden rounded-lg shadow-ambient aspect-[4/3] group" style={{boxShadow: '0px 12px 32px rgba(11,28,48,0.06)'}}>
-            <img alt="Class Spotlight" src="https://lh3.googleusercontent.com/aida-public/AB6AXuC8I8LaH-fxwzUfYcklh-0WSH91hBgGJv97HDznz2ihqwjbWy9o6bZ2olprlFKl5PjSOP9PtWz02FrtzqYxTJA6LbuycXjRXfxiSvF_V90ha85ocjHmQJs_X-vp-xprHqsguPNKbZ8q5c-QUjBRHjd2MukIOkSKeghbznUzsSSB5QnUv70pdVSU4kuq9OxbxH-q8tLSB22Sdvvqgtn8Yf2vFHtsUrBsYkpXkJYd5yXsFY6FgUxR4OZkEt_ItOGfCzzlAweX2sQytg" className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-700" />
-            <div className="absolute inset-0 bg-gradient-to-t from-primary/90 to-transparent flex flex-col justify-end p-5">
-              <span className="bg-white/20 backdrop-blur-md text-white text-2xs font-bold uppercase tracking-widest px-2 py-1 rounded w-fit mb-2">Class Spotlight</span>
-              <h5 className="text-white font-display text-base font-bold">Advanced Physics Lab</h5>
-              <p className="text-white/80 text-xs">Achieved 100% submission rate today.</p>
-            </div>
-          </div> */}
+              {circularsLoading && circulars.length === 0 ? (
+                <div className="space-y-4">
+                  {Array.from({ length: 3 }).map((_, i) => (
+                    <div key={i} className="flex items-start gap-3">
+                      <SkeletonBlock className="w-1.5 h-1.5 rounded-full mt-1.5" />
+                      <div className="flex-1 space-y-1.5">
+                        <SkeletonBlock className="h-3 w-3/4" />
+                        <SkeletonBlock className="h-2.5 w-1/2" />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : circulars.length === 0 ? (
+                <p className={`text-xs text-center py-4 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                  No circulars yet.
+                </p>
+              ) : (
+                <div className="space-y-4">
+                  {circulars.slice(0, 3).map((c) => (
+                    <div key={c.id} className="flex items-start gap-3">
+                      <span className={`mt-1.5 w-1.5 h-1.5 rounded-full flex-shrink-0 ${darkMode ? 'bg-blue-400' : 'bg-primary'}`} />
+                      <div className="min-w-0 flex-1">
+                        <p className={`text-sm font-bold truncate ${darkMode ? 'text-white' : 'text-slate-800'}`}>{c.title}</p>
+                        <p className={`text-2xs mt-0.5 ${darkMode ? 'text-slate-400' : 'text-slate-500'}`}>
+                          {c.created_by_name || 'School Administration'}
+                          {c.created_at && ` · ${new Date(c.created_at).toLocaleDateString('en-IN', { day: 'numeric', month: 'short' })}`}
+                        </p>
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </Card>
+          </Link>
+
         </div>
       </div>
     </MainLayout>

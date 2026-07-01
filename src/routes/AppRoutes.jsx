@@ -108,6 +108,7 @@ import StudentAnalyticsOverview from "../pages/teacher/StudentAnalyticsOverview"
 import DetailedStudentAnalytics from "../pages/teacher/DetailedStudentAnalytics";
 import TeacherProfileManagement from "../pages/teacher/TeacherProfileManagement";
 import TeacherSystemSettings from "../pages/teacher/TeacherSystemSettings";
+import TeacherCirculars from "../pages/teacher/Circulars";
 
 /* PARENT PAGES */
 import ParentDashboard from "../pages/parent/ParentDashboard";
@@ -426,6 +427,9 @@ function AppRoutes() {
         <Route path="/teacher/profile" element={<TeacherProfileManagement />} />
         <Route path="/teacher/settings" element={<TeacherSystemSettings />} />
         <Route path="/teacher/notifications" element={<TeacherNotificationsHub />} />
+
+        <Route path="/teacher/circulars" element={<TeacherCirculars />} />
+
 
         {/* ================= PARENT ================= */}
         <Route path="/parent" element={<ParentProvider><ParentDashboard /></ParentProvider>} />
