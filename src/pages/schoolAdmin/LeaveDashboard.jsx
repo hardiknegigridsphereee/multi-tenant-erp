@@ -1,16 +1,6 @@
 import React, { useEffect, useMemo, useState } from "react";
 import SchoolLayout from "../../components/erp/school/SchoolLayout";
 import { useSchoolAdmin } from "../../context/SchoolAdminProvider";
-import { schoolAdminApi } from "../../services/schoolAdminApi";
-
-/* ─────────────────────────────────────────────
-   API layer
-   All calls now go through services/schoolAdminApi.js (getLeaveRequests,
-   approveLeaveRequest, rejectLeaveRequest), same as every other page.
-───────────────────────────────────────────── */
-const fetchLeaves = (filters) => schoolAdminApi.getLeaveRequests(filters);
-const approveLeave = (id, remarks) => schoolAdminApi.approveLeaveRequest(id, remarks);
-const rejectLeave = (id, remarks) => schoolAdminApi.rejectLeaveRequest(id, remarks);
 
 /* ─────────────────────────────────────────────
    Skeleton (matches Teachers.jsx / Dashboard.jsx shimmer)
@@ -72,18 +62,6 @@ function LeaveDashboardSkeleton() {
   );
 }
 
-/* ─────────────────────────────────────────────
-   Demo data — shown only if the API call fails, so the screen is never
-   empty while you're wiring this up. Remove once the backend is live.
-───────────────────────────────────────────── */
-const DEMO_LEAVES = [
-  { id: "d1", applicant_role: "Teacher", applicant_name: "Meera Joshi", leave_type: "Sick", start_date: "2026-07-02", end_date: "2026-07-03", total_days: 2, reason: "Viral fever, doctor advised rest.", status: "Pending", applied_at: "2026-06-28T09:12:00Z", attachment: null },
-  { id: "d2", applicant_role: "Student", applicant_name: "Aarav Singh", leave_type: "Casual", start_date: "2026-07-01", end_date: "2026-07-01", total_days: 1, reason: "Family function.", status: "Pending", applied_at: "2026-06-27T14:02:00Z", attachment: null },
-  { id: "d3", applicant_role: "Teacher", applicant_name: "Rohan Kapoor", leave_type: "Emergency", start_date: "2026-06-30", end_date: "2026-06-30", total_days: 1, reason: "Family emergency, need to travel out of city.", status: "Approved", applied_at: "2026-06-26T08:40:00Z", reviewed_by_name: "Admin Office", reviewed_at: "2026-06-26T11:00:00Z", review_remarks: "Approved, hope all is well." },
-  { id: "d4", applicant_role: "Student", applicant_name: "Diya Patel", leave_type: "Sick", start_date: "2026-06-24", end_date: "2026-06-26", total_days: 3, reason: "Chickenpox, isolation advised.", status: "Approved", applied_at: "2026-06-23T10:00:00Z", reviewed_by_name: "Sana Reddy", reviewed_at: "2026-06-23T12:00:00Z" },
-  { id: "d5", applicant_role: "Teacher", applicant_name: "Imran Sheikh", leave_type: "Casual", start_date: "2026-07-10", end_date: "2026-07-11", total_days: 2, reason: "Personal work.", status: "Rejected", applied_at: "2026-06-20T09:00:00Z", reviewed_by_name: "Admin Office", reviewed_at: "2026-06-21T09:00:00Z", review_remarks: "Clashes with mid-term exam duty, please reschedule." },
-];
-
 const STATUS_BADGE = {
   Pending: "bg-[color-mix(in_srgb,var(--color-secondary)_14%,transparent)] text-secondary",
   Approved: "bg-success/15 text-success",
@@ -99,7 +77,7 @@ function formatDate(d) {
 }
 function formatDateRange(start, end) {
   if (start === end) return formatDate(start);
-  return `${formatDate(start)} – ${formatDate(end)}`;
+  return `${formatDate(start)} - ${formatDate(end)}`;
 }
 function getInitials(name) {
   if (!name) return "?";
@@ -108,7 +86,7 @@ function getInitials(name) {
 }
 
 /* ─────────────────────────────────────────────
-   Stat card (same shape as Teachers.jsx StatCard)
+   Stat card 
 ───────────────────────────────────────────── */
 function StatCard({ icon, label, value, accentColor, active, onClick }) {
   return (
@@ -181,15 +159,19 @@ function Sheet({ children, onClose }) {
 /* ───────────────────────────────────────────── */
 
 export default function LeaveDashboard() {
-  // `refreshLeaveStats` is optional — only present once you've added the
-  // leave-stats slice to SchoolAdminProvider (see the integration note in
-  // the PR/README). Falls back to a no-op so this page still works without it.
-  const { refreshLeaveStats } = useSchoolAdmin() || {};
-
-  const [leaves, setLeaves] = useState([]);
-  const [loading, setLoading] = useState(true);
-  const [usingDemoData, setUsingDemoData] = useState(false);
-  const [error, setError] = useState(null);
+  // Data + mutations now live in SchoolAdminProvider so other screens
+  // (sidebar badges, dashboard cards) can share the same leave-requests
+  // state. This page only owns its own UI state below.
+  const {
+    leaveRequests = [],
+    leaveRequestsLoading = false,
+    leaveRequestsError = null,
+    usingDemoLeaveData = false,
+    refreshLeaveRequests = async () => {},
+    approveLeaveRequest = async () => {},
+    rejectLeaveRequest = async () => {},
+    deleteLeaveRequest = async () => {},
+  } = useSchoolAdmin() || {};
 
   const [search, setSearch] = useState("");
   const [debouncedSearch, setDebouncedSearch] = useState("");
@@ -202,29 +184,20 @@ export default function LeaveDashboard() {
   const [submitting, setSubmitting] = useState(false);
   const [toast, setToast] = useState(null);
 
+  const [deleting, setDeleting] = useState(null); // leave being confirmed for deletion
+  const [deletingSubmitting, setDeletingSubmitting] = useState(false);
+
+  const PAGE_SIZE = 10;
+  const [page, setPage] = useState(1);
+
   useEffect(() => {
     const t = setTimeout(() => setDebouncedSearch(search), 400);
     return () => clearTimeout(t);
   }, [search]);
 
-  async function load() {
-    setLoading(true);
-    setError(null);
-    try {
-      const data = await fetchLeaves({});
-      setLeaves(Array.isArray(data) ? data : data.results || []);
-      setUsingDemoData(false);
-    } catch (err) {
-      console.error("Fetch leave requests error:", err);
-      setLeaves(DEMO_LEAVES);
-      setUsingDemoData(true);
-    } finally {
-      setLoading(false);
-    }
-  }
-
   useEffect(() => {
-    load();
+    refreshLeaveRequests();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
@@ -234,7 +207,8 @@ export default function LeaveDashboard() {
   }, [toast]);
 
   const filtered = useMemo(() => {
-    return leaves.filter((l) => {
+    return leaveRequests.filter((l) => {
+      if (l.status === "Cancelled") return false;
       if (statusFilter !== "ALL" && l.status !== statusFilter) return false;
       if (roleFilter !== "ALL" && l.applicant_role !== roleFilter) return false;
       if (debouncedSearch) {
@@ -245,15 +219,32 @@ export default function LeaveDashboard() {
       }
       return true;
     });
-  }, [leaves, statusFilter, roleFilter, debouncedSearch]);
+  }, [leaveRequests, statusFilter, roleFilter, debouncedSearch]);
+
+  // Reset to page 1 whenever the filtered set could change shape, so users
+  // don't land on an empty page 4 after narrowing a filter.
+  useEffect(() => {
+    setPage(1);
+  }, [debouncedSearch, statusFilter, roleFilter]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / PAGE_SIZE));
+
+  useEffect(() => {
+    if (page > totalPages) setPage(totalPages);
+  }, [page, totalPages]);
+
+  const paginated = useMemo(
+    () => filtered.slice((page - 1) * PAGE_SIZE, page * PAGE_SIZE),
+    [filtered, page]
+  );
 
   const stats = useMemo(() => {
-    const pendingTeacher = leaves.filter((l) => l.status === "Pending" && l.applicant_role === "Teacher").length;
-    const pendingStudent = leaves.filter((l) => l.status === "Pending" && l.applicant_role === "Student").length;
-    const approved = leaves.filter((l) => l.status === "Approved").length;
-    const rejected = leaves.filter((l) => l.status === "Rejected").length;
+    const pendingTeacher = leaveRequests.filter((l) => l.status === "Pending" && l.applicant_role === "Teacher").length;
+    const pendingStudent = leaveRequests.filter((l) => l.status === "Pending" && l.applicant_role === "Student").length;
+    const approved = leaveRequests.filter((l) => l.status === "Approved").length;
+    const rejected = leaveRequests.filter((l) => l.status === "Rejected").length;
     return { pendingTeacher, pendingStudent, approved, rejected };
-  }, [leaves]);
+  }, [leaveRequests]);
 
   function openReview(leave, action) {
     setRemarks("");
@@ -265,21 +256,14 @@ export default function LeaveDashboard() {
     const { leave, action } = reviewing;
     setSubmitting(true);
     try {
-      const fn = action === "approve" ? approveLeave : rejectLeave;
-      const updated = usingDemoData
-        ? {
-            ...leave,
-            status: action === "approve" ? "Approved" : "Rejected",
-            review_remarks: remarks,
-            reviewed_by_name: "Admin Office",
-            reviewed_at: new Date().toISOString(),
-          }
-        : await fn(leave.id, remarks);
-      setLeaves((prev) => prev.map((l) => (l.id === leave.id ? updated : l)));
+      if (action === "approve") {
+        await approveLeaveRequest(leave.id, remarks);
+      } else {
+        await rejectLeaveRequest(leave.id, remarks);
+      }
       setToast({ type: "success", message: `Leave request ${action === "approve" ? "approved" : "rejected"}.` });
       setReviewing(null);
       setSelected(null);
-      if (typeof refreshLeaveStats === "function") refreshLeaveStats();
     } catch (err) {
       setToast({ type: "error", message: err.message || "Could not submit review." });
     } finally {
@@ -292,7 +276,26 @@ export default function LeaveDashboard() {
   // school admin (see leave_management backend README).
   const canReview = (l) => l.status === "Pending" && l.applicant_role === "Teacher";
 
-  if (loading) {
+  function openDelete(leave) {
+    setDeleting(leave);
+  }
+
+  async function confirmDelete() {
+    if (!deleting) return;
+    setDeletingSubmitting(true);
+    try {
+      await deleteLeaveRequest(deleting.id);
+      setToast({ type: "success", message: "Leave request deleted." });
+      setDeleting(null);
+      setSelected(null);
+    } catch (err) {
+      setToast({ type: "error", message: err.message || "Could not delete leave request." });
+    } finally {
+      setDeletingSubmitting(false);
+    }
+  }
+
+  if (leaveRequestsLoading) {
     return (
       <SchoolLayout title="Leave Requests">
         <LeaveDashboardSkeleton />
@@ -312,23 +315,23 @@ export default function LeaveDashboard() {
             </p>
           </div>
           <button
-            onClick={load}
+            onClick={refreshLeaveRequests}
             className="self-start sm:self-auto whitespace-nowrap border border-outline-variant/20 text-on-surface px-4 py-2 rounded-lg text-sm font-bold hover:bg-surface-container-high/50 transition-all active:scale-95 flex items-center gap-2"
           >
-            <span className={`material-symbols-outlined text-[18px] ${loading ? "animate-spin" : ""}`}>refresh</span>
+            <span className={`material-symbols-outlined text-[18px] ${leaveRequestsLoading ? "animate-spin" : ""}`}>refresh</span>
             Refresh
           </button>
         </div>
 
-        {usingDemoData && (
+        {usingDemoLeaveData && (
           <div className="p-3 bg-secondary/10 text-on-surface rounded-xl border border-secondary/20 text-xs font-body flex items-start gap-2">
             <span className="material-symbols-outlined text-[16px] mt-0.5">info</span>
             Showing sample data — couldn't reach the leave management API. Connect this screen to your live backend to see real records.
           </div>
         )}
 
-        {error && (
-          <div className="p-3 bg-error/10 text-error rounded-xl border border-error/20 text-sm font-body">{error}</div>
+        {leaveRequestsError && (
+          <div className="p-3 bg-error/10 text-error rounded-xl border border-error/20 text-sm font-body">{leaveRequestsError}</div>
         )}
 
         {/* Stats */}
@@ -391,7 +394,6 @@ export default function LeaveDashboard() {
             <option value="Pending">Pending</option>
             <option value="Approved">Approved</option>
             <option value="Rejected">Rejected</option>
-            <option value="Cancelled">Cancelled</option>
           </select>
 
           <select
@@ -407,7 +409,9 @@ export default function LeaveDashboard() {
 
           <div className="flex items-center gap-2 ml-auto">
             <span className="text-xs font-semibold text-on-surface-variant">
-              {filtered.length} {filtered.length === 1 ? "request" : "requests"}
+              {filtered.length === 0
+                ? "0 requests"
+                : `${(page - 1) * PAGE_SIZE + 1}-${Math.min(page * PAGE_SIZE, filtered.length)} of ${filtered.length}`}
             </span>
           </div>
         </div>
@@ -427,7 +431,7 @@ export default function LeaveDashboard() {
                 </tr>
               </thead>
               <tbody className="divide-y divide-outline-variant/10">
-                {filtered.length === 0 ? (
+                {paginated.length === 0 ? (
                   <tr>
                     <td colSpan={6} className="px-6 py-12 text-center text-on-surface-variant">
                       <span className="material-symbols-outlined text-4xl block mb-2 opacity-30">event_busy</span>
@@ -436,7 +440,7 @@ export default function LeaveDashboard() {
                     </td>
                   </tr>
                 ) : (
-                  filtered.map((l, index) => (
+                  paginated.map((l, index) => (
                     <tr
                       key={l.id}
                       onClick={() => setSelected(l)}
@@ -462,28 +466,37 @@ export default function LeaveDashboard() {
                       <td className="px-6 py-4 text-center"><StatusPill status={l.status} /></td>
                       <td className="px-6 py-4 whitespace-nowrap text-on-surface-variant text-xs">{formatDate(l.applied_at)}</td>
                       <td className="px-6 py-4 text-right" onClick={(e) => e.stopPropagation()}>
-                        {canReview(l) ? (
-                          <div className="flex justify-end gap-1.5">
-                            <button
-                              onClick={() => openReview(l, "approve")}
-                              className="p-1.5 rounded-md text-success hover:bg-success/10 transition"
-                              title="Approve"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">check</span>
-                            </button>
-                            <button
-                              onClick={() => openReview(l, "reject")}
-                              className="p-1.5 rounded-md text-error hover:bg-error/10 transition"
-                              title="Reject"
-                            >
-                              <span className="material-symbols-outlined text-[18px]">close</span>
-                            </button>
-                          </div>
-                        ) : l.status === "Pending" && l.applicant_role === "Student" ? (
-                          <span className="text-xs text-on-surface-variant italic">Section teacher's call</span>
-                        ) : (
-                          <span className="text-xs text-on-surface-variant">{l.reviewed_by_name ? `by ${l.reviewed_by_name}` : "—"}</span>
-                        )}
+                        <div className="flex justify-end items-center gap-1.5">
+                          {canReview(l) ? (
+                            <>
+                              <button
+                                onClick={() => openReview(l, "approve")}
+                                className="p-1.5 rounded-md text-success hover:bg-success/10 transition"
+                                title="Approve"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">check</span>
+                              </button>
+                              <button
+                                onClick={() => openReview(l, "reject")}
+                                className="p-1.5 rounded-md text-error hover:bg-error/10 transition"
+                                title="Reject"
+                              >
+                                <span className="material-symbols-outlined text-[18px]">close</span>
+                              </button>
+                            </>
+                          ) : l.status === "Pending" && l.applicant_role === "Student" ? (
+                            <span className="text-xs text-on-surface-variant italic mr-1">Section teacher's call</span>
+                          ) : (
+                            <span className="text-xs text-on-surface-variant mr-1">{l.reviewed_by_name ? `by ${l.reviewed_by_name}` : "—"}</span>
+                          )}
+                          <button
+                            onClick={() => openDelete(l)}
+                            className="p-1.5 rounded-md text-on-surface-variant hover:bg-error/10 hover:text-error transition"
+                            title="Delete"
+                          >
+                            <span className="material-symbols-outlined text-[18px]">delete</span>
+                          </button>
+                        </div>
                       </td>
                     </tr>
                   ))
@@ -495,14 +508,14 @@ export default function LeaveDashboard() {
 
         {/* ── Mobile: stacked cards (below md) ── */}
         <div className="md:hidden flex flex-col gap-3">
-          {filtered.length === 0 ? (
+          {paginated.length === 0 ? (
             <div className="bg-surface-container-lowest rounded-xl border border-outline-variant/10 px-6 py-12 text-center text-on-surface-variant">
               <span className="material-symbols-outlined text-4xl block mb-2 opacity-30">event_busy</span>
               <p className="text-sm font-medium">No leave requests found</p>
               <p className="text-xs">Try adjusting your filters.</p>
             </div>
           ) : (
-            filtered.map((l) => (
+            paginated.map((l) => (
               <div
                 key={l.id}
                 onClick={() => setSelected(l)}
@@ -543,18 +556,87 @@ export default function LeaveDashboard() {
                     >
                       <span className="material-symbols-outlined text-[15px]">close</span> Reject
                     </button>
+                    <button
+                      onClick={() => openDelete(l)}
+                      className="px-3 bg-surface-container-high/50 text-on-surface-variant rounded-lg py-2 text-xs font-bold flex items-center justify-center"
+                      title="Delete"
+                    >
+                      <span className="material-symbols-outlined text-[15px]">delete</span>
+                    </button>
                   </div>
-                ) : l.status === "Pending" && l.applicant_role === "Student" ? (
-                  <p className="mt-3 text-[11px] text-on-surface-variant italic">Awaiting section teacher's review</p>
                 ) : (
-                  <p className="mt-3 text-[11px] text-on-surface-variant">
-                    {l.reviewed_by_name ? `Reviewed by ${l.reviewed_by_name}` : ""}
-                  </p>
+                  <div className="mt-3 flex items-center justify-between gap-2" onClick={(e) => e.stopPropagation()}>
+                    {l.status === "Pending" && l.applicant_role === "Student" ? (
+                      <p className="text-[11px] text-on-surface-variant italic">Awaiting section teacher's review</p>
+                    ) : (
+                      <p className="text-[11px] text-on-surface-variant">
+                        {l.reviewed_by_name ? `Reviewed by ${l.reviewed_by_name}` : ""}
+                      </p>
+                    )}
+                    <button
+                      onClick={() => openDelete(l)}
+                      className="p-1.5 rounded-md text-on-surface-variant hover:bg-error/10 hover:text-error transition shrink-0"
+                      title="Delete"
+                    >
+                      <span className="material-symbols-outlined text-[16px]">delete</span>
+                    </button>
+                  </div>
                 )}
               </div>
             ))
           )}
         </div>
+
+        {/* Pagination */}
+        {filtered.length > 0 && (
+          <div className="flex flex-col sm:flex-row items-center justify-between gap-3 bg-surface-container-lowest px-4 py-3 rounded-xl border border-outline-variant/10">
+            <span className="text-xs text-on-surface-variant">
+              Page {page} of {totalPages}
+            </span>
+            <div className="flex items-center gap-1">
+              <button
+                onClick={() => setPage((p) => Math.max(1, p - 1))}
+                disabled={page === 1}
+                className="p-2 rounded-lg border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high/50 transition"
+                title="Previous page"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_left</span>
+              </button>
+              {Array.from({ length: totalPages }, (_, i) => i + 1)
+                .filter((p) => p === 1 || p === totalPages || Math.abs(p - page) <= 1)
+                .reduce((acc, p, i, arr) => {
+                  if (i > 0 && p - arr[i - 1] > 1) acc.push("ellipsis-" + p);
+                  acc.push(p);
+                  return acc;
+                }, [])
+                .map((p) =>
+                  typeof p === "string" ? (
+                    <span key={p} className="px-1.5 text-xs text-on-surface-variant">…</span>
+                  ) : (
+                    <button
+                      key={p}
+                      onClick={() => setPage(p)}
+                      className={`min-w-[32px] h-8 px-2 rounded-lg text-xs font-bold transition ${
+                        p === page
+                          ? "bg-primary text-white"
+                          : "border border-outline-variant/20 text-on-surface hover:bg-surface-container-high/50"
+                      }`}
+                    >
+                      {p}
+                    </button>
+                  )
+                )}
+              <button
+                onClick={() => setPage((p) => Math.min(totalPages, p + 1))}
+                disabled={page === totalPages}
+                className="p-2 rounded-lg border border-outline-variant/20 text-on-surface disabled:opacity-40 disabled:cursor-not-allowed hover:bg-surface-container-high/50 transition"
+                title="Next page"
+              >
+                <span className="material-symbols-outlined text-[18px]">chevron_right</span>
+              </button>
+            </div>
+          </div>
+        )}
 
         <style>{`
           @keyframes fadeInUp { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
@@ -606,11 +688,12 @@ export default function LeaveDashboard() {
               <p className="text-[10px] uppercase tracking-wide font-bold text-on-surface-variant mb-1">Reason</p>
               <p className="text-on-surface">{selected.reason}</p>
             </div>
-            {selected.attachment && (
+            {/* Disable View Attachment because it's not working now.  */}
+            {/* {selected.attachment && (
               <a href={selected.attachment} target="_blank" rel="noreferrer" className="inline-flex items-center gap-1.5 text-primary font-semibold text-sm">
                 <span className="material-symbols-outlined text-[16px]">attach_file</span> View attachment
               </a>
-            )}
+            )} */}
             {selected.review_remarks && (
               <div className="bg-surface-container-high/40 border border-outline-variant/10 rounded-lg px-3 py-2.5">
                 <p className="text-[10px] uppercase tracking-wide font-bold text-on-surface-variant mb-1">Reviewer remarks</p>
@@ -626,7 +709,7 @@ export default function LeaveDashboard() {
             <div className="flex gap-2 mt-6">
               <button
                 onClick={() => openReview(selected, "approve")}
-                className="flex-1 bg-success text-white rounded-lg py-2.5 text-sm font-bold flex items-center justify-center gap-1.5"
+                className="flex-1 bg-blue-600 text-white rounded-lg py-2.5 text-sm font-bold flex items-center justify-center gap-1.5"
               >
                 <span className="material-symbols-outlined text-[16px]">check</span> Approve
               </button>
@@ -644,6 +727,13 @@ export default function LeaveDashboard() {
               Only this student's section/class teacher can approve or reject this request.
             </p>
           )}
+
+          <button
+            onClick={() => openDelete(selected)}
+            className="mt-3 w-full border border-outline-variant/20 text-on-surface-variant hover:text-error hover:border-error/40 hover:bg-error/5 rounded-lg py-2.5 text-sm font-bold flex items-center justify-center gap-1.5 transition"
+          >
+            <span className="material-symbols-outlined text-[16px]">delete</span> Delete request
+          </button>
         </Sheet>
       )}
 
@@ -679,6 +769,38 @@ export default function LeaveDashboard() {
               }`}
             >
               {submitting ? "Submitting…" : `Confirm ${reviewing.action}`}
+            </button>
+          </div>
+        </Sheet>
+      )}
+
+      {/* Delete confirmation sheet */}
+      {deleting && (
+        <Sheet onClose={() => setDeleting(null)}>
+          <div className="flex items-start gap-3 mb-4">
+            <div className="w-10 h-10 rounded-full bg-error/10 flex items-center justify-center shrink-0">
+              <span className="material-symbols-outlined text-error text-[20px]">delete</span>
+            </div>
+            <div>
+              <h2 className="text-base font-headline font-bold text-on-surface">Delete this leave request?</h2>
+              <p className="text-sm text-on-surface-variant mt-1">
+                {deleting.applicant_name} · {formatDateRange(deleting.start_date, deleting.end_date)}. This can't be undone.
+              </p>
+            </div>
+          </div>
+          <div className="flex gap-2">
+            <button
+              onClick={() => setDeleting(null)}
+              className="flex-1 border border-outline-variant/20 rounded-lg py-2.5 text-sm font-semibold text-on-surface"
+            >
+              Cancel
+            </button>
+            <button
+              disabled={deletingSubmitting}
+              onClick={confirmDelete}
+              className="flex-1 rounded-lg py-2.5 text-sm font-bold text-white bg-error disabled:opacity-60"
+            >
+              {deletingSubmitting ? "Deleting…" : "Delete"}
             </button>
           </div>
         </Sheet>

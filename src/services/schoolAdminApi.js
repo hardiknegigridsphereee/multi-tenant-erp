@@ -396,6 +396,12 @@ export const cancelLeaveRequest = async (id) => {
     return response.data;
 };
 
+export const deleteLeaveRequest = async (id) => {
+    console.log("delete")
+    const response = await apiClient.delete(`/leave-management/leave-requests/${id}/`, {});
+    return response.data
+}
+
 // Fetch teacher-subject assignments filtered by academic_year / subject / section / class_level.
 // Uses the school-admin endpoint (unlike getTeacherAssignments, which hits /academics/
 // and only supports teacher/status filters — not subject or academic_year).
@@ -488,5 +494,6 @@ export const schoolAdminApi = {
     approveLeaveRequest,
     rejectLeaveRequest,
     cancelLeaveRequest,
+    deleteLeaveRequest,
     getTeacherAssignmentsForTimetable
 };

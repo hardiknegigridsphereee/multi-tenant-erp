@@ -22,6 +22,17 @@ export const toList = (data) => {
   return data.results ?? [];
 };
 
+// Shown only if the leave-requests API call fails, so the Leave Dashboard
+// screen is never empty while the backend is being wired up. Remove once
+// the backend is reliably live.
+const DEMO_LEAVES = [
+  { id: "d1", applicant_role: "Teacher", applicant_name: "Meera Joshi", leave_type: "Sick", start_date: "2026-07-02", end_date: "2026-07-03", total_days: 2, reason: "Viral fever, doctor advised rest.", status: "Pending", applied_at: "2026-06-28T09:12:00Z", attachment: null },
+  { id: "d2", applicant_role: "Student", applicant_name: "Aarav Singh", leave_type: "Casual", start_date: "2026-07-01", end_date: "2026-07-01", total_days: 1, reason: "Family function.", status: "Pending", applied_at: "2026-06-27T14:02:00Z", attachment: null },
+  { id: "d3", applicant_role: "Teacher", applicant_name: "Rohan Kapoor", leave_type: "Emergency", start_date: "2026-06-30", end_date: "2026-06-30", total_days: 1, reason: "Family emergency, need to travel out of city.", status: "Approved", applied_at: "2026-06-26T08:40:00Z", reviewed_by_name: "Admin Office", reviewed_at: "2026-06-26T11:00:00Z", review_remarks: "Approved, hope all is well." },
+  { id: "d4", applicant_role: "Student", applicant_name: "Diya Patel", leave_type: "Sick", start_date: "2026-06-24", end_date: "2026-06-26", total_days: 3, reason: "Chickenpox, isolation advised.", status: "Approved", applied_at: "2026-06-23T10:00:00Z", reviewed_by_name: "Sana Reddy", reviewed_at: "2026-06-23T12:00:00Z" },
+  { id: "d5", applicant_role: "Teacher", applicant_name: "Imran Sheikh", leave_type: "Casual", start_date: "2026-07-10", end_date: "2026-07-11", total_days: 2, reason: "Personal work.", status: "Rejected", applied_at: "2026-06-20T09:00:00Z", reviewed_by_name: "Admin Office", reviewed_at: "2026-06-21T09:00:00Z", review_remarks: "Clashes with mid-term exam duty, please reschedule." },
+];
+
 export const SchoolAdminProvider = ({ children }) => {
   // --- Academic State ---
   const [classLevels, setClassLevels] = useState([]);
@@ -45,6 +56,14 @@ export const SchoolAdminProvider = ({ children }) => {
 
   // --- Leave Management State ---
   const [leaveStats, setLeaveStats] = useState({ pendingTeacher: 0, pendingStudent: 0 });
+
+  // Full leave-requests list + demo-fallback flag, used by the Leave
+  // Dashboard page. Loaded lazily via refreshLeaveRequests() rather than
+  // as part of loadAllData(), since not every school-admin page needs it.
+  const [leaveRequests, setLeaveRequests] = useState([]);
+  const [leaveRequestsLoading, setLeaveRequestsLoading] = useState(false);
+  const [leaveRequestsError, setLeaveRequestsError] = useState(null);
+  const [usingDemoLeaveData, setUsingDemoLeaveData] = useState(false);
 
   // --- Derived Selectors ---
   const unreadCount = useMemo(
@@ -165,6 +184,79 @@ export const SchoolAdminProvider = ({ children }) => {
       console.error("Failed to refresh leave stats:", err);
     }
   }, []);
+
+  // Full (unfiltered-by-status) leave-requests list for the Leave Dashboard
+  // page. Cancelled requests are withdrawn by the applicant and are never
+  // surfaced to the admin.
+  const refreshLeaveRequests = useCallback(async () => {
+    setLeaveRequestsLoading(true);
+    setLeaveRequestsError(null);
+    try {
+      const data = await schoolAdminApi.getLeaveRequests({});
+      const list = toList(data);
+      setLeaveRequests(list.filter((l) => l.status !== "Cancelled"));
+      setUsingDemoLeaveData(false);
+    } catch (err) {
+      console.error("Failed to load leave requests:", err);
+      setLeaveRequests(DEMO_LEAVES.filter((l) => l.status !== "Cancelled"));
+      setUsingDemoLeaveData(true);
+      setLeaveRequestsError(err.message || "Something went wrong loading leave requests.");
+    } finally {
+      setLeaveRequestsLoading(false);
+    }
+  }, []);
+
+  const approveLeaveRequest = useCallback(async (id, remarks = "") => {
+    const updated = usingDemoLeaveData
+      ? null
+      : await schoolAdminApi.approveLeaveRequest(id, remarks);
+    setLeaveRequests((prev) =>
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        if (usingDemoLeaveData) {
+          return {
+            ...l,
+            status: "Approved",
+            review_remarks: remarks,
+            reviewed_by_name: "Admin Office",
+            reviewed_at: new Date().toISOString(),
+          };
+        }
+        return updated;
+      })
+    );
+    refreshLeaveStats();
+  }, [usingDemoLeaveData, refreshLeaveStats]);
+
+  const rejectLeaveRequest = useCallback(async (id, remarks = "") => {
+    const updated = usingDemoLeaveData
+      ? null
+      : await schoolAdminApi.rejectLeaveRequest(id, remarks);
+    setLeaveRequests((prev) =>
+      prev.map((l) => {
+        if (l.id !== id) return l;
+        if (usingDemoLeaveData) {
+          return {
+            ...l,
+            status: "Rejected",
+            review_remarks: remarks,
+            reviewed_by_name: "Admin Office",
+            reviewed_at: new Date().toISOString(),
+          };
+        }
+        return updated;
+      })
+    );
+    refreshLeaveStats();
+  }, [usingDemoLeaveData, refreshLeaveStats]);
+
+  const deleteLeaveRequest = useCallback(async (id) => {
+    if (!usingDemoLeaveData) {
+      await schoolAdminApi.deleteLeaveRequest(id);
+    }
+    setLeaveRequests((prev) => prev.filter((l) => l.id !== id));
+    refreshLeaveStats();
+  }, [usingDemoLeaveData, refreshLeaveStats]);
 
   // FIXED: Removed 'sectionsByClass' dependency to eliminate UI-freezing infinite render loop.
   const fetchSectionsByClass = useCallback(
@@ -291,20 +383,24 @@ export const SchoolAdminProvider = ({ children }) => {
     studentsCount, activeStudents, teachersCount, enrollmentTrends,
     notifications, notificationPreviewList, unreadCount, settings,
     leaveStats, pendingLeaveCount,
+    leaveRequests, leaveRequestsLoading, leaveRequestsError, usingDemoLeaveData,
     loading, error,
     reload: loadAllData,
     refreshAcademics, refreshStats, refreshTrends, refreshTeachers,
     refreshNotifications, refreshSettings, fetchSectionsByClass,
-    refreshLeaveStats,
+    refreshLeaveStats, refreshLeaveRequests,
+    approveLeaveRequest, rejectLeaveRequest, deleteLeaveRequest,
     markNotificationRead, markAllNotificationsRead, updateSettings
   }), [
     classLevels, sections, academicYears, subjects, teachers,
     studentsCount, activeStudents, teachersCount, enrollmentTrends,
     notifications, notificationPreviewList, unreadCount, settings,
     leaveStats, pendingLeaveCount,
+    leaveRequests, leaveRequestsLoading, leaveRequestsError, usingDemoLeaveData,
     loading, error, loadAllData, refreshAcademics, refreshStats, 
     refreshTrends, refreshTeachers, refreshNotifications, refreshSettings, 
-    fetchSectionsByClass, refreshLeaveStats,
+    fetchSectionsByClass, refreshLeaveStats, refreshLeaveRequests,
+    approveLeaveRequest, rejectLeaveRequest, deleteLeaveRequest,
     markNotificationRead, markAllNotificationsRead, updateSettings
   ]);
 

@@ -34,6 +34,11 @@ export const navItems = [
     path: "/teacher/ai-tools",
     icon: "psychology",
   },
+  {
+    label: "Leave Management",
+    path: "/teacher/leave-management",
+    icon: "event_busy"
+  }
 
   /*{
 label: "Analytics",
