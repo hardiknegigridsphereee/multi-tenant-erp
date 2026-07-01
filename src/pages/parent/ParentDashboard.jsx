@@ -16,29 +16,54 @@ const ParentDashboard = () => {
 
         {/*
           Performance + AI insights + Circulars row.
-          Key fix: switches to multi-column ONLY above 1400px width (an explicit
-          arbitrary breakpoint, not the theme's 2xl token — this avoids any
-          risk of 2xl being redefined lower in tailwind.config.js).
-          1400px sits safely above iPad Pro landscape (1366px), Nest Hub Max
-          (1280px), and Nest Hub (1024px) — so all of them stay in the
-          single-column stacked view, exactly like iPad Air/Mini, and only
-          true desktop widths go side-by-side.
+          FIX: earlier attempts (Tailwind `min-[1400px]:` breakpoint, then a
+          container-query breakpoint, then flexbox with fixed min-widths)
+          all relied on comparing the row's width against SOME fixed pixel
+          number. Any fixed number is fragile here: browser zoom changes how
+          many CSS pixels fit in the window, so the exact same physical
+          screen can report a different "row width" at 90% vs 100% vs 125%
+          zoom, flipping across whatever threshold was chosen.
 
-          Grid is now 4 columns at the >=1400px breakpoint: PerformanceChart
-          takes 2, AllInsights takes 1, CircularsPreview takes 1 — keeping
-          AllInsights' own width unchanged from before.
+          Real fix: don't use a threshold at all for normal desktop widths.
+          `grid-template-columns: 2fr 1fr 1fr` divides available space
+          PROPORTIONALLY, not by a fixed pixel comparison — so it looks
+          identical at every zoom level and every desktop/laptop window
+          size, automatically. The row only drops to a single column via
+          the 900px max-width media query below, which is a genuinely small
+          width (phones / narrow tablet portrait) that a normal desktop
+          window never reaches even at high zoom — so it can't misfire the
+          way the earlier thresholds did.
         */}
-        <section className="grid grid-cols-1 min-[1400px]:grid-cols-4 gap-4 sm:gap-6">
-          <div className="min-[1400px]:col-span-2 min-h-[320px] sm:min-h-[380px]">
+        <div className="dashboard-row">
+          <style>{`
+            .dashboard-row {
+              display: grid;
+              grid-template-columns: 2fr 1fr 1fr;
+              gap: 1rem;
+            }
+            @media (min-width: 640px) {
+              .dashboard-row { gap: 1.5rem; }
+            }
+            @media (max-width: 900px) {
+              .dashboard-row {
+                grid-template-columns: 1fr;
+              }
+            }
+            .dashboard-row > div {
+              min-width: 0;
+            }
+          `}</style>
+
+          <div className="min-h-[320px] sm:min-h-[380px]">
             <PerformanceChart />
           </div>
-          <div className="min-[1400px]:col-span-1 min-h-[320px] sm:min-h-[380px]">
+          <div className="min-h-[320px] sm:min-h-[380px]">
             <AllInsights />
           </div>
-          <div className="min-[1400px]:col-span-1 min-h-[320px] sm:min-h-[380px]">
+          <div className="min-h-[320px] sm:min-h-[380px]">
             <CircularsPreview />
           </div>
-        </section>
+        </div>
 
       </div>
     </DashboardLayout>
